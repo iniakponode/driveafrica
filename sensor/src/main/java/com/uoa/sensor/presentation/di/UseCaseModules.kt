@@ -1,0 +1,29 @@
+package com.uoa.sensor.presentation.di
+
+import com.uoa.sensor.data.repository.TripDataRepository
+import com.uoa.sensor.domain.usecases.trip.FetchTripUseCase
+import com.uoa.sensor.domain.usecases.trip.InsertTripUseCase
+import com.uoa.sensor.domain.usecases.trip.UpdateTripUseCase
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+
+@Module
+@InstallIn(SingletonComponent::class)
+object UseCaseModules {
+     @Provides
+     fun provideFetchTripUseCase(tripRepository: TripDataRepository): FetchTripUseCase {
+         return FetchTripUseCase(tripRepository)
+     }
+
+     @Provides
+     fun provideUpdateTripUseCase(tripRepository: TripDataRepository): UpdateTripUseCase {
+         return UpdateTripUseCase(tripRepository)
+     }
+
+     @Provides
+     fun provideInsertTripUseCase(tripRepository: TripDataRepository): InsertTripUseCase {
+         return InsertTripUseCase(tripRepository)
+     }
+}

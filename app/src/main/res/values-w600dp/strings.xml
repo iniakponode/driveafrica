@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home">Home</string>
+    <string name="reports">Reports</string>
+    <string name="driving_tips">Safety Tips</string>
+    <string name="logout">Logout</string>
+</resources>

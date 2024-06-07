@@ -1,0 +1,446 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "260bd1846ea5fdd15c85b1bb556ea34c",
+    "entities": [
+      {
+        "tableName": "raw_sensor_data",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sensorType` TEXT NOT NULL, `values` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `accuracy` INTEGER NOT NULL, `sync` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sensorType",
+            "columnName": "sensorType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "values",
+            "columnName": "values",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accuracy",
+            "columnName": "accuracy",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sync",
+            "columnName": "sync",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "sensor_data",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `tripDataId` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `synced` INTEGER NOT NULL, `accelerometerX` REAL NOT NULL, `accelerometerY` REAL NOT NULL, `accelerometerZ` REAL NOT NULL, `gyroscopeX` REAL NOT NULL, `gyroscopeY` REAL NOT NULL, `gyroscopeZ` REAL NOT NULL, `magnetometerX` REAL NOT NULL, `magnetometerY` REAL NOT NULL, `magnetometerZ` REAL NOT NULL, `rotationVectorX` REAL NOT NULL, `rotationVectorY` REAL NOT NULL, `rotationVectorZ` REAL NOT NULL, `rotationVectorScalar` REAL NOT NULL, `linearAccelerationX` REAL NOT NULL, `linearAccelerationY` REAL NOT NULL, `linearAccelerationZ` REAL NOT NULL, `speed` REAL NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tripDataId",
+            "columnName": "tripDataId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "synced",
+            "columnName": "synced",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accelerometerX",
+            "columnName": "accelerometerX",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accelerometerY",
+            "columnName": "accelerometerY",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accelerometerZ",
+            "columnName": "accelerometerZ",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gyroscopeX",
+            "columnName": "gyroscopeX",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gyroscopeY",
+            "columnName": "gyroscopeY",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gyroscopeZ",
+            "columnName": "gyroscopeZ",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "magnetometerX",
+            "columnName": "magnetometerX",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "magnetometerY",
+            "columnName": "magnetometerY",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "magnetometerZ",
+            "columnName": "magnetometerZ",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rotationVectorX",
+            "columnName": "rotationVectorX",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rotationVectorY",
+            "columnName": "rotationVectorY",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rotationVectorZ",
+            "columnName": "rotationVectorZ",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rotationVectorScalar",
+            "columnName": "rotationVectorScalar",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "linearAccelerationX",
+            "columnName": "linearAccelerationX",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "linearAccelerationY",
+            "columnName": "linearAccelerationY",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "linearAccelerationZ",
+            "columnName": "linearAccelerationZ",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "speed",
+            "columnName": "speed",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "trip_data",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `driverProfileId` INTEGER, `startTime` INTEGER NOT NULL, `endTime` INTEGER, `synced` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "driverProfileId",
+            "columnName": "driverProfileId",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "startTime",
+            "columnName": "startTime",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endTime",
+            "columnName": "endTime",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "synced",
+            "columnName": "synced",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "driving_behavior_analysis",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `userId` TEXT NOT NULL, `tripDataId` INTEGER NOT NULL, `harshAcceleration` INTEGER NOT NULL, `harshDeceleration` INTEGER NOT NULL, `tailgaiting` INTEGER NOT NULL, `speeding` INTEGER NOT NULL, `causes` TEXT NOT NULL, `causeUpdated` INTEGER NOT NULL, `synced` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `startDate` TEXT NOT NULL, `endDate` TEXT NOT NULL, `distance` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tripDataId",
+            "columnName": "tripDataId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "harshAcceleration",
+            "columnName": "harshAcceleration",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "harshDeceleration",
+            "columnName": "harshDeceleration",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tailgaiting",
+            "columnName": "tailgaiting",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "speeding",
+            "columnName": "speeding",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "causes",
+            "columnName": "causes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "causeUpdated",
+            "columnName": "causeUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "synced",
+            "columnName": "synced",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startDate",
+            "columnName": "startDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endDate",
+            "columnName": "endDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "distance",
+            "columnName": "distance",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "nlg_report",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `userId` TEXT NOT NULL, `reportText` TEXT NOT NULL, `dateRange` TEXT NOT NULL, `synced` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reportText",
+            "columnName": "reportText",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateRange",
+            "columnName": "dateRange",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "synced",
+            "columnName": "synced",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "location",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `latitude` REAL NOT NULL, `longitude` REAL NOT NULL, `timestamp` INTEGER NOT NULL, `altitude` REAL, `speed` REAL, `sync` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "latitude",
+            "columnName": "latitude",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "longitude",
+            "columnName": "longitude",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "altitude",
+            "columnName": "altitude",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "speed",
+            "columnName": "speed",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "sync",
+            "columnName": "sync",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '260bd1846ea5fdd15c85b1bb556ea34c')"
+    ]
+  }
+}

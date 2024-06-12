@@ -19,11 +19,11 @@ object LocationManagerModule {
     @RequiresApi(Build.VERSION_CODES.O)
     @Provides
     fun provideLocationManager(
-        @ApplicationContext context: Context,
+//        @ApplicationContext context: Context,
         locationRepository: LocationRepository,
         fusedLocationProviderClient: FusedLocationProviderClient
     ): LocationManager {
         // Provide an instance of LocationManager
-        return LocationManager(context, locationRepository, fusedLocationProviderClient)
+        return LocationManager(locationRepository, fusedLocationProviderClient)
     }
 }

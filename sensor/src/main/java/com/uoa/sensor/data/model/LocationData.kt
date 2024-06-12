@@ -15,6 +15,7 @@ data class LocationData(
     val longitude: Long,
     val altitude: Double? = null,
     val speed: Double? = null,
+    val distance: Double? = null,
     val timestamp: Long,
     val sync: Boolean=false
 )

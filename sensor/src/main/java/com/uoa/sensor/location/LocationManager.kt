@@ -42,7 +42,7 @@ class LocationManager @Inject constructor(
                     altitude = it.altitude
                     speed = it.speed
                 }
-
+                val distance = lastRecordedLocation?.distanceTo(newLocation) ?: 0f
                 if (shouldRecordNewLocation(newLocation)) {
                     val locationData = LocationData(
                         id =UUID.randomUUID(), // will be auto-generated
@@ -50,6 +50,7 @@ class LocationManager @Inject constructor(
                         longitude = it.longitude.toLong(),
                         altitude = it.altitude,
                         speed = it.speed.toDouble(),
+                        distance= distance.toDouble(),
                         timestamp = it.time,
                         sync = false
                     )
@@ -78,7 +79,11 @@ class LocationManager @Inject constructor(
         try {
             fusedLocationProviderClient.requestLocationUpdates(
                 locationRequest, locationCallback, Looper.getMainLooper()
-            )
+            ).addOnSuccessListener {
+                Log.d("LocationManager", "Location updates started")
+            }.addOnFailureListener {
+                Log.e("LocationManager", "Failed to start location updates", it)
+            }
         } catch (e: SecurityException) {
             Log.e("LocationManager", "Location permission not granted", e)
         }

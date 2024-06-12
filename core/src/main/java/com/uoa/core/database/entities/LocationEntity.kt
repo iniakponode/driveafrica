@@ -19,5 +19,6 @@ data class LocationEntity(
     val timestamp: Long,
     val altitude: Double? = null,
     val speed: Float? = null,
+    val distance: Float? = null,
     val sync: Boolean=false
 )

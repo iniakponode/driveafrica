@@ -10,16 +10,18 @@ import com.uoa.sensor.data.model.LocationData
 import com.uoa.sensor.data.model.NLGReport
 import com.uoa.sensor.data.model.RawSensorData
 import com.uoa.sensor.data.model.Trip
-import java.time.Instant
 
 // RawSensorData to RawSensorDataEntity
 fun RawSensorData.toEntity(): RawSensorDataEntity {
     return RawSensorDataEntity(
         id = this.id,
         sensorType = this.sensorType.toString(),  // Assuming you need to convert Int to String
+        sensorTypeName = this.sensorTypeName,
         values = this.values,
         timestamp = this.timestamp,
         accuracy = this.accuracy,
+        locationId = this.locationId,
+        tripId = this.tripId,
         sync = this.sync
     )
 }
@@ -28,9 +30,12 @@ fun RawSensorDataEntity.toDomainModel(): RawSensorData {
     return RawSensorData(
         id = this.id,
         sensorType = this.sensorType.toInt(),  // Assuming you need to convert String to Int
+        sensorTypeName = this.sensorTypeName,
         values = this.values,
         timestamp = this.timestamp,
         accuracy = this.accuracy,
+        locationId = this.locationId,
+        tripId = this.tripId,
         sync = this.sync
     )
 }
@@ -57,45 +62,45 @@ fun TripEntity.toDomainModel(): Trip {
 }
 
 // DbdaResultEntity to DbdaResultEntity
-fun DbdaResult.toEntity(): DbdaResultEntity {
-    return DbdaResultEntity(
-        id = this.id,
-        userId = this.userId,
-        tripDataId = this.tripDataId,
-        harshAcceleration = this.harshAcceleration,
-        harshDeceleration = this.harshDeceleration,
-        tailgaiting = this.tailgaiting,
-        speeding = this.speeding,
-        causes = this.causes,
-        causeUpdated = this.causeUpdated,
-        synced = this.synced,
-        timestamp = this.timestamp,
-        startDate = this.startDate,
-        endDate = this.endDate,
-        distance = this.distance
-        //... other behavior fields
-    )
-}
-
-fun DbdaResultEntity.toDomainModel(): DbdaResult {
-    return DbdaResult(
-        id = this.id,
-        userId = this.userId,
-        tripDataId = this.tripDataId,
-        harshAcceleration = this.harshAcceleration,
-        harshDeceleration = this.harshDeceleration,
-        tailgaiting = this.tailgaiting,
-        speeding = this.speeding,
-        causes = this.causes,
-        causeUpdated = this.causeUpdated,
-        synced = this.synced,
-        timestamp = this.timestamp,
-        startDate = this.startDate,
-        endDate = this.endDate,
-        distance = this.distance
-        //... other behavior fields
-    )
-}
+//fun DbdaResult.toEntity(): DbdaResultEntity {
+//    return DbdaResultEntity(
+//        id = this.id,
+//        userId = this.userId,
+//        tripDataId = this.tripDataId,
+//        harshAcceleration = this.harshAcceleration,
+//        harshDeceleration = this.harshDeceleration,
+//        tailgaiting = this.tailgaiting,
+//        speeding = this.speeding,
+//        causes = this.causes,
+//        causeUpdated = this.causeUpdated,
+//        synced = this.synced,
+//        timestamp = this.timestamp,
+//        startDate = this.startDate,
+//        endDate = this.endDate,
+//        distance = this.distance
+//        //... other behavior fields
+//    )
+//}
+//
+//fun DbdaResultEntity.toDomainModel(): DbdaResult {
+//    return DbdaResult(
+//        id = this.id,
+//        userId = this.userId,
+//        tripDataId = this.tripDataId,
+//        harshAcceleration = this.harshAcceleration,
+//        harshDeceleration = this.harshDeceleration,
+//        cornering = this.cornering,
+//        speeding = this.speeding,
+//        causes = this.causes,
+//        causeUpdated = this.causeUpdated,
+//        synced = this.synced,
+//        timestamp = this.timestamp,
+//        startDate = this.startDate,
+//        endDate = this.endDate,
+//        distance = this.distance,
+//        //... other behavior fields
+//    )
+//}
 
 // NLGReportEntity to NLGReportEntity
 fun NLGReport.toEntity(): NLGReportEntity {
@@ -123,10 +128,10 @@ fun NLGReportEntity.toDomainModel(): NLGReport {
 fun LocationEntity.toDomainModel(): LocationData {
     return LocationData(
         id = this.id,
-        latitude = this.latitude,
-        longitude = this.longitude,
+        latitude = this.latitude.toLong(),
+        longitude = this.longitude.toLong(),
         timestamp = this.timestamp,
-        speed = this.speed,
+        speed = this.speed?.toDouble(),
         sync = this.sync
     )
 }
@@ -135,10 +140,10 @@ fun LocationEntity.toDomainModel(): LocationData {
 fun LocationData.toEntity(): LocationEntity {
     return LocationEntity(
         id = this.id,
-        latitude = this.latitude,
-        longitude = this.longitude,
+        latitude = this.latitude.toDouble(),
+        longitude = this.longitude.toDouble(),
         timestamp = this.timestamp,
-        speed = this.speed,
+        speed = this.speed?.toFloat(),
         sync = this.sync
     )
 }

@@ -5,7 +5,7 @@ import com.uoa.sensor.data.repository.TripDataRepository
 import javax.inject.Inject
 
 class InsertTripUseCase @Inject constructor(private val tripRepository: TripDataRepository) {
-    suspend operator fun invoke(trip: Trip): Long {
+    suspend operator fun invoke(trip: Trip) {
         return tripRepository.insertTrip(trip)
     }
 }

@@ -1,41 +1,23 @@
 package com.uoa.sensor.hardware
 
-import android.Manifest
-import android.app.Activity
-import android.content.Context
-import android.content.pm.PackageManager
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationResult
 import android.os.Build
-import android.os.Looper
 import android.util.Log
 import androidx.annotation.RequiresApi
-import androidx.core.app.ActivityCompat
-import com.google.android.gms.location.Priority
-import com.uoa.sensor.hardware.base.TrackingSensor
-import com.uoa.core.database.entities.RawSensorDataEntity
-import com.uoa.sensor.data.model.LocationData
 import com.uoa.sensor.data.model.RawSensorData
-import com.uoa.sensor.data.repository.LocationRepository
-import com.uoa.sensor.data.repository.RawSensorDataRepository
-import com.uoa.sensor.data.toEntity
+
+import com.uoa.sensor.location.LocationManager
+import com.uoa.sensor.utils.GetSensorTypeNameUtil
+//import com.uoa.sensor.utils.ProcessSensorData
+import com.uoa.sensor.utils.ProcessSensorData.logSensorValues
+import com.uoa.sensor.utils.ProcessSensorData.processSensorData
 //import com.uoa.sensor.utils.PermissionUtils
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import java.time.Instant
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
-
 @RequiresApi(Build.VERSION_CODES.O)
 @Singleton
 class HardwareModule @Inject constructor(
-    private val context: Context,
-    private val rawSensorDataRepository: RawSensorDataRepository,
-    private val locationRepository: LocationRepository,
-    private val fusedLocationProviderClient: FusedLocationProviderClient,
     @AccelerometerSensorM private val accelerometerSensor: AccelerometerSensor,
     @GyroscopeSensorM private val gyroscopeSensor: GyroscopeSensor,
     @RotationVectorSensorM private val rotationVectorSensor: RotationVectorSensor,
@@ -43,40 +25,46 @@ class HardwareModule @Inject constructor(
     @SignificantMotionSensorM private val significantMotionSensor: SignificantMotion,
     @GravitySensorM private val gravitySensor: GravitySensor,
     @LinearAccelerationM private val linearAccelerationSensor: LinearAcceleration,
+    private val locationManager: LocationManager,
+    private val manageSensorDataSizeAndSave: ManageSensorDataSizeAndSave
 ) {
+
     private var isCollecting: Boolean = false
-
-    private var locationData: LocationData? = null
-
-    private val locationCallback = object : LocationCallback() {
-        override fun onLocationResult(locationResult: LocationResult) {
-            locationResult.locations.lastOrNull()?.let {
-                locationData = LocationData(id =0, it.latitude, it.longitude, it.altitude, it.speed, it.time, sync = false)
-            }
-        }
-    }
-
-    private fun startLocationUpdates() {
-        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 1000)
-            .setWaitForAccurateLocation(true)
-            .setMinUpdateIntervalMillis(1000)
-            .setMaxUpdateDelayMillis(1000)
-            .build()
-
-        try {
-            fusedLocationProviderClient.requestLocationUpdates(
-                locationRequest, locationCallback, Looper.getMainLooper()
-            )
-        } catch (e: SecurityException) {
-            Log.e("HardwareModule", "Location permission not granted", e)
-        }
-    }
-
-    fun startDataCollection(isLocationPermissionGranted: Boolean) {
+    private var currentTripId: UUID? = null
+    private var currentLocationId: Long? = null
+    fun startDataCollection(isLocationPermissionGranted: Boolean, tripId: UUID) {
         if (!isCollecting) {
-            if (isLocationPermissionGranted) {
-                startLocationUpdates()
+            try {
+                currentTripId = tripId
+                if (isLocationPermissionGranted) {
+                    Log.d("LocationPermission", "Starting location updates; Permission granted: $isLocationPermissionGranted")
+                    locationManager.startLocationUpdates()
+                }
+                startSensorListeners()
+                isCollecting = true
+            } catch (e: Exception) {
+                Log.e("HardwareModule", "Unexpected error while starting data collection", e)
             }
+        }
+    }
+
+    fun stopDataCollection() {
+        if (isCollecting) {
+            try {
+                locationManager.stopLocationUpdates()
+                manageSensorDataSizeAndSave.processAndStoreSensorData()
+                stopSensorListeners()
+                isCollecting = false
+                currentTripId = null
+                currentLocationId = null
+            } catch (e: Exception) {
+                Log.e("HardwareModule", "Unexpected error while stopping data collection", e)
+            }
+        }
+    }
+
+    private fun startSensorListeners() {
+        try {
             accelerometerSensor.startListeningToSensor(200)
             gyroscopeSensor.startListeningToSensor(200)
             rotationVectorSensor.startListeningToSensor(200)
@@ -84,61 +72,69 @@ class HardwareModule @Inject constructor(
             significantMotionSensor.startListeningToSensor(200)
             gravitySensor.startListeningToSensor(200)
             linearAccelerationSensor.startListeningToSensor(200)
-            isCollecting = true
+        } catch (e: Exception) {
+            Log.e("HardwareModule", "Error starting sensor listeners", e)
         }
     }
 
-    fun stopDataCollection() {
-        if (isCollecting) {
-            fusedLocationProviderClient.removeLocationUpdates(locationCallback)
+    private fun stopSensorListeners() {
+        try {
             accelerometerSensor.stopListeningToSensor()
             gyroscopeSensor.stopListeningToSensor()
             rotationVectorSensor.stopListeningToSensor()
             magnetometerSensor.stopListeningToSensor()
             significantMotionSensor.stopListeningToSensor()
             gravitySensor.stopListeningToSensor()
-            isCollecting = false
+            linearAccelerationSensor.stopListeningToSensor()
+        } catch (e: Exception) {
+            Log.e("HardwareModule", "Error stopping sensor listeners", e)
         }
     }
 
     private fun setupListeners() {
-        val sensorEventListener = { sensorType: Int, values: List<Float>, accuracy: Int ->
+        val sensorEventListener: (Int, List<Float>, Int) -> Unit = { sensorType, values, accuracy ->
             val timestamp = Instant.now()
+            val sensorTypeName = GetSensorTypeNameUtil.getSensorTypeName(sensorType)
+
+            val validValues = values.map { if (it.isFinite()) it else 0f }  // Ensure values are valid floats
+
+            // Log sensor values for debugging
+            logSensorValues(sensorTypeName, validValues, "Unprocessed")
+
+            val processedValues = processSensorData(sensorType, validValues.toFloatArray())
+
+            // Log processed sensor values for debugging
+            logSensorValues(sensorTypeName, processedValues.toList(), "Processed")
             val rawSensorData = RawSensorData(
+                id= UUID.randomUUID(),
                 sensorType = sensorType,
-                values = values,
+                sensorTypeName = sensorTypeName,
+                values = processedValues.toList(),
                 timestamp = timestamp,
                 accuracy = accuracy,
+                locationId = locationManager.getCurrentLocationId(),  // Get the current location ID
+                tripId = currentTripId,
                 sync = false,
             )
 
-            val rawSensorDataEntity = rawSensorData.toEntity()
-
-            CoroutineScope(Dispatchers.IO).launch {
-                if (!isCollecting) {
-                    Log.d("HardwareModule", "Data collection is not active")
-                    return@launch
-                }
-                Log.d("HardwareModule", "Data collection is Active\n${locationData?.latitude}")
-                rawSensorDataRepository.insertRawSensorData(rawSensorDataEntity)
-                locationData?.let {
-                    locationRepository.insertLocation(it.toEntity())
-                }
-
+            if (isCollecting) {
+                manageSensorDataSizeAndSave.addToSensorDataBuffer(rawSensorData)
+            } else {
+                Log.d("HardwareModule", "Data collection is not active")
             }
-//            CoroutineScope(Dispatchers.IO).launch {
-//
-//            }
-            Unit // Explicitly return Unit
         }
 
-        accelerometerSensor.whenSensorValueChangesListener(sensorEventListener)
-        gyroscopeSensor.whenSensorValueChangesListener(sensorEventListener)
-        rotationVectorSensor.whenSensorValueChangesListener(sensorEventListener)
-        magnetometerSensor.whenSensorValueChangesListener(sensorEventListener)
-        significantMotionSensor.whenSensorValueChangesListener(sensorEventListener)
-        gravitySensor.whenSensorValueChangesListener(sensorEventListener)
-        linearAccelerationSensor.whenSensorValueChangesListener(sensorEventListener)
+        try {
+            accelerometerSensor.whenSensorValueChangesListener(sensorEventListener)
+            gyroscopeSensor.whenSensorValueChangesListener(sensorEventListener)
+            rotationVectorSensor.whenSensorValueChangesListener(sensorEventListener)
+            magnetometerSensor.whenSensorValueChangesListener(sensorEventListener)
+            significantMotionSensor.whenSensorValueChangesListener(sensorEventListener)
+            gravitySensor.whenSensorValueChangesListener(sensorEventListener)
+            linearAccelerationSensor.whenSensorValueChangesListener(sensorEventListener)
+        } catch (e: Exception) {
+            Log.e("HardwareModule", "Error setting up sensor listeners", e)
+        }
     }
 
     init {

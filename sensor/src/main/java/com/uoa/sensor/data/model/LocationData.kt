@@ -1,6 +1,6 @@
 package com.uoa.sensor.data.model
 
-import java.sql.Timestamp
+import java.util.UUID
 
 /**
  * Optional class for location data if needed to pair with sensor data.
@@ -10,11 +10,11 @@ import java.sql.Timestamp
  * @param speed The speed at the location (if available).
  */
 data class LocationData(
-    val id: Long,
-    val latitude: Double,
-    val longitude: Double,
+    val id: UUID,
+    val latitude: Long,
+    val longitude: Long,
     val altitude: Double? = null,
-    val speed: Float? = null,
+    val speed: Double? = null,
     val timestamp: Long,
     val sync: Boolean=false
 )

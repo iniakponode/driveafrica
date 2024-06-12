@@ -3,19 +3,15 @@ package com.uoa.sensor.presentation.ui
 import com.uoa.sensor.presentation.viewModel.TripViewModel
 import android.Manifest
 import android.os.Build
-import android.util.Log
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import com.uoa.sensor.presentation.viewModel.SensorViewModel
-import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -25,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.util.UUID
 
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -36,7 +33,7 @@ fun SensorControlScreen(
 ) {
 //    val context = LocalContext.current as ComponentActivity
     val collectionStatus by sensorViewModel.collectionStatus.collectAsState()
-    val tripId by tripViewModel.currentTripId.collectAsState()
+//    val tripId by tripViewModel.currentTripId.collectAsState()
 
     val multiplePermissionState = rememberMultiplePermissionsState(
         permissions = listOf(
@@ -70,18 +67,20 @@ fun SensorControlScreen(
             if (!multiplePermissionState.allPermissionsGranted && !collectionStatus) {
                 multiplePermissionState.launchMultiplePermissionRequest()
             } else if (multiplePermissionState.allPermissionsGranted && !collectionStatus) {
-                tripViewModel.startTrip(driverProfileId = 1234L)
-                sensorViewModel.startSensorCollection("START", true)
+                val tripID=tripViewModel.updateTripId(UUID.randomUUID())
+                tripViewModel.startTrip(driverProfileId = 1234L, tripID)
+                sensorViewModel.startSensorCollection("START", true, tripID)
                 sensorViewModel.updateCollectionStatus(true)
             }
             else if (!multiplePermissionState.allPermissionsGranted && !collectionStatus) {
-                tripViewModel.startTrip(driverProfileId = 1234L)
-                sensorViewModel.startSensorCollection("START", false)
+                val tripID=tripViewModel.updateTripId(UUID.randomUUID())
+                tripViewModel.startTrip(driverProfileId = 1234L, tripID)
+                sensorViewModel.startSensorCollection("START", false, tripID)
                 sensorViewModel.updateCollectionStatus(true)
             }
             else {
-                tripViewModel.endTrip(tripId!!)
-                sensorViewModel.stopSensorCollection("STOP")
+                tripViewModel.endTrip()
+                sensorViewModel.stopSensorCollection()
                 sensorViewModel.updateCollectionStatus(false)
             }
         }) {

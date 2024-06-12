@@ -24,7 +24,8 @@ import com.uoa.sensor.hardware.RotationVectorSensor
 import com.uoa.sensor.hardware.RotationVectorSensorM
 import com.uoa.sensor.hardware.SignificantMotion
 import com.uoa.sensor.hardware.SignificantMotionSensorM
-import com.uoa.sensor.hardware.base.AndroidSensor
+import com.uoa.sensor.location.LocationManager
+import com.uoa.sensor.hardware.ManageSensorDataSizeAndSave
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -107,31 +108,27 @@ object HardwareModuleProvider{
     @Provides
     @Singleton
     fun provideHardwareModule(
-        @ApplicationContext context: Context,
-        fusedLocationProviderClient: FusedLocationProviderClient,
-        locationRepository: LocationRepository,
-        rawSensorDataRepository: RawSensorDataRepository,
         @AccelerometerSensorM accelerometerSensor: AccelerometerSensor,
         @GyroscopeSensorM gyroscopeSensor: GyroscopeSensor,
         @RotationVectorSensorM rotationVectorSensor: RotationVectorSensor,
         @MagnetometerSensorM magnetometerSensor: MagnetometerSensor,
         @SignificantMotionSensorM significantMotionSensor: SignificantMotion,
         @LinearAccelerationM linearAccelerationSensor: LinearAcceleration,
-        @GravitySensorM gravitySensor: GravitySensor
+        @GravitySensorM gravitySensor: GravitySensor,
+        locationManager: LocationManager,
+        manageSensorDataSizeAndSave: ManageSensorDataSizeAndSave
 
     ): HardwareModule {
         return HardwareModule(
-            context,
-            rawSensorDataRepository,
-            locationRepository,
-            fusedLocationProviderClient,
             accelerometerSensor,
             gyroscopeSensor,
             rotationVectorSensor,
             magnetometerSensor,
             significantMotionSensor,
             gravitySensor,
-            linearAccelerationSensor
+            linearAccelerationSensor,
+            locationManager,
+            manageSensorDataSizeAndSave
         )
     }
 }

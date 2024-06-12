@@ -2,21 +2,27 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "260bd1846ea5fdd15c85b1bb556ea34c",
+    "identityHash": "6236f7e1192b6fb3d8b00aae2b371b04",
     "entities": [
       {
         "tableName": "raw_sensor_data",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sensorType` TEXT NOT NULL, `values` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `accuracy` INTEGER NOT NULL, `sync` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `sensorType` TEXT NOT NULL, `sensorTypeName` TEXT NOT NULL, `values` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `accuracy` INTEGER NOT NULL, `locationId` BLOB, `tripId` BLOB, `sync` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`locationId`) REFERENCES `location`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`tripId`) REFERENCES `trip_data`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
-            "affinity": "INTEGER",
+            "affinity": "BLOB",
             "notNull": true
           },
           {
             "fieldPath": "sensorType",
             "columnName": "sensorType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sensorTypeName",
+            "columnName": "sensorTypeName",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -39,6 +45,18 @@
             "notNull": true
           },
           {
+            "fieldPath": "locationId",
+            "columnName": "locationId",
+            "affinity": "BLOB",
+            "notNull": false
+          },
+          {
+            "fieldPath": "tripId",
+            "columnName": "tripId",
+            "affinity": "BLOB",
+            "notNull": false
+          },
+          {
             "fieldPath": "sync",
             "columnName": "sync",
             "affinity": "INTEGER",
@@ -46,13 +64,55 @@
           }
         ],
         "primaryKey": {
-          "autoGenerate": true,
+          "autoGenerate": false,
           "columnNames": [
             "id"
           ]
         },
-        "indices": [],
-        "foreignKeys": []
+        "indices": [
+          {
+            "name": "index_raw_sensor_data_locationId",
+            "unique": false,
+            "columnNames": [
+              "locationId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_raw_sensor_data_locationId` ON `${TABLE_NAME}` (`locationId`)"
+          },
+          {
+            "name": "index_raw_sensor_data_tripId",
+            "unique": false,
+            "columnNames": [
+              "tripId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_raw_sensor_data_tripId` ON `${TABLE_NAME}` (`tripId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "location",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "locationId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "trip_data",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "tripId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       },
       {
         "tableName": "sensor_data",
@@ -196,12 +256,12 @@
       },
       {
         "tableName": "trip_data",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `driverProfileId` INTEGER, `startTime` INTEGER NOT NULL, `endTime` INTEGER, `synced` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `driverProfileId` INTEGER, `startTime` INTEGER NOT NULL, `endTime` INTEGER, `synced` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
-            "affinity": "INTEGER",
+            "affinity": "BLOB",
             "notNull": true
           },
           {
@@ -230,7 +290,7 @@
           }
         ],
         "primaryKey": {
-          "autoGenerate": true,
+          "autoGenerate": false,
           "columnNames": [
             "id"
           ]
@@ -382,12 +442,12 @@
       },
       {
         "tableName": "location",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `latitude` REAL NOT NULL, `longitude` REAL NOT NULL, `timestamp` INTEGER NOT NULL, `altitude` REAL, `speed` REAL, `sync` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `latitude` REAL NOT NULL, `longitude` REAL NOT NULL, `timestamp` INTEGER NOT NULL, `altitude` REAL, `speed` REAL, `sync` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
-            "affinity": "INTEGER",
+            "affinity": "BLOB",
             "notNull": true
           },
           {
@@ -428,7 +488,7 @@
           }
         ],
         "primaryKey": {
-          "autoGenerate": true,
+          "autoGenerate": false,
           "columnNames": [
             "id"
           ]
@@ -440,7 +500,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '260bd1846ea5fdd15c85b1bb556ea34c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6236f7e1192b6fb3d8b00aae2b371b04')"
     ]
   }
 }

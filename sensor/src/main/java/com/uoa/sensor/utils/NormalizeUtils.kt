@@ -1,7 +1,7 @@
 package com.uoa.sensor.utils
-import java.lang.Math.pow
-import kotlin.math.*
 
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 object NormalizeUtils {
 
@@ -13,7 +13,7 @@ object NormalizeUtils {
 
     fun zScoreNormalize(data: List<Float>): List<Float> {
         val mean = data.average().toFloat()
-        val stdDev = sqrt(data.map { (it.toDouble() - mean.toDouble().pow(2)) }.average()).toFloat()
+        val stdDev = sqrt(data.map { (it - mean).toDouble().pow(2) }.average()).toFloat()
         return data.map { (it - mean) / stdDev }
     }
 }

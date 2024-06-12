@@ -1,8 +1,11 @@
 package com.uoa.core.database.entities
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.time.Instant
+import java.util.UUID
 
 /**
  * Data class for holding sensor data.
@@ -13,14 +16,22 @@ import java.time.Instant
  * @param location Optional location data, if required for the sensor data context.
  */
 @Entity(
-    tableName = "raw_sensor_data"
+    tableName = "raw_sensor_data",
+    foreignKeys = [
+        ForeignKey(entity = LocationEntity::class, parentColumns = ["id"], childColumns = ["locationId"]),
+        ForeignKey(entity = TripEntity::class, parentColumns = ["id"], childColumns = ["tripId"])
+    ],
+    indices = [Index(value = ["locationId"]), Index(value = ["tripId"])]
     )
 data class RawSensorDataEntity(
-    @PrimaryKey (autoGenerate = true) var id: Int,
+    @PrimaryKey (autoGenerate = false) var id: UUID,
     val sensorType: String,
+    val sensorTypeName: String,
     val values: List<Float>,
     val timestamp: Instant,
     val accuracy: Int,
+    val locationId: UUID?,  // Foreign key to LocationEntity
+    val tripId: UUID?,  // Foreign key to TripEntity
     var sync: Boolean=false
 )
 

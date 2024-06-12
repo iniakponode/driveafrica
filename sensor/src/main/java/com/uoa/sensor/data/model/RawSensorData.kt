@@ -2,6 +2,7 @@ package com.uoa.sensor.data.model
 
 
 import java.time.Instant
+import java.util.UUID
 
 /**
  * Data class for holding sensor data.
@@ -12,10 +13,13 @@ import java.time.Instant
 // * @param location Optional location data, if required for the sensor data context.
  */
 data class RawSensorData(
-    val id: Int = 0,
+    val id: UUID,
     val sensorType: Int,
+    val sensorTypeName: String,
     val values: List<Float>,
     val timestamp: Instant,
     val accuracy: Int,
+    val locationId: UUID? = null,  // Foreign key to LocationEntity
+    val tripId: UUID? = null,  // Foreign key to TripEntity
     val sync: Boolean = false
 )

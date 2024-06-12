@@ -2,6 +2,7 @@ package com.uoa.core.database.entities
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import java.util.UUID
 
 /**
  * Optional class for location data if needed to pair with sensor data.
@@ -12,7 +13,7 @@ import androidx.room.PrimaryKey
  */
 @Entity(tableName = "location")
 data class LocationEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long,
+    @PrimaryKey(autoGenerate = false) val id: UUID,
     val latitude: Double,
     val longitude: Double,
     val timestamp: Long,

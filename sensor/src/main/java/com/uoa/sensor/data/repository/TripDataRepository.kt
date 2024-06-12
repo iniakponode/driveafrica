@@ -5,11 +5,12 @@ import com.uoa.core.database.entities.TripEntity
 import com.uoa.sensor.data.model.Trip
 import com.uoa.sensor.data.toDomainModel
 import com.uoa.sensor.data.toEntity
+import java.util.UUID
 import javax.inject.Inject
 
 class TripDataRepository @Inject constructor(private val tripDataDao: TripDao) {
 
-    suspend fun insertTrip(trip: Trip): Long {
+    suspend fun insertTrip(trip: Trip){
         return tripDataDao.insertTrip(trip.toEntity())
     }
 
@@ -20,7 +21,7 @@ class TripDataRepository @Inject constructor(private val tripDataDao: TripDao) {
     suspend fun getAllTrips(): List<Trip> {
         return tripDataDao.getAllTrips().map { it.toDomainModel() }
     }
-    suspend fun getTripById(id: Long): Trip? {
+    suspend fun getTripById(id: UUID): Trip? {
         return tripDataDao.getTripById(id)?.toDomainModel()
     }
 

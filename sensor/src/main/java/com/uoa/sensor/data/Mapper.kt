@@ -10,16 +10,18 @@ import com.uoa.sensor.data.model.LocationData
 import com.uoa.sensor.data.model.NLGReport
 import com.uoa.sensor.data.model.RawSensorData
 import com.uoa.sensor.data.model.Trip
-import java.time.Instant
 
 // RawSensorData to RawSensorDataEntity
 fun RawSensorData.toEntity(): RawSensorDataEntity {
     return RawSensorDataEntity(
         id = this.id,
         sensorType = this.sensorType.toString(),  // Assuming you need to convert Int to String
+        sensorTypeName = this.sensorTypeName,
         values = this.values,
         timestamp = this.timestamp,
         accuracy = this.accuracy,
+        locationId = this.locationId,
+        tripId = this.tripId,
         sync = this.sync
     )
 }
@@ -28,9 +30,12 @@ fun RawSensorDataEntity.toDomainModel(): RawSensorData {
     return RawSensorData(
         id = this.id,
         sensorType = this.sensorType.toInt(),  // Assuming you need to convert String to Int
+        sensorTypeName = this.sensorTypeName,
         values = this.values,
         timestamp = this.timestamp,
         accuracy = this.accuracy,
+        locationId = this.locationId,
+        tripId = this.tripId,
         sync = this.sync
     )
 }
@@ -123,10 +128,10 @@ fun NLGReportEntity.toDomainModel(): NLGReport {
 fun LocationEntity.toDomainModel(): LocationData {
     return LocationData(
         id = this.id,
-        latitude = this.latitude,
-        longitude = this.longitude,
+        latitude = this.latitude.toLong(),
+        longitude = this.longitude.toLong(),
         timestamp = this.timestamp,
-        speed = this.speed,
+        speed = this.speed?.toDouble(),
         sync = this.sync
     )
 }
@@ -135,10 +140,10 @@ fun LocationEntity.toDomainModel(): LocationData {
 fun LocationData.toEntity(): LocationEntity {
     return LocationEntity(
         id = this.id,
-        latitude = this.latitude,
-        longitude = this.longitude,
+        latitude = this.latitude.toDouble(),
+        longitude = this.longitude.toDouble(),
         timestamp = this.timestamp,
-        speed = this.speed,
+        speed = this.speed?.toFloat(),
         sync = this.sync
     )
 }

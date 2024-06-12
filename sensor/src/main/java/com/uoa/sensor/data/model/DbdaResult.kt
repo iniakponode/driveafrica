@@ -14,6 +14,7 @@ data class DbdaResult(
     val timestamp: Long,
     val startDate: String,
     val endDate: String,
+    val duration: String,
     val distance: String
     //... other behavior fields
 )

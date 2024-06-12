@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "6236f7e1192b6fb3d8b00aae2b371b04",
+    "identityHash": "60fdc992902f865cad8ee6390e06b331",
     "entities": [
       {
         "tableName": "raw_sensor_data",
@@ -300,7 +300,7 @@
       },
       {
         "tableName": "driving_behavior_analysis",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `userId` TEXT NOT NULL, `tripDataId` INTEGER NOT NULL, `harshAcceleration` INTEGER NOT NULL, `harshDeceleration` INTEGER NOT NULL, `tailgaiting` INTEGER NOT NULL, `speeding` INTEGER NOT NULL, `causes` TEXT NOT NULL, `causeUpdated` INTEGER NOT NULL, `synced` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `startDate` TEXT NOT NULL, `endDate` TEXT NOT NULL, `distance` TEXT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `userId` TEXT NOT NULL, `tripDataId` INTEGER NOT NULL, `harshAcceleration` INTEGER NOT NULL, `harshDeceleration` INTEGER NOT NULL, `cornering` INTEGER NOT NULL, `speeding` INTEGER NOT NULL, `causes` TEXT NOT NULL, `causeUpdated` INTEGER NOT NULL, `synced` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `startDate` TEXT NOT NULL, `endDate` TEXT NOT NULL, `distance` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -333,8 +333,8 @@
             "notNull": true
           },
           {
-            "fieldPath": "tailgaiting",
-            "columnName": "tailgaiting",
+            "fieldPath": "cornering",
+            "columnName": "cornering",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -442,7 +442,7 @@
       },
       {
         "tableName": "location",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `latitude` REAL NOT NULL, `longitude` REAL NOT NULL, `timestamp` INTEGER NOT NULL, `altitude` REAL, `speed` REAL, `sync` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `latitude` REAL NOT NULL, `longitude` REAL NOT NULL, `timestamp` INTEGER NOT NULL, `altitude` REAL, `speed` REAL, `distance` REAL, `sync` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -481,6 +481,12 @@
             "notNull": false
           },
           {
+            "fieldPath": "distance",
+            "columnName": "distance",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
             "fieldPath": "sync",
             "columnName": "sync",
             "affinity": "INTEGER",
@@ -500,7 +506,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6236f7e1192b6fb3d8b00aae2b371b04')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '60fdc992902f865cad8ee6390e06b331')"
     ]
   }
 }

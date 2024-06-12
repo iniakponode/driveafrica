@@ -132,6 +132,7 @@ fun LocationEntity.toDomainModel(): LocationData {
         longitude = this.longitude.toLong(),
         timestamp = this.timestamp,
         speed = this.speed?.toDouble(),
+        distance = this.distance?.toDouble(),
         sync = this.sync
     )
 }
@@ -144,6 +145,7 @@ fun LocationData.toEntity(): LocationEntity {
         longitude = this.longitude.toDouble(),
         timestamp = this.timestamp,
         speed = this.speed?.toFloat(),
+        distance = this.distance?.toFloat(),
         sync = this.sync
     )
 }

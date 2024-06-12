@@ -62,45 +62,45 @@ fun TripEntity.toDomainModel(): Trip {
 }
 
 // DbdaResultEntity to DbdaResultEntity
-fun DbdaResult.toEntity(): DbdaResultEntity {
-    return DbdaResultEntity(
-        id = this.id,
-        userId = this.userId,
-        tripDataId = this.tripDataId,
-        harshAcceleration = this.harshAcceleration,
-        harshDeceleration = this.harshDeceleration,
-        tailgaiting = this.tailgaiting,
-        speeding = this.speeding,
-        causes = this.causes,
-        causeUpdated = this.causeUpdated,
-        synced = this.synced,
-        timestamp = this.timestamp,
-        startDate = this.startDate,
-        endDate = this.endDate,
-        distance = this.distance
-        //... other behavior fields
-    )
-}
-
-fun DbdaResultEntity.toDomainModel(): DbdaResult {
-    return DbdaResult(
-        id = this.id,
-        userId = this.userId,
-        tripDataId = this.tripDataId,
-        harshAcceleration = this.harshAcceleration,
-        harshDeceleration = this.harshDeceleration,
-        tailgaiting = this.tailgaiting,
-        speeding = this.speeding,
-        causes = this.causes,
-        causeUpdated = this.causeUpdated,
-        synced = this.synced,
-        timestamp = this.timestamp,
-        startDate = this.startDate,
-        endDate = this.endDate,
-        distance = this.distance
-        //... other behavior fields
-    )
-}
+//fun DbdaResult.toEntity(): DbdaResultEntity {
+//    return DbdaResultEntity(
+//        id = this.id,
+//        userId = this.userId,
+//        tripDataId = this.tripDataId,
+//        harshAcceleration = this.harshAcceleration,
+//        harshDeceleration = this.harshDeceleration,
+//        tailgaiting = this.tailgaiting,
+//        speeding = this.speeding,
+//        causes = this.causes,
+//        causeUpdated = this.causeUpdated,
+//        synced = this.synced,
+//        timestamp = this.timestamp,
+//        startDate = this.startDate,
+//        endDate = this.endDate,
+//        distance = this.distance
+//        //... other behavior fields
+//    )
+//}
+//
+//fun DbdaResultEntity.toDomainModel(): DbdaResult {
+//    return DbdaResult(
+//        id = this.id,
+//        userId = this.userId,
+//        tripDataId = this.tripDataId,
+//        harshAcceleration = this.harshAcceleration,
+//        harshDeceleration = this.harshDeceleration,
+//        cornering = this.cornering,
+//        speeding = this.speeding,
+//        causes = this.causes,
+//        causeUpdated = this.causeUpdated,
+//        synced = this.synced,
+//        timestamp = this.timestamp,
+//        startDate = this.startDate,
+//        endDate = this.endDate,
+//        distance = this.distance,
+//        //... other behavior fields
+//    )
+//}
 
 // NLGReportEntity to NLGReportEntity
 fun NLGReport.toEntity(): NLGReportEntity {

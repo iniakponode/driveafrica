@@ -99,17 +99,6 @@ class SensorViewModel @Inject constructor(
 
     }
 
-    fun endTrip(tripId: UUID) {
-        viewModelScope.launch {
-            val trip = tripRepository.getTripById(tripId)
-            if (trip != null) {
-                trip.endTime = System.currentTimeMillis()
-            }
-            if (trip != null) {
-                tripRepository.updateTrip(trip)
-            }
-        }
-    }
 }
 
 

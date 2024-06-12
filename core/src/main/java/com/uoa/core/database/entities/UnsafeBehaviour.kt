@@ -2,7 +2,6 @@ package com.uoa.core.database.entities
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
-import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.UUID
 

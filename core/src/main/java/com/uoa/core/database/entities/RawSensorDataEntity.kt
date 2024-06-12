@@ -13,7 +13,6 @@ import java.util.UUID
  * @param values List of float values representing the data from the sensor.
  * @param timestamp The exact time the data was recorded.
  * @param accuracy Sensor data accuracy level.
- * @param location Optional location data, if required for the sensor data context.
  */
 @Entity(
     tableName = "raw_sensor_data",

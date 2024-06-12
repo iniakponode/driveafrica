@@ -21,12 +21,10 @@ import javax.inject.Singleton
 @RequiresApi(Build.VERSION_CODES.O)
 @Singleton
 class LocationManager @Inject constructor(
-    private val context: Context,
     private val locationRepository: LocationRepository,
     private val fusedLocationProviderClient: FusedLocationProviderClient
 ) {
 
-    private var isCollecting: Boolean = false
     private val locationDataBuffer = mutableListOf<LocationData>()
     private val locationDataBufferLimit = 50  // Define a buffer limit
     private val handler = Handler(Looper.getMainLooper())

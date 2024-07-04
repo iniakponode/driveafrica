@@ -6,7 +6,7 @@ package com.uoa.sensor.domain.usecases//package com.uoa.sensor.domain.usecases
 ////import androidx.
 //import androidx.work.WorkerParameters
 //import com.uoa.network.data.repository.NetworkRepository
-//import com.uoa.sensor.data.repository.SensorDataRepository
+//import com.uoa.sensor.repository.SensorDataRepository
 //import dagger.assisted.Assisted
 //import dagger.assisted.AssistedInject
 //

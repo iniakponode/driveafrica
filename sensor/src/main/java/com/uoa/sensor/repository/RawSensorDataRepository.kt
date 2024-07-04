@@ -2,9 +2,9 @@ package com.uoa.sensor.data.repository
 
 import com.uoa.core.database.daos.RawSensorDataDao
 import com.uoa.core.database.entities.RawSensorDataEntity
-import com.uoa.sensor.data.model.RawSensorData
-import com.uoa.sensor.data.toDomainModel
-import com.uoa.sensor.data.toEntity
+import com.uoa.core.model.RawSensorData
+import com.uoa.core.utils.toDomainModel
+import com.uoa.core.utils.toEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map

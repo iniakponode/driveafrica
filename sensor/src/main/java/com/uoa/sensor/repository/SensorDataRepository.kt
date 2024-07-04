@@ -3,7 +3,7 @@ package com.uoa.sensor.data.repository
 import android.hardware.Sensor
 import com.uoa.core.database.daos.SensorDataDao
 import com.uoa.core.database.entities.SensorEntity
-import com.uoa.sensor.data.model.SensorData
+import com.uoa.core.model.SensorData
 import org.modelmapper.ModelMapper
 import javax.inject.Inject
 

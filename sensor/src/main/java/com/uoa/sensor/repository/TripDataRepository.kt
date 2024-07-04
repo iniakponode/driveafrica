@@ -1,10 +1,9 @@
 package com.uoa.sensor.data.repository
 
 import com.uoa.core.database.daos.TripDao
-import com.uoa.core.database.entities.TripEntity
-import com.uoa.sensor.data.model.Trip
-import com.uoa.sensor.data.toDomainModel
-import com.uoa.sensor.data.toEntity
+import com.uoa.core.model.Trip
+import com.uoa.core.utils.toDomainModel
+import com.uoa.core.utils.toEntity
 import java.util.UUID
 import javax.inject.Inject
 

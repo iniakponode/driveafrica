@@ -1,4 +1,4 @@
-package com.uoa.sensor.utils
+package com.uoa.dbda.util
 
 object DenoiseUtils {
 

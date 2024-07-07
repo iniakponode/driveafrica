@@ -4,7 +4,6 @@ package com.uoa.driveafrica.ui.components.nav
 // import TopHomeScreenBar and BottomHomeScreenBar
 import com.uoa.sensor.presentation.viewModel.TripViewModel
 import android.os.Build
-import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,6 +22,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.uoa.dbda.presentation.ui.AnalysisScreen
+import com.uoa.dbda.presentation.viewModel.AnalysisViewModel
+//import com.uoa.dbda.presentation.ui.AnalysisScreen
 import com.uoa.driveafrica.ui.components.TopNavBar
 import com.uoa.driveafrica.ui.components.screens.DrivingTips
 import com.uoa.driveafrica.ui.components.screens.Home
@@ -37,6 +39,8 @@ fun AppNavigation() {
         val navController: NavHostController = rememberNavController()
         val sensorViewModel: SensorViewModel = viewModel()
         val tripViewModel: TripViewModel = viewModel()
+//        val unsafeBehaviourViewModel: UnsafeBehaviourViewModel = viewModel()
+        val analysisViewModel: AnalysisViewModel = viewModel()
         Scaffold(
             topBar = {
                      TopNavBar {
@@ -86,11 +90,18 @@ fun AppNavigation() {
                         DrivingTips()
                     }
                 }
+                composable(ScreenType.ANALYSIS.name) {
+                    Column(modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)) {
+                        AnalysisScreen(analysisViewModel)
+                    }
+                }
                 composable(ScreenType.Record_Trip.name) {
                     Column(modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)) {
-                        SensorControlScreen(sensorViewModel, tripViewModel)
+                        SensorControlScreen(sensorViewModel,tripViewModel)
                     }
                 }
             }

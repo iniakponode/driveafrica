@@ -33,5 +33,10 @@ val navItems: List<NavItem> = listOf(
         title = "Record Trip",
         route = ScreenType.Record_Trip.name,
         icon = Icons.Default.PlayArrow
-    )
+    ),
+    NavItem(
+        title = "Analysis",
+        route = ScreenType.ANALYSIS.name,
+        icon = Icons.Default.PlayArrow
+    ),
 )

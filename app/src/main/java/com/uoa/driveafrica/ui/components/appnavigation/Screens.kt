@@ -6,5 +6,5 @@ import com.uoa.driveafrica.R
 
 // Enum class for the screens in the app
 enum class ScreenType {
-    HOME, REPORTS, DRIVING_TIPS, Record_Trip
+    HOME, REPORTS, DRIVING_TIPS, Record_Trip,ANALYSIS
 }

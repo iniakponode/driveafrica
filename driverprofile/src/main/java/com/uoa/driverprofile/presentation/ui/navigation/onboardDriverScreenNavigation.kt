@@ -1,0 +1,39 @@
+package com.uoa.driverprofile.presentation.ui.navigation
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavOptions
+import androidx.navigation.compose.composable
+import com.uoa.driverprofile.presentation.ui.screens.DriverProfileCreationRoute
+import com.uoa.driverprofile.presentation.viewmodel.DriverProfileViewModel
+
+const val ONBOARDING_SCREEN_ROUTE = "onboardingScreen"
+
+fun NavController.navigateToOnboardingScreen(navOptions: NavOptions) = navigate(ONBOARDING_SCREEN_ROUTE, navOptions)
+
+/**
+ * Add a composable function to the NavGraphBuilder that will create the OnboardDriverScreen composable
+ * and pass the required arguments to it.
+ *
+ * @param navController The NavController that will be used to navigate to other destinations
+ * @param onShowSnackbar The lambda function that will be used to show a snackbar
+ */
+
+const val PREFS_NAME = "prefs"
+const val DRIVER_PROF_ID = "profileId"
+
+fun NavGraphBuilder.onboardingScreen(
+    navController: NavController,
+    onShowSnackbar: suspend (String, String?) -> Boolean
+) {
+    composable(route = ONBOARDING_SCREEN_ROUTE) {
+        DriverProfileCreationRoute(
+            navController = navController,
+            onShowSnackbar = onShowSnackbar
+        )
+    }
+}
+
+
+
+

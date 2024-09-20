@@ -1,12 +1,12 @@
-package com.uoa.sensor
+package com.uoa.dbda.viewModel
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.nhaarman.mockitokotlin2.atLeastOnce
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
-//import com.uoa.dbda.domain.usecase.analyser.AnalyzeUnsafeBehaviorUseCase
-//import com.uoa.dbda.presentation.viewModel.UnsafeBehaviourViewModel
+import com.uoa.dbda.domain.usecase.AnalyzeUnsafeBehaviorUseCase
+import com.uoa.dbda.presentation.viewModel.UnsafeBehaviourViewModel
 import junit.framework.TestCase.assertNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -39,9 +39,9 @@ class UnsafeBehaviourViewModelTest {
     val expectedMessage = "Error during analysis"
 
     @Mock
-    private lateinit var analyzeUnsafeBehaviorUseCase: com.uoa.dbda.domain.usecase.analyser.AnalyzeUnsafeBehaviorUseCase
+    private lateinit var analyzeUnsafeBehaviorUseCase: AnalyzeUnsafeBehaviorUseCase
 
-    private lateinit var viewModel: com.uoa.dbda.presentation.viewModel.UnsafeBehaviourViewModel
+    private lateinit var viewModel: UnsafeBehaviourViewModel
 
     @Before
     fun setup() {
@@ -87,7 +87,7 @@ class UnsafeBehaviourViewModelTest {
 
         // Assert that the logger was called with the expected message and tag
         verify(mockLogger, atLeastOnce()).invoke(expectedTag, expectedMessage)
-        // Assert error handling behavior here (e.g., check error state in ViewModel)
+        // Assert error handling behavior here (e.g., check error state in viewModel)
     }
 
 

@@ -1,4 +1,4 @@
-package com.uoa.sensor.data.model
+package com.uoa.core.model
 
 data class NLGReport(
     val id: Int,

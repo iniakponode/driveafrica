@@ -10,7 +10,6 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkQuery
-import com.uoa.sensor.data.repository.TripDataRepository
 import com.uoa.sensor.hardware.HardwareModule
 import com.uoa.sensor.worker.SensorWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,7 +22,6 @@ import javax.inject.Inject
 class SensorViewModel @Inject constructor(
     private val workManager: WorkManager,
     private val hardwareModule: HardwareModule,
-    private val tripRepository: TripDataRepository
 ) : ViewModel() {
 
     private val _collectionStatus = MutableStateFlow(false)
@@ -76,7 +74,6 @@ class SensorViewModel @Inject constructor(
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun cancelSensorWorker() {
         viewModelScope.launch {
             workManager.cancelAllWorkByTag("sensorWork").result.addListener({
@@ -87,13 +84,11 @@ class SensorViewModel @Inject constructor(
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     fun startSensorCollection(taskType: String, isLocationPermissionGranted: Boolean, tripId: UUID) {
 //        hardwareModule.startDataCollection(isLocationPermissionGranted)
         enqueueSensorWorker(taskType, isLocationPermissionGranted, tripId)
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     fun stopSensorCollection() {
         cancelSensorWorker()
 

@@ -1,6 +1,5 @@
 package com.uoa.sensor.location
 
-import android.content.Context
 import android.location.Location
 import android.os.Build
 import android.os.Handler
@@ -8,9 +7,9 @@ import android.os.Looper
 import android.util.Log
 import androidx.annotation.RequiresApi
 import com.google.android.gms.location.*
-import com.uoa.sensor.data.model.LocationData
-import com.uoa.sensor.data.repository.LocationRepository
-import com.uoa.sensor.data.toEntity
+import com.uoa.core.model.LocationData
+import com.uoa.sensor.repository.LocationRepositoryImpl
+import com.uoa.core.utils.toEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -21,7 +20,7 @@ import javax.inject.Singleton
 @RequiresApi(Build.VERSION_CODES.O)
 @Singleton
 class LocationManager @Inject constructor(
-    private val locationRepository: LocationRepository,
+    private val locationRepositoryImpl: LocationRepositoryImpl,
     private val fusedLocationProviderClient: FusedLocationProviderClient
 ) {
 
@@ -52,6 +51,7 @@ class LocationManager @Inject constructor(
                         speed = it.speed.toDouble(),
                         distance= distance.toDouble(),
                         timestamp = it.time,
+                        date = Date(it.time),
                         sync = false
                     )
                     lastRecordedLocation = newLocation
@@ -119,7 +119,7 @@ class LocationManager @Inject constructor(
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                locationRepository.insertLocationBatch(bufferCopy.map { it.toEntity() }) // Save the last inserted ID
+                locationRepositoryImpl.insertLocationBatch(bufferCopy.map { it.toEntity() }) // Save the last inserted ID
             } catch (e: Exception) {
                 Log.e("LocationManager", "Error processing and storing location data", e)
             }
@@ -128,4 +128,5 @@ class LocationManager @Inject constructor(
     fun getCurrentLocationId(): UUID? {
         return currentLocationId
     }
+
 }

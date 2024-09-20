@@ -1,4 +1,4 @@
-package com.uoa.sensor.domain.analyser
+package com.uoa.dbda.domain.usecase.analyser
 
 
 import android.os.Build
@@ -10,18 +10,20 @@ import com.uoa.core.utils.toDomainModel
 import java.util.UUID
 import javax.inject.Inject
 import kotlin.math.sqrt
-
 class UnsafeBehaviorAnalyser @Inject constructor() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun analyse(sensorDataList: List<RawSensorDataEntity>): List<UnsafeBehaviourModel> {
         val unsafeBehaviours = mutableListOf<UnsafeBehaviourModel>()
 
-        // Analyze sensor data and detect unsafe behaviours
-        // This is just an example. You can implement your actual analysis logic here.
+        // Filter accelerometer data
+        val accelerometerData = sensorDataList.filter { it.sensorType == ACCELEROMETER_TYPE }
 
-        for (data in sensorDataList) {
-            if (isHarshAcceleration(data.toDomainModel())) {
+        // Analyze sensor data and detect unsafe behaviours using sliding window approach
+//        val smoothedData = smoothData(accelerometerData)
+
+        for (data in accelerometerData) {
+            if (isHarshAcceleration(data)) {
                 unsafeBehaviours.add(
                     UnsafeBehaviourModel(
                         id = UUID.randomUUID(),
@@ -29,46 +31,79 @@ class UnsafeBehaviorAnalyser @Inject constructor() {
                         behaviorType = "Harsh Acceleration",
                         timestamp = data.timestamp,
                         date = data.date!!,
-                        cause = "",
+                        updatedAt = null,
+                        updated=false,
                         severity = 1.0f,
-                        locationId = data.locationId!!,
+                        locationId = data.locationId,
                     )
                 )
             }
 
-            if (isHarshBraking(data.toDomainModel())) {
+            if (isHarshBraking(data)) {
                 unsafeBehaviours.add(
                     UnsafeBehaviourModel(
                         id = UUID.randomUUID(),
                         tripId = data.tripId!!,
                         behaviorType = "Harsh Braking",
                         timestamp = data.timestamp,
-                        date =data.date!!,
-                        cause = "",
+                        date = data.date!!,
+                        updatedAt = null,
+                        updated=false,
                         severity = 1.0f,
-                        locationId = data.locationId!!,
+                        locationId = data.locationId,
                     )
                 )
             }
         }
 
-            return unsafeBehaviours
+        return unsafeBehaviours
     }
 
-    private fun isHarshAcceleration(data: RawSensorData): Boolean {
+    private fun isHarshAcceleration(data: RawSensorDataEntity): Boolean {
         // Replace with your actual harsh acceleration detection logic
-        val threshold = 3.0 // example threshold for acceleration
-        val accelerationMagnitude = sqrt(data.values[0] * data.values[0] +
-                data.values[1] * data.values[1] +
-                data.values[2] * data.values[2])
-        return accelerationMagnitude > threshold
+        val accelerationMagnitude = calculateAccelerationMagnitude(data.values)
+        return accelerationMagnitude > ACCELERATION_THRESHOLD
     }
 
-    private fun isHarshBraking(data: RawSensorData): Boolean {
-        val threshold = -3.0
-        val accelerationMagnitude = sqrt(data.values[0] * data.values[0] +
-                data.values[1] * data.values[1] +
-                data.values[2] * data.values[2])
-        return accelerationMagnitude < threshold
+    private fun isHarshBraking(data: RawSensorDataEntity): Boolean {
+        val accelerationMagnitude = calculateAccelerationMagnitude(data.values)
+        return accelerationMagnitude < BRAKING_THRESHOLD
+    }
+
+    private fun calculateAccelerationMagnitude(values: List<Float>): Float {
+        return sqrt(values[0] * values[0] + values[1] * values[1] + values[2] * values[2])
+    }
+
+    private fun smoothData(data: List<RawSensorDataEntity>): List<RawSensorDataEntity> {
+        val smoothedData = mutableListOf<RawSensorDataEntity>()
+        val windowSize = WINDOW_SIZE / 2 // Half window size for smoothing
+
+        for (i in data.indices) {
+            val start = maxOf(0, i - windowSize)
+            val end = minOf(data.size - 1, i + windowSize)
+            val window = data.subList(start, end + 1)
+            val avgValues = window.map { it.values }
+                .reduce { acc, list ->
+                    listOf(
+                        acc[0] + list[0],
+                        acc[1] + list[1],
+                        acc[2] + list[2]
+                    )
+                }.map { it / window.size }
+
+            smoothedData.add(
+                data[i].copy(
+                    values = avgValues
+                )
+            )
+        }
+        return smoothedData
+    }
+
+    companion object {
+        const val ACCELEROMETER_TYPE = 1 // Assuming 1 is the sensorType for accelerometer
+        const val ACCELERATION_THRESHOLD = 0.9 // Example threshold for harsh acceleration (m/s^2)
+        const val BRAKING_THRESHOLD = -0.9 // Example threshold for harsh braking (m/s^2)
+        const val WINDOW_SIZE = 200 // Assuming 200 samples per second
     }
 }

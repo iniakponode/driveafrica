@@ -1,12 +1,11 @@
-package com.uoa.sensor.presentation.viewModel
+package com.uoa.dbda.presentation.viewModel
 
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.uoa.sensor.LogFunction
-import com.uoa.dbda.domain.usecase.analyser.AnalyzeUnsafeBehaviorUseCase
+import com.uoa.dbda.domain.usecase.AnalyzeUnsafeBehaviorUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -17,7 +16,7 @@ import javax.inject.Inject
 @RequiresApi(Build.VERSION_CODES.O)
 @HiltViewModel
 class UnsafeBehaviourViewModel @Inject constructor(
-    private val analyzeUnsafeBehaviorUseCase: com.uoa.dbda.domain.usecase.analyser.AnalyzeUnsafeBehaviorUseCase,
+    private val analyzeUnsafeBehaviorUseCase: AnalyzeUnsafeBehaviorUseCase,
 //    private val application: Application, // Inject Application for context
 //    @JvmSuppressWildcards private val log: LogFunction
 ) : ViewModel() {

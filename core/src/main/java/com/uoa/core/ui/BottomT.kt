@@ -1,3 +1,20 @@
 package com.uoa.core.ui
 
-data class BottomT()
+
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class Home(val driverProfileId: String)
+
+@Serializable
+object Reports
+
+@Serializable
+object DrivingTips
+
+@Serializable
+object RecordTrip
+
+@Serializable
+object Analysis
+

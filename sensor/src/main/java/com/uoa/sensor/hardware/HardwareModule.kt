@@ -3,15 +3,22 @@ package com.uoa.sensor.hardware
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
-import com.uoa.sensor.data.model.RawSensorData
+import com.uoa.core.model.RawSensorData
+import com.uoa.ml.domain.BatchInsertCauseUseCase
+import com.uoa.ml.domain.BatchUpDateUnsafeBehaviourCauseUseCase
+import com.uoa.ml.domain.RunClassificationUseCase
+import com.uoa.ml.domain.SaveInfluenceToCause
+import com.uoa.ml.domain.UpDateUnsafeBehaviourCauseUseCase
+import com.uoa.sensor.domain.usecases.trip.UpdateTripUseCase
 
 import com.uoa.sensor.location.LocationManager
 import com.uoa.sensor.utils.GetSensorTypeNameUtil
-//import com.uoa.sensor.utils.ProcessSensorData
 import com.uoa.sensor.utils.ProcessSensorData.logSensorValues
 import com.uoa.sensor.utils.ProcessSensorData.processSensorData
+//import com.uoa.dbda.util.ProcessSensorData
 //import com.uoa.sensor.utils.PermissionUtils
 import java.time.Instant
+import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,9 +31,15 @@ class HardwareModule @Inject constructor(
     @MagnetometerSensorM private val magnetometerSensor: MagnetometerSensor,
     @SignificantMotionSensorM private val significantMotionSensor: SignificantMotion,
     @GravitySensorM private val gravitySensor: GravitySensor,
-    @LinearAccelerationM private val linearAccelerationSensor: LinearAcceleration,
+//    @LinearAccelerationM private val linearAccelerationSensor: LinearAcceleration,
     private val locationManager: LocationManager,
-    private val manageSensorDataSizeAndSave: ManageSensorDataSizeAndSave
+    private val manageSensorDataSizeAndSave: ManageSensorDataSizeAndSave,
+    private val runClassificationUseCase: RunClassificationUseCase,
+    private val upDateUnsafeBehaviourCauseUseCase: UpDateUnsafeBehaviourCauseUseCase,
+    private val saveInfluenceToCause: SaveInfluenceToCause,
+    private val batchInsertCauseUseCase: BatchInsertCauseUseCase,
+    private val batchUpDateUnsafeBehaviourCauseUseCase: BatchUpDateUnsafeBehaviourCauseUseCase,
+    private val updateTripUseCase: UpdateTripUseCase
 ) {
 
     private var isCollecting: Boolean = false
@@ -55,6 +68,23 @@ class HardwareModule @Inject constructor(
                 manageSensorDataSizeAndSave.processAndStoreSensorData()
                 stopSensorListeners()
                 isCollecting = false
+
+                updateTripUseCase.invoke(currentTripId!!)
+                // Run classification
+                val influence = runClassificationUseCase.invoke(currentTripId!!)
+                Log.d("AlcoholIn", "Influence: $influence")
+//                upDateUnsafeBehaviourCauseUseCase.invoke(currentTripId!!, influence)
+                batchUpDateUnsafeBehaviourCauseUseCase.invoke(currentTripId!!, influence)
+                Log.d("AlcoholIn", "Influence updated to Unsafe Behaviour table")
+//                saveInfluenceToCause.invoke(currentTripId!!, influence)
+//                batchInsertCauseUseCase.invoke(currentTripId!!, influence)
+//                Log.d("AlcoholIn", "Influence saved to cause table")
+
+                // Batch insert causes
+//                batchInsertCauseUseCase.invoke(currentTripId!!, influence)
+//                Log.d("AlcoholIn", "Influence Batche Inserted to cause table")
+
+
                 currentTripId = null
                 currentLocationId = null
             } catch (e: Exception) {
@@ -71,7 +101,7 @@ class HardwareModule @Inject constructor(
             magnetometerSensor.startListeningToSensor(200)
             significantMotionSensor.startListeningToSensor(200)
             gravitySensor.startListeningToSensor(200)
-            linearAccelerationSensor.startListeningToSensor(200)
+//            linearAccelerationSensor.startListeningToSensor(200)
         } catch (e: Exception) {
             Log.e("HardwareModule", "Error starting sensor listeners", e)
         }
@@ -85,7 +115,8 @@ class HardwareModule @Inject constructor(
             magnetometerSensor.stopListeningToSensor()
             significantMotionSensor.stopListeningToSensor()
             gravitySensor.stopListeningToSensor()
-            linearAccelerationSensor.stopListeningToSensor()
+//            linearAccelerationSensor.stopListeningToSensor()
+
         } catch (e: Exception) {
             Log.e("HardwareModule", "Error stopping sensor listeners", e)
         }
@@ -93,7 +124,7 @@ class HardwareModule @Inject constructor(
 
     private fun setupListeners() {
         val sensorEventListener: (Int, List<Float>, Int) -> Unit = { sensorType, values, accuracy ->
-            val timestamp = Instant.now()
+            val timestamp = Instant.now().toEpochMilli()
             val sensorTypeName = GetSensorTypeNameUtil.getSensorTypeName(sensorType)
 
             val validValues = values.map { if (it.isFinite()) it else 0f }  // Ensure values are valid floats
@@ -111,6 +142,7 @@ class HardwareModule @Inject constructor(
                 sensorTypeName = sensorTypeName,
                 values = processedValues.toList(),
                 timestamp = timestamp,
+                date = Date(timestamp),
                 accuracy = accuracy,
                 locationId = locationManager.getCurrentLocationId(),  // Get the current location ID
                 tripId = currentTripId,
@@ -131,7 +163,7 @@ class HardwareModule @Inject constructor(
             magnetometerSensor.whenSensorValueChangesListener(sensorEventListener)
             significantMotionSensor.whenSensorValueChangesListener(sensorEventListener)
             gravitySensor.whenSensorValueChangesListener(sensorEventListener)
-            linearAccelerationSensor.whenSensorValueChangesListener(sensorEventListener)
+//            linearAccelerationSensor.whenSensorValueChangesListener(sensorEventListener)
         } catch (e: Exception) {
             Log.e("HardwareModule", "Error setting up sensor listeners", e)
         }

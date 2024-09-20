@@ -42,7 +42,7 @@ package com.uoa.sensor.services//package com.uoa.sensor.services
 //    private fun processSensorData(sensorData: SensorData) {
 //        // Add any required processing logic here
 //        // For example, you might only want to store speeds above a certain threshold, etc.
-//        SensorRepository(sensorDataDao).saveSensorData(sensorData)
+//        RawSensorDataRepository(sensorDataDao).saveSensorData(sensorData)
 //    }
 //
 //    override fun onBind(intent: Intent?): IBinder? {

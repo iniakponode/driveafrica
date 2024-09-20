@@ -5,6 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.time.Instant
+import java.util.Date
 import java.util.UUID
 
 /**
@@ -20,14 +21,15 @@ import java.util.UUID
         ForeignKey(entity = LocationEntity::class, parentColumns = ["id"], childColumns = ["locationId"]),
         ForeignKey(entity = TripEntity::class, parentColumns = ["id"], childColumns = ["tripId"])
     ],
-    indices = [Index(value = ["locationId"]), Index(value = ["tripId"])]
+    indices = [Index(value = ["locationId"]), Index(value = ["tripId"]), Index(value = ["sync"]), Index(value = ["date"])]
     )
 data class RawSensorDataEntity(
     @PrimaryKey (autoGenerate = false) var id: UUID,
-    val sensorType: String,
+    val sensorType: Int,
     val sensorTypeName: String,
     val values: List<Float>,
-    val timestamp: Instant,
+    val timestamp: Long,
+    val date: Date?,
     val accuracy: Int,
     val locationId: UUID?,  // Foreign key to LocationEntity
     val tripId: UUID?,  // Foreign key to TripEntity

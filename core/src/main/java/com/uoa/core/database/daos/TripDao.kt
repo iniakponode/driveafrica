@@ -26,12 +26,12 @@ interface TripDao {
     @Query("SELECT * FROM trip_data")
     suspend fun getAllTrips(): List<TripEntity>
 
-    @Query("SELECT * FROM trip_data WHERE driverProfileId = :driverProfileId")
-    suspend fun getTripsByDriverProfileId(driverProfileId: Long): List<TripEntity>
+    @Query("SELECT * FROM trip_data WHERE driverPId = :driverProfileId")
+    suspend fun getTripsByDriverProfileId(driverProfileId: UUID): List<TripEntity>
 
     @Query("SELECT * FROM trip_data WHERE synced = :synced")
     suspend fun getTripsBySyncStatus(synced: Boolean): List<TripEntity>
 
     @Query("DELETE FROM trip_data WHERE id = :id")
-    suspend fun deleteTripById(id: Long)
+    suspend fun deleteTripById(id: UUID)
 }

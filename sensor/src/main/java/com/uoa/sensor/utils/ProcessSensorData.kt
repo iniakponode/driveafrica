@@ -54,7 +54,7 @@ object ProcessSensorData {
             else -> checkForNaN(values.toList()).toFloatArray()
         }
     }
-    private fun checkForNaN(values: List<Float>): List<Float> {
+    fun checkForNaN(values: List<Float>): List<Float> {
         return values.map { if (it.isNaN()) 0f else it }
     }
 

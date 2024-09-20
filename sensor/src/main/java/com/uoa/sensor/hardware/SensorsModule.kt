@@ -39,12 +39,12 @@ object SensorsModule {
     }
 
 
-    @Provides
-    @Singleton
-    @LinearAccelerationM
-    fun provideLinearAcceleration(app: Application): TrackingSensor {
-        return LinearAcceleration(app)
-    }
+//    @Provides
+//    @Singleton
+//    @LinearAccelerationM
+//    fun provideLinearAcceleration(app: Application): TrackingSensor {
+//        return LinearAcceleration(app)
+//    }
 
 
     @Provides
@@ -91,9 +91,9 @@ annotation class AccelerometerSensorM
 @Retention(AnnotationRetention.BINARY)
 annotation class GyroscopeSensorM
 
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class LinearAccelerationM
+//@Qualifier
+//@Retention(AnnotationRetention.BINARY)
+//annotation class LinearAccelerationM
 
 @Qualifier
 @Retention(AnnotationRetention.BINARY)

@@ -1,4 +1,4 @@
-package com.uoa.dbda.util
+package com.uoa.sensor.utils
 
 import android.hardware.Sensor
 

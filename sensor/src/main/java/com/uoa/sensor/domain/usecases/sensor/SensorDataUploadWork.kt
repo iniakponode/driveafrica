@@ -1,4 +1,4 @@
-package com.uoa.sensor.domain.usecases//package com.uoa.sensor.domain.usecases
+package com.uoa.sensor.domain.usecases.sensor//package com.uoa.sensor.domain.usecases
 //
 //import android.content.Context
 //import androidx.hilt.work.HiltWorker
@@ -6,7 +6,7 @@ package com.uoa.sensor.domain.usecases//package com.uoa.sensor.domain.usecases
 ////import androidx.
 //import androidx.work.WorkerParameters
 //import com.uoa.network.data.repository.NetworkRepository
-//import com.uoa.sensor.repository.SensorDataRepository
+//import com.uoa.sensor.repository.SensorDataRepositoryImpl
 //import dagger.assisted.Assisted
 //import dagger.assisted.AssistedInject
 //
@@ -14,7 +14,7 @@ package com.uoa.sensor.domain.usecases//package com.uoa.sensor.domain.usecases
 //class SensorDataUploadWorker @AssistedInject constructor(
 //    @Assisted private val appContext: Context,
 //    @Assisted private val workerParams: WorkerParameters,
-//    private val sensorDataRepository: SensorDataRepository,
+//    private val sensorDataRepository: SensorDataRepositoryImpl,
 //    private val networkRepository: NetworkRepository
 //) : CoroutineWorker(appContext, workerParams) {
 //

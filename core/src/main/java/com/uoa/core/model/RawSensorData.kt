@@ -1,7 +1,7 @@
-package com.uoa.sensor.data.model
-
+package com.uoa.core.model
 
 import java.time.Instant
+import java.util.Date
 import java.util.UUID
 
 /**
@@ -17,7 +17,8 @@ data class RawSensorData(
     val sensorType: Int,
     val sensorTypeName: String,
     val values: List<Float>,
-    val timestamp: Instant,
+    val timestamp: Long,
+    val date: Date?,
     val accuracy: Int,
     val locationId: UUID? = null,  // Foreign key to LocationEntity
     val tripId: UUID? = null,  // Foreign key to TripEntity

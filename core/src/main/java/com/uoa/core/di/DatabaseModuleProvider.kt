@@ -1,12 +1,15 @@
 package com.uoa.core.di
 
 import android.app.Application
+import android.util.Log
 import androidx.room.Room
+import androidx.room.RoomDatabase
 import com.uoa.core.Sdaddb
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import java.util.concurrent.Executors
 import javax.inject.Qualifier
 import javax.inject.Singleton
 
@@ -18,6 +21,9 @@ object DatabaseModuleProvider {
     @Singleton
     fun provideDatabaseModule(app: Application): Sdaddb {
         return Room.databaseBuilder(app, Sdaddb::class.java, "sda-db")
+//            .setQueryCallback(RoomDatabase.QueryCallback { sqlQuery, bindArgs ->
+//                Log.d("RoomQuery", "SQL Query: $sqlQuery SQL Args: $bindArgs")
+//            }, Executors.newSingleThreadExecutor())
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -44,6 +50,23 @@ object DatabaseModuleProvider {
     @Provides
     @Singleton
     fun provideLocationDataDao(db: Sdaddb) = db.locationDataDao()
+
+    @Provides
+    @Singleton
+    fun provideDriverProfileDao(db: Sdaddb) = db.driverProfileDao()
+
+    @Provides
+    @Singleton
+    fun provideDrivingTipDao(db: Sdaddb) = db.drivingTipDao()
+
+    @Provides
+    @Singleton
+    fun provideUnsafeBehaviourDao(db: Sdaddb) = db.unsafeBehaviourDao()
+
+    @Provides
+    @Singleton
+    fun provideCauseDao(db: Sdaddb) = db.causeDao()
+
 }
 
 @Qualifier
@@ -65,3 +88,7 @@ annotation class TripDaoC
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class LocationDataDaoC
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class UnsafeBehaviourDaoC

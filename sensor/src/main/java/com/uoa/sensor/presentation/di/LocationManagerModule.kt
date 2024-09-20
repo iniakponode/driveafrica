@@ -1,15 +1,13 @@
 package com.uoa.sensor.presentation.di
 
-import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.google.android.gms.location.FusedLocationProviderClient
-import com.uoa.sensor.data.repository.LocationRepository
+import com.uoa.sensor.repository.LocationRepositoryImpl
 import com.uoa.sensor.location.LocationManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 
 @Module
@@ -20,10 +18,10 @@ object LocationManagerModule {
     @Provides
     fun provideLocationManager(
 //        @ApplicationContext context: Context,
-        locationRepository: LocationRepository,
+        locationRepositoryImpl: LocationRepositoryImpl,
         fusedLocationProviderClient: FusedLocationProviderClient
     ): LocationManager {
         // Provide an instance of LocationManager
-        return LocationManager(locationRepository, fusedLocationProviderClient)
+        return LocationManager(locationRepositoryImpl, fusedLocationProviderClient)
     }
 }

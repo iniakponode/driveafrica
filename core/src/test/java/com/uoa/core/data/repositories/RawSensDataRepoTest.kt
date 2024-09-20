@@ -1,4 +1,3 @@
-package com.uoa.core.data
+package com.uoa.core.data.repositories
 
-class repository {
-}
+

@@ -7,8 +7,14 @@ import androidx.annotation.RequiresApi
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.uoa.core.database.daos.LocationDao
-import com.uoa.sensor.data.repository.LocationRepository
-import com.uoa.sensor.data.repository.RawSensorDataRepository
+import com.uoa.ml.domain.BatchInsertCauseUseCase
+import com.uoa.ml.domain.BatchUpDateUnsafeBehaviourCauseUseCase
+import com.uoa.ml.domain.RunClassificationUseCase
+import com.uoa.ml.domain.SaveInfluenceToCause
+import com.uoa.ml.domain.UpDateUnsafeBehaviourCauseUseCase
+import com.uoa.sensor.domain.usecases.trip.UpdateTripUseCase
+import com.uoa.sensor.repository.LocationRepositoryImpl
+import com.uoa.sensor.repository.RawSensorDataRepositoryImpl
 import com.uoa.sensor.hardware.AccelerometerSensor
 import com.uoa.sensor.hardware.AccelerometerSensorM
 import com.uoa.sensor.hardware.GravitySensor
@@ -16,8 +22,8 @@ import com.uoa.sensor.hardware.GravitySensorM
 import com.uoa.sensor.hardware.GyroscopeSensor
 import com.uoa.sensor.hardware.GyroscopeSensorM
 import com.uoa.sensor.hardware.HardwareModule
-import com.uoa.sensor.hardware.LinearAcceleration
-import com.uoa.sensor.hardware.LinearAccelerationM
+//import com.uoa.sensor.hardware.LinearAcceleration
+//import com.uoa.sensor.hardware.LinearAccelerationM
 import com.uoa.sensor.hardware.MagnetometerSensor
 import com.uoa.sensor.hardware.MagnetometerSensorM
 import com.uoa.sensor.hardware.RotationVectorSensor
@@ -39,16 +45,16 @@ object HardwareModuleProvider{
 
     @Provides
     @Singleton
-    fun provideRawSensorDataRepository(rawSensorDataDao: RawSensorDataDao): RawSensorDataRepository {
-        // Provide an instance of RawSensorDataRepository
-        return RawSensorDataRepository(rawSensorDataDao)
+    fun provideRawSensorDataRepository(rawSensorDataDao: RawSensorDataDao): RawSensorDataRepositoryImpl {
+        // Provide an instance of RawSensorDataRepositoryImpl
+        return RawSensorDataRepositoryImpl(rawSensorDataDao)
     }
 
     @Provides
     @Singleton
-    fun provideLocationRepository(locationDao: LocationDao): LocationRepository {
-        // Provide an instance of LocationRepository
-        return LocationRepository(locationDao)
+    fun provideLocationRepository(locationDao: LocationDao, rawSensorDataDao: RawSensorDataDao): LocationRepositoryImpl {
+        // Provide an instance of LocationRepositoryImpl
+        return LocationRepositoryImpl(locationDao, rawSensorDataDao)
     }
 
     @Provides
@@ -97,12 +103,12 @@ object HardwareModuleProvider{
         return GravitySensor(context)
     }
 
-    @Provides
-    @LinearAccelerationM
-    fun provideLinearAcceleration(@ApplicationContext context: Context): LinearAcceleration {
-        // Provide an instance of LinearAcceleration
-        return LinearAcceleration(context)
-    }
+//    @Provides
+//    @LinearAccelerationM
+//    fun provideLinearAcceleration(@ApplicationContext context: Context): LinearAcceleration {
+//        // Provide an instance of LinearAcceleration
+//        return LinearAcceleration(context)
+//    }
 
     @RequiresApi(Build.VERSION_CODES.O)
     @Provides
@@ -113,12 +119,18 @@ object HardwareModuleProvider{
         @RotationVectorSensorM rotationVectorSensor: RotationVectorSensor,
         @MagnetometerSensorM magnetometerSensor: MagnetometerSensor,
         @SignificantMotionSensorM significantMotionSensor: SignificantMotion,
-        @LinearAccelerationM linearAccelerationSensor: LinearAcceleration,
+//        @LinearAccelerationM linearAccelerationSensor: LinearAcceleration,
         @GravitySensorM gravitySensor: GravitySensor,
         locationManager: LocationManager,
-        manageSensorDataSizeAndSave: ManageSensorDataSizeAndSave
+        manageSensorDataSizeAndSave: ManageSensorDataSizeAndSave,
+        runClassificationUseCase: RunClassificationUseCase,
+        upDateUnsafeBehaviourCauseUseCase: UpDateUnsafeBehaviourCauseUseCase,
+        saveInfluenceToCause: SaveInfluenceToCause,
+        batchInsertCauseUseCase: BatchInsertCauseUseCase,
+        batchUpDateUnsafeBehaviourCauseUseCase: BatchUpDateUnsafeBehaviourCauseUseCase,
+        updateTripUseCase: UpdateTripUseCase
 
-    ): HardwareModule {
+        ): HardwareModule {
         return HardwareModule(
             accelerometerSensor,
             gyroscopeSensor,
@@ -126,9 +138,15 @@ object HardwareModuleProvider{
             magnetometerSensor,
             significantMotionSensor,
             gravitySensor,
-            linearAccelerationSensor,
+//            linearAccelerationSensor,
             locationManager,
-            manageSensorDataSizeAndSave
+            manageSensorDataSizeAndSave,
+            runClassificationUseCase,
+            upDateUnsafeBehaviourCauseUseCase,
+            saveInfluenceToCause,
+            batchInsertCauseUseCase,
+            batchUpDateUnsafeBehaviourCauseUseCase,
+            updateTripUseCase
         )
     }
 }

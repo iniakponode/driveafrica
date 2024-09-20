@@ -1,22 +1,13 @@
 package com.uoa.nlgengine.domain.usecases.local
 
-import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
-import androidx.collection.mutableFloatListOf
-import com.uoa.core.database.entities.UnsafeBehaviourEntity
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
 import com.uoa.core.model.UnsafeBehaviourModel
 import com.uoa.core.utils.toDomainModel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
 

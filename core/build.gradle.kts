@@ -1,4 +1,3 @@
-import com.android.build.api.dsl.Packaging
 import java.util.Properties
 
 plugins {

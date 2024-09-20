@@ -1,6 +1,5 @@
 package com.uoa.core.database.repository
 
-import androidx.lifecycle.LiveData
 import com.uoa.core.database.entities.DrivingTipEntity
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate

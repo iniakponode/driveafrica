@@ -1,11 +1,10 @@
 package com.uoa.driverprofile.presentation.ui.navigation
-import androidx.hilt.navigation.compose.hiltViewModel
+
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptions
 import androidx.navigation.compose.composable
 import com.uoa.driverprofile.presentation.ui.screens.DriverProfileCreationRoute
-import com.uoa.driverprofile.presentation.viewmodel.DriverProfileViewModel
 
 const val ONBOARDING_SCREEN_ROUTE = "onboardingScreen"
 

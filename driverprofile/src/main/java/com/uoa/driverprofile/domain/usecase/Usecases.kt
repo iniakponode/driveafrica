@@ -1,8 +1,5 @@
 package com.uoa.driverprofile.domain.usecase
 
-import androidx.compose.runtime.livedata.observeAsState
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.asFlow
 import com.uoa.core.database.entities.DriverProfileEntity
 import com.uoa.core.database.repository.DriverProfileRepository
 import com.uoa.core.database.repository.DrivingTipRepository
@@ -27,38 +24,38 @@ class InsertDriverProfileUseCase @Inject constructor(
     }
 }
 
-class UpdateDriverProfileUseCase @Inject constructor(
-    private val driverProfileRepository: DriverProfileRepository
-){
-    suspend fun execute(driverProfileEntity: DriverProfileEntity) {
-        // update driver profile
-        withContext(Dispatchers.IO) {
-            driverProfileRepository.updateDriverProfile(driverProfileEntity)
-        }
-    }
-}
+//class UpdateDriverProfileUseCase @Inject constructor(
+//    private val driverProfileRepository: DriverProfileRepository
+//){
+//    suspend fun execute(driverProfileEntity: DriverProfileEntity) {
+//        // update driver profile
+//        withContext(Dispatchers.IO) {
+//            driverProfileRepository.updateDriverProfile(driverProfileEntity)
+//        }
+//    }
+//}
 
-class GetAllDriverProfilesUseCase @Inject constructor(
-    private val driverProfileRepository: DriverProfileRepository
-){
-    suspend fun execute() {
-        // get all driver profiles
-        withContext(Dispatchers.IO) {
-            driverProfileRepository.getAllDriverProfiles()
-        }
-    }
-}
+//class GetAllDriverProfilesUseCase @Inject constructor(
+//    private val driverProfileRepository: DriverProfileRepository
+//){
+//    suspend fun execute() {
+//        // get all driver profiles
+//        withContext(Dispatchers.IO) {
+//            driverProfileRepository.getAllDriverProfiles()
+//        }
+//    }
+//}
 
-class GetDriverProfileByIdUseCase @Inject constructor(
-    private val driverProfileRepository: DriverProfileRepository
-){
-    suspend fun execute(driverProfileId: UUID) {
-        // get driver profile by id
-        withContext(Dispatchers.IO) {
-            driverProfileRepository.getDriverProfileById(driverProfileId)
-        }
-    }
-}
+//class GetDriverProfileByIdUseCase @Inject constructor(
+//    private val driverProfileRepository: DriverProfileRepository
+//){
+//    suspend fun execute(driverProfileId: UUID) {
+//        // get driver profile by id
+//        withContext(Dispatchers.IO) {
+//            driverProfileRepository.getDriverProfileById(driverProfileId)
+//        }
+//    }
+//}
 
 class GetDriverProfileByEmailUseCase @Inject constructor(
     private val driverProfileRepository: DriverProfileRepository
@@ -71,16 +68,16 @@ class GetDriverProfileByEmailUseCase @Inject constructor(
     }
 }
 
-class GetDriverProfileBySyncStatusUseCase @Inject constructor(
-    private val driverProfileRepository: DriverProfileRepository
-){
-    suspend fun execute(synced: Boolean) {
-        // get driver profile by sync status
-        withContext(Dispatchers.IO) {
-            driverProfileRepository.getDriverProfileBySyncStatus(synced)
-        }
-    }
-}
+//class GetDriverProfileBySyncStatusUseCase @Inject constructor(
+//    private val driverProfileRepository: DriverProfileRepository
+//){
+//    suspend fun execute(synced: Boolean) {
+//        // get driver profile by sync status
+//        withContext(Dispatchers.IO) {
+//            driverProfileRepository.getDriverProfileBySyncStatus(synced)
+//        }
+//    }
+//}
 
 class DeleteDriverProfileByEmailUseCase @Inject constructor(
     private val driverProfileRepository: DriverProfileRepository
@@ -93,16 +90,16 @@ class DeleteDriverProfileByEmailUseCase @Inject constructor(
     }
 }
 
-class DeleteAllDriverProfilesUseCase @Inject constructor(
-    private val driverProfileRepository: DriverProfileRepository
-){
-    suspend fun execute() {
-        // delete all driver profiles
-        withContext(Dispatchers.IO) {
-            driverProfileRepository.deleteAllDriverProfiles()
-        }
-    }
-}
+//class DeleteAllDriverProfilesUseCase @Inject constructor(
+//    private val driverProfileRepository: DriverProfileRepository
+//){
+//    suspend fun execute() {
+//        // delete all driver profiles
+//        withContext(Dispatchers.IO) {
+//            driverProfileRepository.deleteAllDriverProfiles()
+//        }
+//    }
+//}
 
 class GetDrivingTipByProfileIdUseCase @Inject constructor(
     private val drivingTipRepository: DrivingTipRepository

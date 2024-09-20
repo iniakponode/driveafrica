@@ -1,6 +1,5 @@
 package com.uoa.core.model
 
-import java.time.Instant
 import java.util.Date
 import java.util.UUID
 

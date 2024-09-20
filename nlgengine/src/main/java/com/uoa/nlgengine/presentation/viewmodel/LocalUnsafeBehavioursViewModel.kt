@@ -1,23 +1,17 @@
 package com.uoa.nlgengine.presentation.viewmodel
-
-import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.uoa.nlgengine.domain.usecases.local.UnsafeBehavioursBtwnDatesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import androidx.lifecycle.viewModelScope
 import com.uoa.core.model.UnsafeBehaviourModel
-import com.uoa.nlgengine.data.model.UnsafeBehaviour
 import com.uoa.nlgengine.domain.usecases.local.GetLastInsertedUnsafeBehaviourUseCase
 import com.uoa.nlgengine.domain.usecases.local.UnsafeBehaviourByTripIdUseCase
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
@@ -85,11 +79,11 @@ class LocalUnsafeBehavioursViewModel @Inject constructor(private val unsafeBehav
         _isLoading.value = true
     }
 
-    fun fetchLastInsertedUnsafeBehaviour() {
-        viewModelScope.launch {
-            val tripId = getLastInsertedUnsafeBehaviourUseCase.execute()?.tripId
-            _lastTripId.postValue(tripId)
-        }
-
-}
+//    fun fetchLastInsertedUnsafeBehaviour() {
+//        viewModelScope.launch {
+//            val tripId = getLastInsertedUnsafeBehaviourUseCase.execute()?.tripId
+//            _lastTripId.postValue(tripId)
+//        }
+//
+//}
     }

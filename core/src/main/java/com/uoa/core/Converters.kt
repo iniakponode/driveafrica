@@ -1,6 +1,5 @@
 package com.uoa.core
 
-import android.text.format.DateFormat
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -18,16 +17,13 @@ import java.util.Locale
 class Converters {
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private val formatter = DateTimeFormatter.ISO_LOCAL_DATE
 
-    @RequiresApi(Build.VERSION_CODES.O)
     @TypeConverter
     fun fromLocalDate(date: LocalDate?): String? {
         return date?.format(formatter)
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     @TypeConverter
     fun toLocalDate(dateString: String?): LocalDate? {
         return dateString?.let {
@@ -35,7 +31,6 @@ class Converters {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     @TypeConverter
     fun fromTimestamp(value: Instant?): Long? {
         return value?.atZone(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()

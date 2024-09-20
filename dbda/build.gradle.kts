@@ -1,4 +1,3 @@
-import org.jetbrains.kotlin.config.JvmAnalysisFlags.useIR
 
 plugins {
     alias(libs.plugins.android.library)

@@ -1,11 +1,9 @@
 package com.uoa.driverprofile.repository
 
-import androidx.lifecycle.LiveData
 import com.uoa.core.database.entities.DrivingTipEntity
 import javax.inject.Inject
 import com.uoa.core.database.daos.DrivingTipDao
 import com.uoa.core.database.repository.DrivingTipRepository
-import com.uoa.core.utils.toDomainModel
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.util.UUID

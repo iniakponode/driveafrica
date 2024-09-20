@@ -1,15 +1,12 @@
 package com.uoa.core.di
 
 import android.app.Application
-import android.util.Log
 import androidx.room.Room
-import androidx.room.RoomDatabase
 import com.uoa.core.Sdaddb
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import java.util.concurrent.Executors
 import javax.inject.Qualifier
 import javax.inject.Singleton
 
@@ -69,26 +66,26 @@ object DatabaseModuleProvider {
 
 }
 
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class SensorDataDaoC
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class DbdaResultDaoC
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class NlgReportDaoC
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class TripDaoC
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class LocationDataDaoC
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class UnsafeBehaviourDaoC
+//@Qualifier
+//@Retention(AnnotationRetention.BINARY)
+//annotation class SensorDataDaoC
+//
+//@Qualifier
+//@Retention(AnnotationRetention.BINARY)
+//annotation class DbdaResultDaoC
+//
+//@Qualifier
+//@Retention(AnnotationRetention.BINARY)
+//annotation class NlgReportDaoC
+//
+//@Qualifier
+//@Retention(AnnotationRetention.BINARY)
+//annotation class TripDaoC
+//
+//@Qualifier
+//@Retention(AnnotationRetention.BINARY)
+//annotation class LocationDataDaoC
+//
+//@Qualifier
+//@Retention(AnnotationRetention.BINARY)
+//annotation class UnsafeBehaviourDaoC

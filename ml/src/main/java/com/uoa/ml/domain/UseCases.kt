@@ -1,6 +1,5 @@
 package com.uoa.ml.domain
 
-import android.provider.Settings.System.DATE_FORMAT
 import android.util.Log
 import com.uoa.core.database.entities.CauseEntity
 import com.uoa.core.database.entities.RawSensorDataEntity
@@ -10,18 +9,11 @@ import com.uoa.core.database.repository.LocationRepository
 import com.uoa.core.database.repository.RawSensorDataRepository
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
 import com.uoa.core.mlclassifier.OnnxModelRunner
-import com.uoa.core.model.UnsafeBehaviourModel
-import com.uoa.core.utils.toDomainModel
 import com.uoa.core.utils.toEntity
 import com.uoa.ml.Utils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.forEach
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -144,14 +136,13 @@ class BatchUpDateUnsafeBehaviourCauseUseCase @Inject constructor(
     private val unsafeBehaviourRepository: UnsafeBehaviourRepository
 ) {
     companion object {
-        private const val BUFFER_SIZE = 100 // Define a buffer size for batch updates
-        private val DATE_FORMAT = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) // Consistent date format
+//        private const val BUFFER_SIZE = 100 // Define a buffer size for batch updates
+//        private val DATE_FORMAT = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) // Consistent date format
     }
 
     fun invoke(tripId: UUID, alcoholInf: Boolean): List<UnsafeBehaviourEntity> {
-        val timestamp = Instant.now().toEpochMilli()
+
         val listOfUnsafeBehaviours = mutableListOf<UnsafeBehaviourEntity>()
-        val buffer = mutableListOf<UnsafeBehaviourEntity>() // Buffer for batching
 
         Log.d("UnsafeBehavio", "Unsafe Behaviours I got here UpDateUnsafeBehaviourCauseUseCase")
 
@@ -251,7 +242,7 @@ class BatchInsertCauseUseCase @Inject constructor(
 ) {
     companion object {
         private const val BUFFER_SIZE = 100 // Define a buffer size for batch inserts
-        private val DATE_FORMAT = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) // Consistent date format
+
     }
 
     fun invoke(tripId: UUID, alcoholInfl: Boolean): List<UnsafeBehaviourEntity> {

@@ -1,19 +1,11 @@
 package com.uoa.core.database.repository
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import com.uoa.core.database.entities.RawSensorDataEntity
 import com.uoa.core.database.entities.UnsafeBehaviourEntity
 import com.uoa.core.model.RawSensorData
 import com.uoa.core.model.UnsafeBehaviourModel
-import com.uoa.core.utils.toDomainModel
-import com.uoa.core.utils.toEntity
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withContext
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 interface UnsafeBehaviourRepository {

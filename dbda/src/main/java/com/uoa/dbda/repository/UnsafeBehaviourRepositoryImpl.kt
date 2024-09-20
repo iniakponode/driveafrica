@@ -1,7 +1,6 @@
 package com.uoa.dbda.repository
 
 import android.os.Build
-import android.util.Log
 import androidx.annotation.RequiresApi
 import com.uoa.core.database.daos.RawSensorDataDao
 import com.uoa.core.database.daos.UnsafeBehaviourDao
@@ -17,10 +16,7 @@ import java.util.UUID
 import com.uoa.core.database.entities.RawSensorDataEntity
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
 import com.uoa.core.model.RawSensorData
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
 

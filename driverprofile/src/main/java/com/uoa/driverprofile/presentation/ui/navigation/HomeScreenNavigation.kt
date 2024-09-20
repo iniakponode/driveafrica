@@ -1,16 +1,12 @@
 package com.uoa.driverprofile.presentation.ui.navigation
 
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptions
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.NavType
-import com.uoa.driverprofile.presentation.ui.screens.HomeScreen
 import com.uoa.driverprofile.presentation.ui.screens.HomeScreenRoute
-import com.uoa.driverprofile.presentation.ui.sealeduiclass.Screen
-import com.uoa.driverprofile.presentation.viewmodel.DrivingTipsViewModel
 import java.util.UUID
 
 
@@ -41,7 +37,6 @@ fun NavGraphBuilder.homeScreen(
         }
         HomeScreenRoute(
             navController = navController,
-            profileId = profileId
         )
     }
 }

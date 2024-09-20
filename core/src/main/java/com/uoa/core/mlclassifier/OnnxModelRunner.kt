@@ -1,7 +1,6 @@
 package com.uoa.core.mlclassifier
 
 import ai.onnxruntime.OnnxTensor
-import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import android.content.Context
 import android.util.Log

@@ -1,8 +1,6 @@
 package com.uoa.core.database.repository
 
 import com.uoa.core.model.Trip
-import com.uoa.core.utils.toDomainModel
-import com.uoa.core.utils.toEntity
 import java.util.UUID
 
 interface TripDataRepository {

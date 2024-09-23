@@ -6,10 +6,10 @@ import com.uoa.sensor.hardware.base.AndroidSensor
 import javax.inject.Inject
 
 
-class LinearAcceleration @Inject constructor(
-    context: Context
-): AndroidSensor(context=context,
-    sensorType=Sensor.TYPE_LINEAR_ACCELERATION)
+//class LinearAcceleration @Inject constructor(
+//    context: Context
+//): AndroidSensor(context=context,
+//    sensorType=Sensor.TYPE_LINEAR_ACCELERATION)
 
 class AccelerometerSensor @Inject constructor(
     context: Context

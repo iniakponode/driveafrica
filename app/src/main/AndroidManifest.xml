@@ -34,7 +34,7 @@
             </intent-filter>
         </activity>
         <!-- Declare SensorActivity if needed -->
-        <activity android:name="com.uoa.sensor.presentation.ui.SensorActivity" />
+<!--        <activity android:name="com.uoa.sensor.presentation.ui.SensorActivity" />-->
     </application>
 
 </manifest>

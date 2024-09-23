@@ -14,7 +14,7 @@
         android:theme="@style/Theme.Driveafrica"
         >
         <!-- Declare SensorActivity here if needed -->
-        <activity android:name=".presentation.ui.SensorActivity" />
+<!--        <activity android:name=".presentation.ui.SensorActivity" />-->
 
         <provider
             android:name="androidx.startup.InitializationProvider"

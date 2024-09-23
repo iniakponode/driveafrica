@@ -5,6 +5,7 @@ plugins {
 //    alias(libs.plugins.darger.hilt)
     alias(libs.plugins.ksp)
     id ("kotlin-android")
+    alias(libs.plugins.compose.compiler)
 }
 
 android {
@@ -13,7 +14,7 @@ android {
 
     defaultConfig {
         applicationId = "com.uoa.driveafrica"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -43,8 +44,21 @@ android {
     buildFeatures {
         viewBinding = true
         compose = true
+        buildConfig = true
 
     }
+
+    packaging {
+        // Pick the MockMaker implementation from mockito-inline and ignore the other
+        resources.pickFirsts.add("mockito-extensions/org.mockito.plugins.MockMaker")
+    }
+}
+
+composeCompiler {
+    enableStrongSkippingMode = true
+
+    reportsDestination = layout.buildDirectory.dir("compose_compiler")
+    stabilityConfigurationFile = rootProject.layout.projectDirectory.file("stability_config.conf")
 }
 
 dependencies {
@@ -55,17 +69,21 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview.android)
     implementation(libs.navigation.compose)
     implementation(libs.androidx.compose.ui)
+    implementation(libs.kotlinx.datetime)
 
     implementation(libs.request.permisions)
 //    implementation(libs.compose.material)
     implementation(libs.androidx.compose.material3)
+    implementation(project(":dbda"))
+    implementation(project(":driverprofile"))
+    implementation(project(":nlgengine"))
     ksp(libs.hilt.compiler)
     ksp(libs.hilt.ext.compiler)
 
     implementation(libs.coil.kt.compose)
 
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.compose.compiler)
+//    implementation(libs.androidx.compose.compiler)
     implementation(libs.androidx.lifecycle.lifecycle.scope)
     implementation(libs.androidx.material3.android)
     implementation(libs.androidx.lifecycle.runtimeCompose)
@@ -81,11 +99,12 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.kotlin.stdlib)
+    implementation(libs.androidx.metrics)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
+//    androidTestImplementation(libs.androidx.test.espresso.core)
 }

@@ -1,30 +1,35 @@
 package com.uoa.dbda.domain.usecase
 
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.uoa.core.model.RawSensorData
 import com.uoa.core.utils.toDomainModel
-import com.uoa.dbda.domain.usecase.analyser.UnsafeBehaviorAnalyser
-import com.uoa.dbda.repository.UnsafeBehaviourRepository
+import com.uoa.dbda.repository.UnsafeBehaviourRepositoryImpl
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.util.Date
+import kotlinx.coroutines.withContext
+import java.time.Instant
+import java.time.ZoneId
 import javax.inject.Inject
 
-class FetchRawSensorDataByDate @Inject constructor(
-    private val unsafeBehaviourRepository: UnsafeBehaviourRepository,
+class FetchRawSensorDataByDateUseCase @Inject constructor(
+    private val unsafeBehaviourRepositoryImpl: UnsafeBehaviourRepositoryImpl,
 ){
+    @RequiresApi(Build.VERSION_CODES.O)
     suspend fun execute(startDate: Long, endDate: Long): Flow<List<RawSensorData>> {
-        val sensorDataList =
-            unsafeBehaviourRepository.getSensorDataBetweenDates(Date(startDate), Date(endDate))
-        Log.i(
-            "AnalyzeUnsafeBehaviorUseCase", "Number of sensor data: ${
-                sensorDataList.collect {
-                    it.size
+        // Convert Long (epoch milliseconds) to LocalDate
+        val zoneId = ZoneId.systemDefault()
+        val sDate = Instant.ofEpochMilli(startDate).atZone(zoneId).toLocalDate()
+        val eDate = Instant.ofEpochMilli(endDate).atZone(zoneId).toLocalDate()
+
+        return withContext(Dispatchers.IO) {
+            unsafeBehaviourRepositoryImpl.getSensorDataBetweenDates(sDate, eDate)
+                .map { sensorDataList ->
+                    Log.i("FetchRawSensorDataByDateUseCase", "Number of sensor data: ${sensorDataList.size}, startDate: $sDate, endDate: $eDate")
+                    sensorDataList.map { it.toDomainModel() }
                 }
-            }, startDate: ${Date(startDate)}, endDate: ${Date(endDate)}"
-        )
-        return sensorDataList.map { sensorDList ->
-            sensorDList.map { it.toDomainModel() }
         }
     }
 }

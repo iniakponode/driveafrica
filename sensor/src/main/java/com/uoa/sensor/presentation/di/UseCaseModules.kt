@@ -1,6 +1,6 @@
 package com.uoa.sensor.presentation.di
 
-import com.uoa.sensor.data.repository.TripDataRepository
+import com.uoa.sensor.repository.TripDataRepositoryImpl
 import com.uoa.sensor.domain.usecases.trip.FetchTripUseCase
 import com.uoa.sensor.domain.usecases.trip.InsertTripUseCase
 import com.uoa.sensor.domain.usecases.trip.UpdateTripUseCase
@@ -13,17 +13,17 @@ import dagger.hilt.components.SingletonComponent
 @InstallIn(SingletonComponent::class)
 object UseCaseModules {
      @Provides
-     fun provideFetchTripUseCase(tripRepository: TripDataRepository): FetchTripUseCase {
+     fun provideFetchTripUseCase(tripRepository: TripDataRepositoryImpl): FetchTripUseCase {
          return FetchTripUseCase(tripRepository)
      }
 
      @Provides
-     fun provideUpdateTripUseCase(tripRepository: TripDataRepository): UpdateTripUseCase {
+     fun provideUpdateTripUseCase(tripRepository: TripDataRepositoryImpl): UpdateTripUseCase {
          return UpdateTripUseCase(tripRepository)
      }
 
      @Provides
-     fun provideInsertTripUseCase(tripRepository: TripDataRepository): InsertTripUseCase {
+     fun provideInsertTripUseCase(tripRepository: TripDataRepositoryImpl): InsertTripUseCase {
          return InsertTripUseCase(tripRepository)
      }
 }

@@ -11,7 +11,12 @@ object FilterUtils {
 
     fun highPassFilter(input: FloatArray, output: FloatArray, alpha: Float): FloatArray {
         for (i in input.indices) {
-            output[i] = alpha * (output[i] + input[i] - (if (i > 0) input[i - 1] else 0f))
+            if (i == 0) {
+                // Handle the first element differently to initialize the filter
+                output[i] = alpha * input[i]
+            } else {
+                output[i] = alpha * (output[i - 1] + input[i] - input[i - 1])
+            }
         }
         return output
     }

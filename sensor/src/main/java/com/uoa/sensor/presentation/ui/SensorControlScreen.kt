@@ -2,12 +2,15 @@ package com.uoa.sensor.presentation.ui
 
 import com.uoa.sensor.presentation.viewModel.TripViewModel
 import android.Manifest
+import android.content.Context
 import android.os.Build
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import com.uoa.sensor.presentation.viewModel.SensorViewModel
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -17,24 +20,45 @@ import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
+import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.ml.presentation.viewmodel.AlcoholInfluenceViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+//import com.uoa.dbda.presentation.viewModel.UnsafeBehaviourViewModel
 import java.util.UUID
 
 
-@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun SensorControlScreen(
     sensorViewModel: SensorViewModel = viewModel(),
-    tripViewModel: TripViewModel = viewModel()
+    tripViewModel: TripViewModel = viewModel(),
+    alcoholInfluenceViewModel: AlcoholInfluenceViewModel = hiltViewModel()
 ) {
 //    val context = LocalContext.current as ComponentActivity
     val collectionStatus by sensorViewModel.collectionStatus.collectAsState()
+    val alcoholInfluence by alcoholInfluenceViewModel.alcoholInfluence.observeAsState()
 //    val tripId by tripViewModel.currentTripId.collectAsState()
+    val context = LocalContext.current
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val profileIdString = prefs.getString(DRIVER_PROFILE_ID, null)
 
+    val driverProfileId = UUID.fromString(profileIdString)
+
+    val coroutineScope = rememberCoroutineScope()
     val multiplePermissionState = rememberMultiplePermissionsState(
         permissions = listOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -45,6 +69,8 @@ fun SensorControlScreen(
     // Check WorkManager status on screen entry
     LaunchedEffect(Unit) {
         sensorViewModel.checkWorkManagerStatus()
+//        get the stored DriverProfile ID from the shared preferences
+
     }
 
 //    // React to collection status change
@@ -64,24 +90,27 @@ fun SensorControlScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(onClick = {
+            val tripID=tripViewModel.updateTripId(UUID.randomUUID())
             if (!multiplePermissionState.allPermissionsGranted && !collectionStatus) {
                 multiplePermissionState.launchMultiplePermissionRequest()
             } else if (multiplePermissionState.allPermissionsGranted && !collectionStatus) {
-                val tripID=tripViewModel.updateTripId(UUID.randomUUID())
-                tripViewModel.startTrip(driverProfileId = 1234L, tripID)
+                tripViewModel.startTrip(driverProfileId, tripID)
                 sensorViewModel.startSensorCollection("START", true, tripID)
                 sensorViewModel.updateCollectionStatus(true)
             }
             else if (!multiplePermissionState.allPermissionsGranted && !collectionStatus) {
-                val tripID=tripViewModel.updateTripId(UUID.randomUUID())
-                tripViewModel.startTrip(driverProfileId = 1234L, tripID)
+
+                tripViewModel.startTrip(driverProfileId, tripID)
                 sensorViewModel.startSensorCollection("START", false, tripID)
                 sensorViewModel.updateCollectionStatus(true)
             }
             else {
-                tripViewModel.endTrip()
+//                tripViewModel.endTrip(tripID)
                 sensorViewModel.stopSensorCollection()
                 sensorViewModel.updateCollectionStatus(false)
+//              alcoholInfluenceViewModel.classifySaveAndUpdateUnsafeBehaviour(tripID)
+//                alcoholInfluenceViewModel.saveInfluenceToCauseTable(tripID)
+//                Log.d("Alcohol Class TripID","Classification TripID $tripID")
             }
         }) {
             Text(
@@ -95,7 +124,28 @@ fun SensorControlScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(text = if (collectionStatus) "Collecting Data..." else "Data Collection Stopped")
+        Text(text = if (collectionStatus) "Collecting Data..." else "Data Collection Stopped, \nAlcohol Influenced: ${alcoholInfluence.toString()}")
+    }
+}
+
+@Composable
+fun SensorControlScreenRoute(
+    sensorViewModel: SensorViewModel = viewModel(),
+    tripViewModel: TripViewModel = viewModel()
+) {
+    SensorControlScreen(sensorViewModel, tripViewModel)
+}
+
+@OptIn(ExperimentalPermissionsApi::class)
+@Composable
+private fun getButtonText(
+    multiplePermissionState: MultiplePermissionsState,
+    collectionStatus: Boolean
+): String {
+    return when {
+        !multiplePermissionState.allPermissionsGranted && !collectionStatus -> "Grant Location Permissions"
+        multiplePermissionState.allPermissionsGranted && !collectionStatus -> "Start Data Collection"
+        else -> "Stop Data Collection"
     }
 }
 
@@ -115,11 +165,3 @@ fun LocationPermissions(multiplePermissionState: MultiplePermissionsState) {
         )
     }
 }
-
-
-
-
-
-//fun startSavingRealTimeData(viewModel: SensorViewModel) {
-//    // Implement your logic to start saving real-time data to the database
-//}

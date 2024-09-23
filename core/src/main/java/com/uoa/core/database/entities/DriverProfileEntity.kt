@@ -8,10 +8,11 @@ import java.util.UUID
 @Entity(tableName = "driver_profile",
     indices = [Index(value = ["driverProfileId"])]
 )
-data class DriverProfile(
+data class DriverProfileEntity(
 // define driver profile id
     @PrimaryKey(autoGenerate = false)
     val driverProfileId: UUID,
 // define driver email
     val email: String,
+    val sync: Boolean = false
 )

@@ -1,19 +1,19 @@
-package com.uoa.sensor.data
+package com.uoa.dbda.data.domain.usecase.repo
 
 
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.uoa.core.database.daos.RawSensorDataDao
 import com.uoa.core.database.daos.UnsafeBehaviourDao
 import com.uoa.core.database.entities.UnsafeBehaviourEntity
 import com.uoa.core.model.UnsafeBehaviourModel
 import com.uoa.core.utils.toEntity
-import com.uoa.sensor.repository.UnsafeBehaviourRepository
+import com.uoa.dbda.repository.UnsafeBehaviourRepositoryImpl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.test.resetMain
@@ -22,18 +22,22 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.jupiter.api.Assertions.assertEquals
+import java.time.Instant
+import java.time.ZoneId
 import java.util.*
 
-class UnsafeBehaviourRepositoryTest {
+class UnsafeBehaviourRepositoryImplTest {
 
     private lateinit var unsafeBehaviourDao: UnsafeBehaviourDao
-    private lateinit var repository: UnsafeBehaviourRepository
+    private lateinit var rawSensorDataDao: RawSensorDataDao
+    private lateinit var repository: UnsafeBehaviourRepositoryImpl
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Before
     fun setUp() {
         unsafeBehaviourDao = mock()
-        repository = UnsafeBehaviourRepository(unsafeBehaviourDao)
+        rawSensorDataDao = mock()
+        repository = UnsafeBehaviourRepositoryImpl(unsafeBehaviourDao, rawSensorDataDao)
         Dispatchers.setMain(Dispatchers.Unconfined)
     }
 
@@ -45,7 +49,7 @@ class UnsafeBehaviourRepositoryTest {
 
     @Test
     fun testInsertUnsafeBehaviour() = runTest {
-        val unsafeBehaviour = UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), false, "Over speed limit")
+        val unsafeBehaviour = UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date())
         repository.insertUnsafeBehaviour(unsafeBehaviour)
         verify(unsafeBehaviourDao).insertUnsafeBehaviour(unsafeBehaviour.toEntity())
     }
@@ -53,8 +57,8 @@ class UnsafeBehaviourRepositoryTest {
     @Test
     fun testInsertUnsafeBehaviourBatch() = runTest {
         val unsafeBehaviours = listOf(
-            UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), false, "Over speed limit"),
-            UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Harsh Braking", 3.0f, System.currentTimeMillis(), Date(), false, "Sudden brake")
+            UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date()),
+            UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Harsh Braking", 3.0f, System.currentTimeMillis(), Date(), Date())
         )
         repository.insertUnsafeBehaviourBatch(unsafeBehaviours)
         verify(unsafeBehaviourDao).insertUnsafeBehaviourBatch(unsafeBehaviours.map { it.toEntity() })
@@ -62,14 +66,14 @@ class UnsafeBehaviourRepositoryTest {
 
     @Test
     fun testUpdateUnsafeBehaviour() = runBlocking {
-        val unsafeBehaviour = UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), false, "Over speed limit")
+        val unsafeBehaviour = UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(), )
         repository.updateUnsafeBehaviour(unsafeBehaviour)
         verify(unsafeBehaviourDao).updateUnsafeBehaviour(unsafeBehaviour.toEntity())
     }
 
     @Test
     fun testDeleteUnsafeBehaviour() = runTest {
-        val unsafeBehaviour = UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), false, "Over speed limit")
+        val unsafeBehaviour = UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(),)
         repository.deleteUnsafeBehaviour(unsafeBehaviour)
         verify(unsafeBehaviourDao).deleteUnsafeBehaviour(unsafeBehaviour.toEntity())
     }
@@ -78,8 +82,8 @@ class UnsafeBehaviourRepositoryTest {
     fun testGetUnsafeBehavioursByTripId() = runTest {
         val tripId = UUID.randomUUID()
         val unsafeBehaviourEntities = listOf(
-            UnsafeBehaviourEntity(UUID.randomUUID(), tripId, UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), false, "Over speed limit"),
-            UnsafeBehaviourEntity(UUID.randomUUID(), tripId, UUID.randomUUID(), "Harsh Braking", 3.0f, System.currentTimeMillis(), Date(), false, "Sudden brake")
+            UnsafeBehaviourEntity(UUID.randomUUID(), tripId, UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(), ),
+            UnsafeBehaviourEntity(UUID.randomUUID(), tripId, UUID.randomUUID(), "Harsh Braking", 3.0f, System.currentTimeMillis(), Date(), Date())
         )
         whenever(unsafeBehaviourDao.getUnsafeBehavioursByTripId(tripId)).thenReturn(flowOf(unsafeBehaviourEntities))
 
@@ -93,7 +97,7 @@ class UnsafeBehaviourRepositoryTest {
     @Test
     fun testGetUnsafeBehaviourById() = runTest {
         val id = UUID.randomUUID()
-        val unsafeBehaviourEntity = UnsafeBehaviourEntity(id, UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), false, "Over speed limit")
+        val unsafeBehaviourEntity = UnsafeBehaviourEntity(id, UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(),)
         whenever(unsafeBehaviourDao.getUnsafeBehaviourById(id)).thenReturn(unsafeBehaviourEntity)
 
         val result = repository.getUnsafeBehaviourById(id)
@@ -105,7 +109,7 @@ class UnsafeBehaviourRepositoryTest {
     fun testGetUnsafeBehavioursBySyncStatus() = runTest {
         val syncStatus = false
         val unsafeBehaviourEntities = listOf(
-            UnsafeBehaviourEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), syncStatus, "Over speed limit")
+            UnsafeBehaviourEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(),)
         )
         whenever(unsafeBehaviourDao.getUnsafeBehavioursBySyncStatus(syncStatus)).thenReturn(unsafeBehaviourEntities)
 
@@ -132,6 +136,7 @@ class UnsafeBehaviourRepositoryTest {
         val behaviorType = "Speeding"
         val startTime = System.currentTimeMillis() - 100000
         val endTime = System.currentTimeMillis()
+
         val count = 5
         whenever(unsafeBehaviourDao.getUnsafeBehaviourCountByTypeAndTime(behaviorType, startTime, endTime)).thenReturn(count)
 
@@ -157,16 +162,20 @@ class UnsafeBehaviourRepositoryTest {
     fun testGetUnsafeBehavioursBetweenDates() = runTest {
         val startDate = Date(System.currentTimeMillis() - 100000)
         val endDate = Date()
-        val unsafeBehaviourEntities = listOf(
-            UnsafeBehaviourEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), false, "Over speed limit"),
-            UnsafeBehaviourEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Harsh Braking", 3.0f, System.currentTimeMillis(), Date(), false, "Sudden brake")
-        )
-        whenever(unsafeBehaviourDao.getUnsafeBehavioursBetweenDates(startDate, endDate)).thenReturn(flowOf(unsafeBehaviourEntities))
+        val zoneId = ZoneId.systemDefault()
+        val sDate = Instant.ofEpochMilli(startDate.toInstant().toEpochMilli()).atZone(zoneId).toLocalDate()
+        val eDate = Instant.ofEpochMilli(endDate.toInstant().toEpochMilli()).atZone(zoneId).toLocalDate()
 
-        val result: Flow<List<UnsafeBehaviourModel>> = repository.getUnsafeBehavioursBetweenDates(startDate, endDate)
+        val unsafeBehaviourEntities = listOf(
+            UnsafeBehaviourEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(), ),
+            UnsafeBehaviourEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Harsh Braking", 3.0f, System.currentTimeMillis(), Date(), Date())
+        )
+        whenever(unsafeBehaviourDao.getUnsafeBehavioursBetweenDates(sDate, eDate)).thenReturn(flowOf(unsafeBehaviourEntities))
+
+        val result: Flow<List<UnsafeBehaviourModel>> = repository.getUnsafeBehavioursBetweenDates(sDate, eDate)
         result.collect { unsafeBehaviours ->
             assertEquals(unsafeBehaviourEntities.size, unsafeBehaviours.size)
         }
-        verify(unsafeBehaviourDao).getUnsafeBehavioursBetweenDates(startDate, endDate)
+        verify(unsafeBehaviourDao).getUnsafeBehavioursBetweenDates(sDate, eDate)
     }
 }

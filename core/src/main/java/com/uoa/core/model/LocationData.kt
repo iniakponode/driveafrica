@@ -1,5 +1,6 @@
-package com.uoa.sensor.data.model
+package com.uoa.core.model
 
+import java.util.Date
 import java.util.UUID
 
 /**
@@ -17,5 +18,6 @@ data class LocationData(
     val speed: Double? = null,
     val distance: Double? = null,
     val timestamp: Long,
+    val date: Date?,
     val sync: Boolean=false
 )

@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.uoa.dbda">
+
+    <application
+        android:name="dagger.hilt.android.testing.HiltTestApplication" />
+</manifest>

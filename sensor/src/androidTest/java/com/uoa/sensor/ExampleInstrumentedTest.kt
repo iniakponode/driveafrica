@@ -1,24 +1,3 @@
-package com.uoa.sensor
-
-import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.ext.junit.runners.AndroidJUnit4
-
-import org.junit.Test
-import org.junit.runner.RunWith
-
-import org.junit.Assert.*
-
-/**
- * Instrumented test, which will execute on an Android device.
- *
- * See [testing documentation](http://d.android.com/tools/testing).
- */
-@RunWith(AndroidJUnit4::class)
-class ExampleInstrumentedTest {
-    @Test
-    fun useAppContext() {
-        // Context of the app under test.
-        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.uoa.sensor", appContext.packageName)
-    }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:adcad8f3e2ec5b7d6b0bd93865a94fb403b838e369ec6cd3c49db5721c2e742c
+size 655

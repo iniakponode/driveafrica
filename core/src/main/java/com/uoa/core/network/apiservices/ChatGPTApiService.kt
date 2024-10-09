@@ -1,13 +1,3 @@
-package com.uoa.core.network.apiservices
-
-import com.uoa.core.network.model.chatGPT.ChatGPTResponse
-import com.uoa.core.network.model.chatGPT.RequestBody
-import retrofit2.http.Body
-import retrofit2.http.Headers
-import retrofit2.http.POST
-
-interface ChatGPTApiService {
-    @Headers("Content-Type: application/json")
-    @POST("chat/completions")
-    suspend fun getChatCompletion(@Body requestBody: RequestBody): ChatGPTResponse
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4f949b78a56da3935e5d2f69c2de82a35aa30e0c42c28eebbce3028a8265a032
+size 431

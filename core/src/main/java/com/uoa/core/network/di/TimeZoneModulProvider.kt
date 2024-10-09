@@ -1,16 +1,3 @@
-//package com.uoa.core.network.di
-//
-//import android.content.Context
-//import com.uoa.core.network.TimeZoneMonitorImpl
-//import com.uoa.core.utils.TimeZoneMonitor
-//import dagger.Provides
-//import dagger.hilt.android.qualifiers.ApplicationContext
-//import javax.inject.Singleton
-//
-//@Module
-//@InstallIn(SingletonComponent::class)
-//object TimeZoneModulProvider {
-//    @Provides
-//    @Singleton
-//    fun provideTimeZoneMonitor(@ApplicationContext context: Context, ): TimeZoneMonitor = TimeZoneMonitorImpl(context, timeZoneFlow)
-//}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0f021440f628cad819676402fc16e895137f92790709c8d437fdd3315dc3c796
+size 537

@@ -1,24 +1,3 @@
-package com.uoa.ml
-
-import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.ext.junit.runners.AndroidJUnit4
-
-import org.junit.Test
-import org.junit.runner.RunWith
-
-import org.junit.Assert.*
-
-/**
- * Instrumented test, which will execute on an Android device.
- *
- * See [testing documentation](http://d.android.com/tools/testing).
- */
-@RunWith(AndroidJUnit4::class)
-class ExampleInstrumentedTest {
-    @Test
-    fun useAppContext() {
-        // Context of the app under test.
-        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.uoa.ml.test", appContext.packageName)
-    }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8a07f2a924762999cce843eedc22e39286230730be65253f0a7001232f9b8c60
+size 652

@@ -1,24 +1,3 @@
-package com.uoa.dbda
-
-import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.ext.junit.runners.AndroidJUnit4
-
-import org.junit.Test
-import org.junit.runner.RunWith
-
-import org.junit.Assert.*
-
-/**
- * Instrumented test, which will execute on an Android device.
- *
- * See [testing documentation](http://d.android.com/tools/testing).
- */
-@RunWith(AndroidJUnit4::class)
-class ExampleInstrumentedTest {
-    @Test
-    fun useAppContext() {
-        // Context of the app under test.
-        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.uoa.dbda", appContext.packageName)
-    }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0bc9d16a3fe1f7918efb2f17343f8f8089d056fd474a4f2ac3c530f265eb90a5
+size 651

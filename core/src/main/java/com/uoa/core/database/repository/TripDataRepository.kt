@@ -1,22 +1,3 @@
-package com.uoa.core.database.repository
-
-import com.uoa.core.model.Trip
-import java.util.UUID
-
-interface TripDataRepository {
-    suspend fun insertTrip(trip: Trip)
-
-    suspend fun updateTrip(trip: Trip)
-
-    suspend fun getAllTrips(): List<Trip>
-
-    suspend fun getTripById(id: UUID): Trip?
-
-    suspend fun updateUploadStatus(id: Int, sync: Boolean)
-
-    suspend fun getTripsByDriverProfileId(driverProfileId: UUID): List<Trip>
-
-    suspend fun getTripsBySyncStatus(synced: Boolean): List<Trip>
-
-    suspend fun deleteTripById(id: UUID)
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:80e33fc898f6d5ffa62d785bf28cd6a9c6d1780ba8b77fb887febf542e0f31c6
+size 543

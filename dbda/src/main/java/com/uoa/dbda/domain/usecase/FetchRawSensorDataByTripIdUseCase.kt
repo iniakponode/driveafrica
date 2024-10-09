@@ -1,26 +1,3 @@
-package com.uoa.dbda.domain.usecase
-
-import android.util.Log
-import com.uoa.core.model.RawSensorData
-import com.uoa.core.utils.toDomainModel
-import com.uoa.dbda.repository.UnsafeBehaviourRepositoryImpl
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withContext
-import java.util.UUID
-import javax.inject.Inject
-
-class FetchRawSensorDataByTripIdUseCase @Inject constructor(
-    private val unsafeBehaviourRepositoryImpl: UnsafeBehaviourRepositoryImpl
-) {
-    suspend fun execute(tripId: UUID): Flow<List<RawSensorData>> {
-        return withContext(Dispatchers.IO) {
-            unsafeBehaviourRepositoryImpl.getSensorDataByTripId(tripId)
-                .map { rawSensorDataList ->
-                    Log.i("FetchRawSensorDataByTripIdUseCase", "Number of sensor data: ${rawSensorDataList.size}, tripId: $tripId")
-                    rawSensorDataList.map { it.toDomainModel() }
-                }
-        }
-    }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:db3412d68790c225c45a72cfcb449b68e0f6d599d29ca0a209ec1abc142d6bd7
+size 1001

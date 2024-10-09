@@ -1,36 +1,3 @@
-package com.uoa.sensor.domain.usecases.trip
-
-import android.util.Log
-import com.uoa.core.model.Trip
-import com.uoa.sensor.repository.TripDataRepositoryImpl
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import java.util.Date
-import java.util.UUID
-import javax.inject.Inject
-
-class UpdateTripUseCaseOld @Inject constructor(private val tripRepository: TripDataRepositoryImpl) {
-    suspend operator fun invoke(trip: Trip) {
-        val tripToUpdate=trip.copy(
-            endTime = System.currentTimeMillis(),
-            endDate = Date()
-        )
-        tripRepository.updateTrip(tripToUpdate)
-    }
-}
-
-class UpdateTripUseCase @Inject constructor(private val tripRepository: TripDataRepositoryImpl) {
-    operator fun invoke(tripId: UUID) {
-        CoroutineScope(Dispatchers.IO).launch {
-            val tripToFromdb = tripRepository.getTripById(tripId)
-            val tripToUpdate = tripToFromdb!!.copy(
-                endTime = System.currentTimeMillis(),
-                endDate = Date()
-            )
-            tripRepository.updateTrip(tripToUpdate)
-        }
-        Log.d("TripID", "Trip ended with id: $tripId")
-    }
-}
-
+version https://git-lfs.github.com/spec/v1
+oid sha256:6308d01551494e23b78324deddf18c33174e89f0e4cd101d42092e48cf08c9bb
+size 1200

@@ -1,27 +1,3 @@
-package com.uoa.sensor.presentation.ui.sensornavigation
-
-// write the the code to define the sensor route, navigation builder screen and route screen
-// import SensorControlScreen
-// import SensorDataCollectionScreen
-import android.os.Build
-import androidx.annotation.RequiresApi
-import androidx.compose.runtime.Composable
-import androidx.navigation.NavController
-import androidx.navigation.NavGraphBuilder
-import androidx.navigation.compose.composable
-import com.uoa.sensor.presentation.ui.SensorControlScreen
-import com.uoa.sensor.presentation.viewModel.SensorViewModel
-import com.uoa.sensor.presentation.viewModel.TripViewModel
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.uoa.sensor.presentation.ui.SensorControlScreenRoute
-
-const val SENSOR_CONTROL_SCREEN_ROUTE = "sensorControlScreen"
-fun NavGraphBuilder.sensorControlScreen() {
-    composable(route = SENSOR_CONTROL_SCREEN_ROUTE) {
-        SensorControlScreenRoute(
-            sensorViewModel = hiltViewModel<SensorViewModel>(),
-            tripViewModel = hiltViewModel<TripViewModel>()
-        )
-    }
-}
-
+version https://git-lfs.github.com/spec/v1
+oid sha256:673d8c1a0353692f4d0ec45541cdaf2a577a5d1b47028d156be779b61c2319f7
+size 1085

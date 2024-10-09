@@ -1,8 +1,3 @@
-package com.uoa.core.utils
-
-class Constants {
-    companion object {
-        const val PREFS_NAME = "MyPrefs"
-        const val DRIVER_PROFILE_ID = "driver_profile_id"
-    }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b55f837cf2966da6461b07767852514955d49629605ec1cd9428083f409398e4
+size 175

@@ -1,27 +1,3 @@
-package com.uoa.core.database.entities
-
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.Index
-import androidx.room.PrimaryKey
-import java.util.Date
-import java.util.UUID
-
-@Entity(tableName = "trip_data",
-    foreignKeys = [
-        ForeignKey(entity = DriverProfileEntity::class,
-        parentColumns = ["driverProfileId"],
-        childColumns = ["driverPId"])],
-    indices = [Index(value = ["driverPId"])]
-)
-data class TripEntity(
-    @PrimaryKey(autoGenerate = false)
-    val id: UUID,
-    val driverPId: UUID?,
-    val startDate: Date?,
-    val endDate: Date?,
-    val startTime: Long,
-    var endTime: Long?,
-    var synced: Boolean=false
-    // Other trip data fields
-)
+version https://git-lfs.github.com/spec/v1
+oid sha256:78b023ecf972519a660e155e4da2dbf56b37d3bf7f3ce387c8e08a5ede6756ef
+size 710

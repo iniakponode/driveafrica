@@ -1,9 +1,3 @@
-<project version="4">
-  <component name="ExternalStorageConfigurationManager" enabled="true" />
-  <component name="ProjectRootManager" version="2" languageLevel="JDK_17" default="true" project-jdk-name="jbr-17" project-jdk-type="JavaSDK">
-    <output url="file://$PROJECT_DIR$/build/classes" />
-  </component>
-  <component name="ProjectType">
-    <option name="id" value="Android" />
-  </component>
-</project>
+version https://git-lfs.github.com/spec/v1
+oid sha256:4b6403482e3fe51f07ff95ad5a558c19c3f19befc7d50cb936a66a0f8b5951d4
+size 448

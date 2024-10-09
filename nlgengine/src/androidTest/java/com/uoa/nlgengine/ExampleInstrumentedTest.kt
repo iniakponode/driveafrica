@@ -1,24 +1,3 @@
-package com.uoa.nlgengine
-
-import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.ext.junit.runners.AndroidJUnit4
-
-import org.junit.Test
-import org.junit.runner.RunWith
-
-import org.junit.Assert.*
-
-/**
- * Instrumented test, which will execute on an Android device.
- *
- * See [testing documentation](http://d.android.com/tools/testing).
- */
-@RunWith(AndroidJUnit4::class)
-class ExampleInstrumentedTest {
-    @Test
-    fun useAppContext() {
-        // Context of the app under test.
-        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.uoa.nlgengine.test", appContext.packageName)
-    }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9ab3c4fee87a9b1390022b36602f4cc2ad07c95bbc36eb0855fe91168c0374f0
+size 666

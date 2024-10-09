@@ -1,19 +1,3 @@
-package com.uoa.ml.presentation.di
-
-import com.uoa.ml.Utils
-import dagger.Module
-import dagger.Provides
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
-import javax.inject.Singleton
-
-@Module
-@InstallIn(SingletonComponent::class)
-class MlUtilsModuleProvider {
-
-    @Provides
-    @Singleton
-    fun provideUtils(): Utils {
-        return Utils()
-    }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b057df5f6be679fa5ac5f10e69a82e89d3552499cea60fdf82a93ad2abca433b
+size 381

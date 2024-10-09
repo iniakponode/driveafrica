@@ -1,24 +1,3 @@
-package com.uoa.core.database.entities
-
-import androidx.room.Entity
-import androidx.room.PrimaryKey
-
-@Entity(tableName = "driving_behavior_analysis")
-data class DbdaResultEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int,
-    val userId: String,
-    val tripDataId: Long,
-    val harshAcceleration: Boolean,
-    val harshDeceleration: Boolean,
-    val cornering: Boolean,
-    val speeding: Boolean,
-    val causes: String,
-    val causeUpdated: Boolean,
-    val synced: Boolean,
-    val timestamp: Long,
-    val startDate: String,
-    val endDate: String,
-    val distance: String
-    //... other behavior fields
-
-)
+version https://git-lfs.github.com/spec/v1
+oid sha256:18c30e77a09001dd3beffef1d70798ac1300efff2a7fc58724fff9c5ece37226
+size 623

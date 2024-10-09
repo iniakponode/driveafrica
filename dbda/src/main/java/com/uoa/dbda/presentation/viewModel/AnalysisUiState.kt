@@ -1,16 +1,3 @@
-package com.uoa.dbda.presentation.viewModel
-
-import com.uoa.core.model.UnsafeBehaviourModel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
-import java.util.UUID
-
-data class AnalysisUiState(
-    val startDate: Long? = null,
-    val endDate: Long? = null,
-    val selectedTripId: UUID? = null,
-    val analysisResults: Flow<List<UnsafeBehaviourModel>> = emptyFlow(),
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null
-)
-
+version https://git-lfs.github.com/spec/v1
+oid sha256:8fb621da98593fdc8b806fe71fa35f90a6b5c22e4332f26e7b404fc68753aade
+size 471

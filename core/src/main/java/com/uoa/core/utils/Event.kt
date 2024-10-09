@@ -1,22 +1,3 @@
-package com.uoa.core.utils
-
-class Event<out T>(val content: Any?) {
-    var hasBeenHandled = false
-        private set // Allow external read but not write
-
-    /**
-     * Returns the content and prevents its use again.
-     */
-    fun getContentIfNotHandled(): Any? {
-        if (!hasBeenHandled) {
-            hasBeenHandled = true
-            return content
-        }
-        return null
-    }
-
-    /**
-     * Returns the content, even if it's already been handled.
-     */
-    fun peekContent(): Any? = content
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:5ff86dcb641d54280cc72080a4a87fefee7278ef2d7d758879f1ad8df294b19f
+size 517

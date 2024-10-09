@@ -1,14 +1,3 @@
-package com.uoa.core.network.model.Gemini
-
-data class GeminiRequest(
-    val model: String,
-    val prompt: Prompt,
-    val temperature: Double? = null,
-    val candidateCount: Int? = null,
-    val topK: Int? = null,
-    val topP: Double? = null
-)
-
-data class Prompt(
-    val text: String
-)
+version https://git-lfs.github.com/spec/v1
+oid sha256:cfaad8a54da48b938da9226da3cee59e70ee99fcb08947ad1f3c5176215ae871
+size 290

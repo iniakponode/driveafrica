@@ -1,16 +1,3 @@
-package com.uoa.core.model
-
-import java.util.Date
-import java.util.UUID
-
-data class AIModelInputs(
-    val id: UUID,
-    val tripId: UUID,
-    val timestamp: Long,
-    val date: Date,
-    val hourOfDayMean: Double,
-    val dayOfWeekMean: Float,
-    val speedStd: Float,
-    val courseStd: Float,
-    val accelerationYOriginalMean: Float
-)
+version https://git-lfs.github.com/spec/v1
+oid sha256:8a9b46803f67e860c3d808d53fa875001b920a9d16fa4e479cca63d7177a8cd2
+size 339

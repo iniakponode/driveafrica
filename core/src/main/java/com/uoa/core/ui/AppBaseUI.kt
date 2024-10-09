@@ -1,26 +1,3 @@
-package com.uoa.core.ui
-
-
-//@Composable
-//fun AppBaseUI() {
-//    // set up the base UI for the app with the app bar and the navigation drawer
-//    // to be used in the main activity
-//    val tabs = remember { BottomTabs.values() }
-//    val navController = rememberNavController()
-//    ProvideWindowInsets {
-//        val scaffoldState = rememberScaffoldState()
-//        Scaffold(
-//            scaffoldState = scaffoldState,
-//            topBar = {
-//                AppTopBar()
-//            },
-//            drawerContent = {
-//                AppDrawer()
-//            },
-//            content = {
-//                AppNavHost()
-//            }
-//        )
-//    }
-//
-//}
+version https://git-lfs.github.com/spec/v1
+oid sha256:c1996c19fe9aa650407efa5fa82963cd62286663dea0d72108b33b3dbe3ce6f2
+size 682

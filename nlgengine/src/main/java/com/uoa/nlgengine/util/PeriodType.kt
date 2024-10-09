@@ -1,10 +1,3 @@
-package com.uoa.nlgengine.util
-
-enum class PeriodType {
-    TODAY,
-    THIS_WEEK,
-    LAST_WEEK,
-    CUSTOM_PERIOD,
-    LAST_TRIP,
-    NONE
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a0fde6741431fc574ca9dc3134a087f886dca813091ccb17632eebdd8c33e018
+size 142

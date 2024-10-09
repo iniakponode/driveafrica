@@ -1,26 +1,3 @@
-package com.uoa.driverprofile.repository
-
-import com.uoa.core.database.entities.DrivingTipEntity
-import javax.inject.Inject
-import com.uoa.core.database.daos.DrivingTipDao
-import com.uoa.core.database.repository.DrivingTipRepository
-import kotlinx.coroutines.flow.Flow
-import java.time.LocalDate
-import java.util.UUID
-
-class DrivingTipRepositoryImpl @Inject constructor(
-    private val tipsDAO: DrivingTipDao
-): DrivingTipRepository {
-    override suspend fun fetchDrivingTipsByProfileId(profileId: UUID): Flow<List<DrivingTipEntity>> {
-        return tipsDAO.getDrivingTipByProfileId(profileId)
-    }
-    override suspend fun fetchDrivingTipById(tipId: UUID): DrivingTipEntity {
-        return tipsDAO.getDrivingTipById(tipId)
-    }
-    override suspend fun insertDrivingTip(drivingTipEntity: DrivingTipEntity) {
-        tipsDAO.insertDrivingTip(drivingTipEntity)
-    }
-    override suspend fun fetchDrivingTipsByDate(date: LocalDate): List<DrivingTipEntity> {
-        return tipsDAO.getDrivingTipByDate(date)
-    }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:07a3e154b9a11a0ee344d7202eac439b678a10edff89b22a38974e69208d6c50
+size 1150

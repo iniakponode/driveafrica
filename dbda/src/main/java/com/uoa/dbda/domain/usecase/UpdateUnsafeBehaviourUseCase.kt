@@ -1,11 +1,3 @@
-package com.uoa.dbda.domain.usecase
-
-import com.uoa.core.model.UnsafeBehaviourModel
-import com.uoa.dbda.repository.UnsafeBehaviourRepositoryImpl
-
-class UpdateUnsafeBehaviourUseCase(private val repository: UnsafeBehaviourRepositoryImpl) {
-
-    suspend fun execute(unsafeBehaviour: UnsafeBehaviourModel) {
-        repository.updateUnsafeBehaviour(unsafeBehaviour)
-    }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:05633e35965d75120e391897c375c1fe8a75a2ea2c13555fa8bda10469b58279
+size 370

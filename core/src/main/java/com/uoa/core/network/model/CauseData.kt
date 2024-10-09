@@ -1,20 +1,3 @@
-package com.uoa.core.network.model
-
-import com.google.firebase.dataconnect.serializers.UUIDSerializer
-import kotlinx.serialization.Serializable
-import java.util.UUID
-
-data class CauseData(
-    @Serializable(with = UUIDSerializer::class)
-    val id: UUID,
-    @Serializable
-    val name: String,
-    @Serializable(with = UUIDSerializer::class)
-    val unsafeBehaviourId: UUID,
-    @Serializable
-    val description: String,
-    @Serializable
-    val createdAt: String,
-    @Serializable
-    val updatedAt: String
-)
+version https://git-lfs.github.com/spec/v1
+oid sha256:e1c8f98931461e23241750d4463d68e7fd66761695c875d9c9ca111c0c47a430
+size 514

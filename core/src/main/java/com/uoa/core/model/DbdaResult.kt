@@ -1,21 +1,3 @@
-//package com.uoa.core.model
-//
-//data class DbdaResult(
-//    val id: Int,
-//    val userId: String,
-//    val tripDataId: Long,
-//    val harshAcceleration: Boolean,
-//    val harshDeceleration: Boolean,
-//    val tailgaiting: Boolean,
-//    val speeding: Boolean,
-//    val causes: String,
-//    val causeUpdated: Boolean,
-//    val synced: Boolean,
-//    val timestamp: Long,
-//    val startDate: String,
-//    val endDate: String,
-//    val duration: String,
-//    val distance: String
-//    //... other behavior fields
-//)
-
+version https://git-lfs.github.com/spec/v1
+oid sha256:536901a1c9780e11905b361aa35a396e95e9e2d05c2acd27fd36adbc2e96ac7b
+size 530

@@ -1,11 +1,3 @@
-package com.uoa.sensor.domain.usecases.trip
-
-import com.uoa.core.model.Trip
-import com.uoa.sensor.repository.TripDataRepositoryImpl
-import javax.inject.Inject
-
-class InsertTripUseCase @Inject constructor(private val tripRepository: TripDataRepositoryImpl) {
-    suspend operator fun invoke(trip: Trip) {
-        return tripRepository.insertTrip(trip)
-    }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:59d12635233f2027c628f0f6d097df20b7425e3317e503672fd6c32273067de2
+size 358

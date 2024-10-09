@@ -1,24 +1,3 @@
-package com.uoa.core.network.di
-
-import com.uoa.core.network.DaDispatchers
-import com.uoa.core.network.Dispatcher
-import dagger.Module
-import dagger.Provides
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
-import javax.inject.Qualifier
-import javax.inject.Singleton
-
-@Module
-@InstallIn(SingletonComponent::class)
-object DispatchersModule {
-    @Provides
-    @Dispatcher(DaDispatchers.IO)
-    fun providesIODispatcher(): CoroutineDispatcher = Dispatchers.IO
-
-    @Provides
-    @Dispatcher(DaDispatchers.Default)
-    fun providesDefaultDispatcher(): CoroutineDispatcher = Dispatchers.Default
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:2567bb80d13d90ffebe4dd2775ac13cc031112be84a7e0eb2a8e69c34dd1929a
+size 705

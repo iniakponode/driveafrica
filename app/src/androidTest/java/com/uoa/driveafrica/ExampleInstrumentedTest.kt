@@ -1,24 +1,3 @@
-package com.uoa.driveafrica
-
-import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.ext.junit.runners.AndroidJUnit4
-
-import org.junit.Test
-import org.junit.runner.RunWith
-
-import org.junit.Assert.*
-
-/**
- * Instrumented test, which will execute on an Android device.
- *
- * See [testing documentation](http://d.android.com/tools/testing).
- */
-@RunWith(AndroidJUnit4::class)
-class ExampleInstrumentedTest {
-    @Test
-    fun useAppContext() {
-        // Context of the app under test.
-        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.uoa.driveafrica", appContext.packageName)
-    }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:85da50ae55ef5d33b90ddbed24fa8165aa474de66e0ecb5d65e14f875b8d4b4e
+size 665

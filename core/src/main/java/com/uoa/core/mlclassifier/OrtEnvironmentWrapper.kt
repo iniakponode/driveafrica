@@ -1,12 +1,3 @@
-package com.uoa.core.mlclassifier
-
-import ai.onnxruntime.OrtEnvironment
-import ai.onnxruntime.OrtSession
-
-class OrtEnvironmentWrapper {
-    val ortEnvironment: OrtEnvironment = OrtEnvironment.getEnvironment()
-
-    fun createSession(modelBytes: ByteArray): OrtSession {
-        return ortEnvironment.createSession(modelBytes)
-    }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:46dff4ea34ef30ee66d074649e81f70bcaf4b4278fe0afd6b9566f6307899aed
+size 332

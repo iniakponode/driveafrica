@@ -1,20 +1,3 @@
-package com.uoa.core.ui
-
-
-import kotlinx.serialization.Serializable
-
-@Serializable
-data class Home(val driverProfileId: String)
-
-@Serializable
-object Reports
-
-@Serializable
-object DrivingTips
-
-@Serializable
-object RecordTrip
-
-@Serializable
-object Analysis
-
+version https://git-lfs.github.com/spec/v1
+oid sha256:4eaa03b32adf826174f4ed9effc02c3c65c869bf0ef2450f5740a4d8105e4ba8
+size 257

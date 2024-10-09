@@ -1,17 +1,3 @@
-package com.uoa.core.network.apiservices
-
-import com.uoa.core.network.model.chatGPT.OSMResponse
-import retrofit2.http.GET
-import retrofit2.http.Query
-import retrofit2.Call
-
-interface OSMApiService {
-    @GET("reverse")
-    suspend fun getReverseGeocoding(
-        @Query("format") format: String,
-        @Query("lat") lat: Long,
-        @Query("lon") lon: Long,
-        @Query("zoom") zoom: Int,
-        @Query("addressdetails") addressdetails: Int
-    ): OSMResponse
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:20f0d8728b9604909859ce8bea814a719cbf946d850f1812cb3e3370e4a114f8
+size 471

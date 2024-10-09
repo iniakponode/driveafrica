@@ -1,35 +1,3 @@
-package com.uoa.core.database.daos
-
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.Query
-import androidx.room.Update
-import com.uoa.core.database.entities.RawSensorDataEntity
-import com.uoa.core.database.entities.SensorEntity
-
-@Dao
-interface SensorDataDao {
-    @Insert
-    suspend fun insertSensorData(sensorEntity: SensorEntity): Long
-
-    @Update
-    suspend fun updateSensorData(sensorEntity: SensorEntity)
-
-    @Query("SELECT * FROM sensor_data")
-    suspend fun getAllSensorData(): List<SensorEntity>
-
-    @Query("SELECT * FROM sensor_data WHERE tripDataId = :tripDataId")
-    suspend fun getSensorDataByTripId(tripDataId: Long): List<SensorEntity>
-
-    @Query("SELECT * FROM sensor_data WHERE timestamp BETWEEN :startTime AND :endTime")
-    suspend fun getSensorDataByTimePeriod(startTime: Long, endTime: Long): List<SensorEntity>
-
-    @Query("SELECT * FROM raw_sensor_data WHERE sync = :synced")
-    suspend fun getSensorDataBySyncStatus(synced: Boolean): List<RawSensorDataEntity>
-
-    @Query("UPDATE sensor_data SET synced=:synced WHERE id = :id")
-    suspend fun updateUploadStatus(id: Long, synced: Boolean)
-
-    @Query("DELETE FROM sensor_data WHERE id = :id")
-    suspend fun deleteSensorDataById(id: Long)
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:c9b603ce768e127ca62fe3e0a1c87ec401bf3a57e8d6b29cac5e4f990347775c
+size 1250

@@ -1,14 +1,3 @@
-package com.uoa.core.model
-
-import java.util.Date
-import java.util.UUID
-
-data class Trip(
-    val id: UUID,
-    val driverPId: UUID?,
-    val startTime: Long,
-    var endTime: Long?,
-    val startDate: Date?,
-    var endDate: Date?,
-    var synced: Boolean=false
-)
+version https://git-lfs.github.com/spec/v1
+oid sha256:734c814ad9b31bd00a618d43a9ff5b71d1acd0b2114d4dae8dcb51c75c9d3b37
+size 265

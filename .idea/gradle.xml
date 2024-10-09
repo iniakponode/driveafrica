@@ -1,25 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="GradleMigrationSettings" migrationVersion="1" />
-  <component name="GradleSettings">
-    <option name="linkedExternalProjectsSettings">
-      <GradleProjectSettings>
-        <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleJvm" value="#GRADLE_LOCAL_JAVA_HOME" />
-        <option name="modules">
-          <set>
-            <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/app" />
-            <option value="$PROJECT_DIR$/core" />
-            <option value="$PROJECT_DIR$/dbda" />
-            <option value="$PROJECT_DIR$/driverprofile" />
-            <option value="$PROJECT_DIR$/ml" />
-            <option value="$PROJECT_DIR$/nlgengine" />
-            <option value="$PROJECT_DIR$/sensor" />
-          </set>
-        </option>
-        <option name="resolveExternalAnnotations" value="false" />
-      </GradleProjectSettings>
-    </option>
-  </component>
-</project>
+version https://git-lfs.github.com/spec/v1
+oid sha256:e4fe811875179cbf3446b386d3941499fbf0255668961558caf52a662b058420
+size 1071

@@ -1,16 +1,3 @@
-package com.uoa.sensor.presentation.di
-import androidx.hilt.work.HiltWorkerFactory
-import androidx.work.WorkerFactory
-import dagger.Module
-import dagger.Provides
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
-import javax.inject.Singleton
-
-@Module
-@InstallIn(SingletonComponent::class)
-object WorkerModule {
-    @Provides
-    @Singleton
-    fun provideWorkerFactory(workerFactory: HiltWorkerFactory): WorkerFactory = workerFactory
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:03a259e0cd942c469c267633cd06a3b23c11e88bfcb63c4d5d800168c1a023bb
+size 463

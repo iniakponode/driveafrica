@@ -1,17 +1,3 @@
-package com.uoa.sensor.utils
-
-import android.hardware.Sensor
-
-object GetSensorTypeNameUtil {
-    fun getSensorTypeName(sensorType: Int): String {
-        return when (sensorType) {
-            Sensor.TYPE_ACCELEROMETER -> "Accelerometer"
-            Sensor.TYPE_LINEAR_ACCELERATION -> "Linear Acceleration"
-            Sensor.TYPE_GYROSCOPE -> "Gyroscope"
-            Sensor.TYPE_ROTATION_VECTOR -> "Rotation Vector"
-            Sensor.TYPE_MAGNETIC_FIELD -> "Magnetometer"
-            Sensor.TYPE_GRAVITY -> "Gravity"
-            else -> "Unknown"
-        }
-    }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ee0651e6c0d8ec149888343677f7e94c2685af693e8b84a93d0b74ea71521cd8
+size 566

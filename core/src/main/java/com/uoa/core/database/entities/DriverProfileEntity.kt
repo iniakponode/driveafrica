@@ -1,18 +1,3 @@
-package com.uoa.core.database.entities
-
-import androidx.room.Entity
-import androidx.room.Index
-import androidx.room.PrimaryKey
-import java.util.UUID
-// define the entity for the driver profile
-@Entity(tableName = "driver_profile",
-    indices = [Index(value = ["driverProfileId"])]
-)
-data class DriverProfileEntity(
-// define driver profile id
-    @PrimaryKey(autoGenerate = false)
-    val driverProfileId: UUID,
-// define driver email
-    val email: String,
-    val sync: Boolean = false
-)
+version https://git-lfs.github.com/spec/v1
+oid sha256:3fa3b4e4555a7eabddb5be58886d204877f17388c7c8e912495fd7f6e5c15488
+size 491

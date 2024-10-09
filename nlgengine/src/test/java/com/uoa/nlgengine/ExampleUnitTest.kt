@@ -1,17 +1,3 @@
-package com.uoa.nlgengine
-
-import org.junit.Test
-
-import org.junit.Assert.*
-
-/**
- * Example local unit test, which will execute on the development machine (host).
- *
- * See [testing documentation](http://d.android.com/tools/testing).
- */
-class ExampleUnitTest {
-    @Test
-    fun addition_isCorrect() {
-        assertEquals(4, 2 + 2)
-    }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:7fc7bf847f33e19bd98c1732bfc5d7a49e3dcff93235749874b1cbdb360c9cf0
+size 341

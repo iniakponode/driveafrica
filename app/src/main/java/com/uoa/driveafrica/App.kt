@@ -1,17 +1,3 @@
-package com.uoa.driveafrica
-
-import android.app.Application
-import androidx.hilt.work.HiltWorkerFactory
-import androidx.work.Configuration
-import dagger.hilt.android.HiltAndroidApp
-import javax.inject.Inject
-
-@HiltAndroidApp
-class App : Application(), Configuration.Provider {
-
-    @Inject lateinit var workerFactory: HiltWorkerFactory
-    override val workManagerConfiguration: Configuration
-        get() = Configuration.Builder()
-            .setWorkerFactory(workerFactory)
-            .build()
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:686511fc22ff5b8407df5bed820c57ec97dfeeef127a366384669ae46552efb7
+size 501

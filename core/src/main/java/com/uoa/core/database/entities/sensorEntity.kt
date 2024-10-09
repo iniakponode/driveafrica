@@ -1,34 +1,3 @@
-package com.uoa.core.database.entities
-
-import androidx.room.Entity
-import androidx.room.PrimaryKey
-
-@Entity(
-    tableName = "sensor_data",
-
-    )
-data class SensorEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
-    val tripDataId: Long,
-    val timestamp: Long,
-    val synced: Boolean=false,
-    val accelerometerX: Float,
-    val accelerometerY: Float,
-    val accelerometerZ: Float,
-    val gyroscopeX: Float,
-    val gyroscopeY: Float,
-    val gyroscopeZ: Float,
-    val magnetometerX: Float,
-    val magnetometerY: Float,
-    val magnetometerZ: Float,
-    val rotationVectorX: Float,
-    val rotationVectorY: Float,
-    val rotationVectorZ: Float,
-    val rotationVectorScalar: Float,
-    val linearAccelerationX: Float,
-    val linearAccelerationY: Float,
-    val linearAccelerationZ: Float,
-    val speed: Float,
-    // Other sensor data fields
-)
+version https://git-lfs.github.com/spec/v1
+oid sha256:01a53cd65813b781272da9a09e006b7d3af9d4fda0e510a7d4a1332a28919725
+size 874

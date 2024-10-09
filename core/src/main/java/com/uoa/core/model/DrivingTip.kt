@@ -1,17 +1,3 @@
-package com.uoa.core.model
-
-import java.time.LocalDate
-import java.util.UUID
-
-data class DrivingTip(
-val tipId: UUID,
-val title: String,
-val meaning: String?=null,
-val penalty: String?=null,
-val law: String?=null,
-val hostility: String,
-val summaryTip: String?=null,
-val date:LocalDate,
-val sync: Boolean = false,
-val profileId: UUID
-)
+version https://git-lfs.github.com/spec/v1
+oid sha256:fc005c7ad4a78304cf71d3ba6f7993805fdbcabb862d5bda20792dfe3da41890
+size 384

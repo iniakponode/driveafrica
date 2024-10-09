@@ -1,24 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="deploymentTargetSelector">
-    <selectionStates>
-      <SelectionState runConfigName="app">
-        <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2024-09-05T03:18:24.747739400Z">
-          <Target type="DEFAULT_BOOT">
-            <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\r02it21\.android\avd\Small_Phone.avd" />
-            </handle>
-          </Target>
-        </DropdownSelection>
-        <DialogSelection />
-      </SelectionState>
-      <SelectionState runConfigName="dbda">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
-      <SelectionState runConfigName="sensor">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
-    </selectionStates>
-  </component>
-</project>
+version https://git-lfs.github.com/spec/v1
+oid sha256:f6baaaefeae8ae65dbfb8e5c547a94999a9d72a27d8a40c2104ad104ff3f3aeb
+size 1041

@@ -1,17 +1,3 @@
-package com.uoa.sensor.presentation.di
-
-import com.uoa.sensor.hardware.HardwareModule
-import com.uoa.sensor.worker.SensorWorker
-import dagger.Module
-import dagger.Provides
-import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
-import dagger.hilt.components.SingletonComponent
-
-//@Module
-//@InstallIn(SingletonComponent::class)
-//object SensorWorkerModule {
-//    // Add your WorkerModule bindings here
-//    @Provides
-//    fun provideSensorWorker(@ApplicationContext context: ApplicationContext, hardwareModule: HardwareModule) = SensorWorker(context,hardwareModule)
-//}
+version https://git-lfs.github.com/spec/v1
+oid sha256:d12b8788cc72fce035e749c383048b0657082de73aeaf9ed6e0b52da03ff46b3
+size 602

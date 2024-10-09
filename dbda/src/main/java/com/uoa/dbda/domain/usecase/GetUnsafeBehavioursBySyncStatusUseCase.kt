@@ -1,16 +1,3 @@
-package com.uoa.dbda.domain.usecase
-
-
-import com.uoa.core.model.UnsafeBehaviourModel
-import com.uoa.core.utils.toDomainModel
-import com.uoa.dbda.repository.UnsafeBehaviourRepositoryImpl
-import javax.inject.Inject
-
-class GetUnsafeBehavioursBySyncStatusUseCase @Inject constructor(
-    private val repository: UnsafeBehaviourRepositoryImpl
-) {
-    suspend fun execute(synced: Boolean): List<UnsafeBehaviourModel> {
-        val unsafeBehaviourModel= repository.getUnsafeBehavioursBySyncStatus(synced)
-        return unsafeBehaviourModel.map { it.toDomainModel() }
-    }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6fe82af5bee9388aef803ecf2e790dda2235e65e984cc6999bbbe7a3ee06bac7
+size 569

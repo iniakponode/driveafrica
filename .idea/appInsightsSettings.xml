@@ -1,23 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="AppInsightsSettings">
-    <option name="tabSettings">
-      <map>
-        <entry key="Android Vitals">
-          <value>
-            <InsightsFilterSettings>
-              <option name="connection">
-                <ConnectionSetting>
-                  <option name="appId" value="com.uoa.hafeedbes" />
-                </ConnectionSetting>
-              </option>
-              <option name="signal" value="SIGNAL_UNSPECIFIED" />
-              <option name="timeIntervalDays" value="SEVEN_DAYS" />
-              <option name="visibilityType" value="ALL" />
-            </InsightsFilterSettings>
-          </value>
-        </entry>
-      </map>
-    </option>
-  </component>
-</project>
+version https://git-lfs.github.com/spec/v1
+oid sha256:1ee2a1d62e8c200039a70277885f5e8de1f29866567d0b80b755827a700e35a7
+size 763

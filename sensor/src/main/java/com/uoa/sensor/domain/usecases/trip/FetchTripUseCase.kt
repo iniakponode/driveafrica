@@ -1,9 +1,3 @@
-package com.uoa.sensor.domain.usecases.trip
-
-import com.uoa.sensor.repository.TripDataRepositoryImpl
-import java.util.UUID
-import javax.inject.Inject
-
-class FetchTripUseCase @Inject constructor(private val tripRepository: TripDataRepositoryImpl) {
-    suspend operator fun invoke(value: UUID) = tripRepository.getTripById(value)
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:93a7efa5e2ef859cd8317ee277a161bb71d6e4a30dc4957d8e53a430d48311f5
+size 330

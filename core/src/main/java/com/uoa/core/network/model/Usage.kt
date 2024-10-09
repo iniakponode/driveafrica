@@ -1,7 +1,3 @@
-package com.uoa.core.network.model
-
-//data class Usage(
-//    val prompt_tokens: Int,
-//    val completion_tokens: Int,
-//    val total_tokens: Int
-//)
+version https://git-lfs.github.com/spec/v1
+oid sha256:442001be2cad494e2c4a129956dff667b4682b9be1f5fbed2fe4ffc3f5329d7b
+size 152

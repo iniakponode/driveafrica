@@ -1,5 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-</manifest>
+version https://git-lfs.github.com/spec/v1
+oid sha256:08437bf01ef29c7b4df8041049c09221c716d2e90481584fa9370c84262ff38d
+size 200

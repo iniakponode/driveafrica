@@ -1,15 +1,3 @@
-package com.uoa.core.network.apiservices
-
-import com.uoa.core.network.model.DrivingBehaviourResponse
-import retrofit2.Call
-import retrofit2.http.GET
-import retrofit2.http.Path
-import java.util.UUID
-
-interface InAppApiService {
-
-    @GET("drivingBehaviour/{id}")
-    fun getDrivingBehaviour(@Path("id") id: UUID): Call<DrivingBehaviourResponse>
-
-    // Add other endpoints as needed
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:cc3c3ec671abdd680b4a139668f6caac031c04ba1308a7fe957334260d689993
+size 383

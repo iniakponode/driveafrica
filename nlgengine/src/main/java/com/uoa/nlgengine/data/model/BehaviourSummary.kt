@@ -1,13 +1,3 @@
-package com.uoa.nlgengine.data.model
-
-import java.time.LocalDate
-
-data class BehaviourSummary(
-    val date: LocalDate,
-    val location: String,
-    val hour: Int,
-    val totalBehaviors: Int,
-    val behaviorCounts: Map<String, Int>,
-    val mostFrequentBehavior: String,
-    val alcoholInfluenceCount: Int
-)
+version https://git-lfs.github.com/spec/v1
+oid sha256:49b26461497e34ca56bdb6c1acba7b47b4e30b865fe958fd5e36d4fe5662070e
+size 311

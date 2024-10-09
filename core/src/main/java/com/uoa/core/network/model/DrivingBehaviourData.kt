@@ -1,27 +1,3 @@
-package com.uoa.core.network.model
-
-import com.google.firebase.dataconnect.serializers.UUIDSerializer
-import kotlinx.serialization.Serializable
-import java.util.Date
-import java.util.UUID
-
-data class DrivingBehaviourData(
-    @Serializable(with = UUIDSerializer::class)
-    val id: UUID,
-    @Serializable(with = UUIDSerializer::class)
-    val tripId: UUID,
-    @Serializable(with = UUIDSerializer::class)
-    val locationId: UUID?,
-    @Serializable
-    val behaviorType: String,
-    @Serializable
-    val severity: Float,
-    @Serializable
-    val timestamp: Long,
-    @Serializable
-    val date: Date,
-    @Serializable
-    val synced: Boolean=false,
-    @Serializable
-    val causes: List<CauseData>
-)
+version https://git-lfs.github.com/spec/v1
+oid sha256:322e3c160ad29055fa4a7b2cfe5a0062c795547388ac751f1401dee7e55bc43c
+size 706

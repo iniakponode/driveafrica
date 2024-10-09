@@ -1,20 +1,3 @@
-package com.uoa.sensor.presentation.di
-
-import android.content.Context
-import androidx.work.WorkManager
-import dagger.Module
-import dagger.Provides
-import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
-import dagger.hilt.components.SingletonComponent
-import javax.inject.Singleton
-
-@Module
-@InstallIn(SingletonComponent::class)
-object WorkManagerModule {
-    @Provides
-    @Singleton
-    fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
-        return WorkManager.getInstance(context)
-    }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:47370d0fbb6dcc7137b98026b19cc9fa955897309b9543aba47e0e35f41cac6d
+size 551

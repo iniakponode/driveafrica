@@ -6,8 +6,9 @@ import java.time.LocalDate
 import java.util.UUID
 
 interface DrivingTipRepository {
-    suspend fun fetchDrivingTipsByProfileId(profileId: UUID): Flow<List<DrivingTipEntity>>
+    suspend fun fetchDrivingTipsByProfileId(profileId: UUID): List<DrivingTipEntity>
     suspend fun fetchDrivingTipById(tipId: UUID): DrivingTipEntity
     suspend fun insertDrivingTip(drivingTipEntity: DrivingTipEntity)
     suspend fun fetchDrivingTipsByDate(date: LocalDate): List<DrivingTipEntity>
+    suspend fun updateDrivingTip(drivingTipEntity: DrivingTipEntity)
 }

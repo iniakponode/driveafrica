@@ -13,7 +13,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-@RequiresApi(Build.VERSION_CODES.O)
 @HiltViewModel
 class UnsafeBehaviourViewModel @Inject constructor(
     private val analyzeUnsafeBehaviorUseCase: AnalyzeUnsafeBehaviorUseCase,

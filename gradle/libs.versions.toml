@@ -13,6 +13,7 @@ androidxComposeBom = "2024.09.00"
 androidxComposeMaterial = "1.7.0"
 androidxComposeCompiler = "1.7.2.0"
 androidxComposeUiTest = "1.7.0"
+pdfBox="2.0.27.0"
 androidxComposeMaterial3Adaptive = "1.0.0"
 androidxComposeRuntimeTracing = "1.0.0-beta01"
 androidxCore = "1.13.1"
@@ -104,9 +105,11 @@ generativeaiVersion = "0.7.0"
 junitJupiterVersion = "5.9.3"
 firebaseDataconnect = "16.0.0-alpha05"
 uiDesktopVersion = "1.7.0"
+androidxUiDesktop = "1.7.0"
 #composePreviewRenderer = "0.0.1-alpha01"
 
 [libraries]
+pdfBox = { group = "com.tom-roush", name = "pdfbox-android", version.ref = "pdfBox" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidxActivity" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidxAppCompat" }
 microsoft-onnx-runtime = { group = "com.microsoft.onnxruntime", name = "onnxruntime-android", version.ref = "onnx-runtime" }
@@ -224,11 +227,10 @@ androidx-runtime-livedata = { group = "androidx.compose.runtime", name = "runtim
 firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
 androidx-ui-test-junit4-android = { group = "androidx.compose.ui", name = "ui-test-junit4-android", version.ref = "uiTestJunit4Android" }
 androidx-navigation-runtime-ktx = { group = "androidx.navigation", name = "navigation-runtime-ktx", version.ref = "navigationRuntimeKtx" }
-#androidx-ui-desktop = { group = "androidx.compose.ui", name = "ui-desktop", version.ref = "uiDesktop" }
 generative-ai = { group = "com.google.ai.client.generativeai", name = "generativeai", version.ref = "generativeai" }
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junitJupiterVersion" }
 firebase-dataconnect = { group = "com.google.firebase", name = "firebase-dataconnect", version.ref = "firebaseDataconnect" }
-#androidx-ui-desktop = { group = "androidx.compose.ui", name = "ui-desktop", version.ref = "uiDesktopVersion" }
+
 #androidx-compose-material = { group = "androidx.wear.compose", name = "compose-material", version.ref = "composeMaterial" }
 #compose-preview-renderer = { group = "com.android.tools.compose", name = "compose-preview-renderer", version.ref = "composePreviewRenderer" }
 

@@ -1,6 +1,7 @@
 package com.uoa.dbda.repository
 
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import com.uoa.core.database.daos.RawSensorDataDao
 import com.uoa.core.database.daos.UnsafeBehaviourDao
@@ -95,9 +96,16 @@ class UnsafeBehaviourRepositoryImpl @Inject constructor(
             }
     }
 
+    override fun getUnsafeBehavioursForTips(): Flow<List<UnsafeBehaviourModel>> {
+        return unsafeBehaviourDao.getUnsafeBehavioursForTips()
+            .map { entityList ->
+                Log.d("UnsafeBehaviourRepositoryImpl", "Fetched ${entityList.size} unsafe behaviours for tips")
+                val filteredList = entityList.filter { it.locationId != null }
+                Log.d("UnsafeBehaviourRepositoryImpl", "Filtered list size: ${filteredList.size}")
+                filteredList.map { it.toDomainModel() }
+            }
+    }
 
-
-    @RequiresApi(Build.VERSION_CODES.O)
     override suspend fun getSensorDataBetweenDates(startDate: LocalDate, endDate: LocalDate): Flow<List<RawSensorDataEntity>> {
 //        val formatter = DateTimeFormatter.ISO_LOCAL_DATE
         return withContext(Dispatchers.IO){

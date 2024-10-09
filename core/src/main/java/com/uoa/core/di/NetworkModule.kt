@@ -1,16 +1,15 @@
 package com.uoa.core.di
 
 import android.content.Context
+import com.google.ai.client.generativeai.GenerativeModel
 import com.google.gson.GsonBuilder
 import com.uoa.core.BuildConfig
 import com.uoa.core.network.NetworkMonitorImpl
 import com.uoa.core.network.apiservices.OSMApiService
 import com.uoa.core.network.apiservices.ChatGPTApiService
 import com.uoa.core.network.apiservices.GeminiApiService
-import com.uoa.core.nlg.lngrepositoryimpl.NLGEngineRepository
+import com.uoa.core.nlg.repository.NLGEngineRepository
 import com.uoa.core.nlg.lngrepositoryimpl.remote.nlgApiRepositoryImpl.NLGEngineRepositoryImpl
-import com.uoa.core.nlg.utils.getGeminiApiKey
-import com.uoa.core.nlg.utils.getGeminiPayload
 import com.uoa.core.utils.internetconnectivity.NetworkMonitor
 import dagger.Module
 import dagger.Provides
@@ -28,7 +27,8 @@ import javax.inject.Singleton
 object NetworkModule {
 
     private const val CHATGPT_BASE_URL = "https://api.openai.com/v1/"
-    private const val GEMINI_BASE_URL = "https://api.gemini.com/v1/"
+    private const val GEMINI_BASE_UR = "https://api.gemini.com/v1/"
+    private const val GEMINI_BASE_URL="https://generativelanguage.googleapis.com/"
     private const val ROAD_ADDRESS_BASE_URL = "https://nominatim.openstreetmap.org/"
     private const val DEFAULT_BASE_URL = "https://afternoon-sands-09358-f3e117e55365.herokuapp.com/"
 
@@ -112,6 +112,12 @@ object NetworkModule {
         return getRetrofitInstance(
             baseUrl = ROAD_ADDRESS_BASE_URL
         ).create(OSMApiService::class.java)
+    }
+
+    @Provides
+    fun provideGenerativeModel(): GenerativeModel {
+        // Initialize and return your GenerativeModel instance here
+        return GenerativeModel("gemini-1.5-flash", apiKey = BuildConfig.GEMINI_API_KEY) // Replace with your actual initialization
     }
 
     // Provide NLGEngineRepository

@@ -4,6 +4,8 @@ package com.uoa.nlgengine.presentation.ui
 // Beutifully designed with Jetpack Compose and scrollable with a back button and navigation
 // to previous screen.
 
+import android.app.Application
+import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -27,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,7 +53,7 @@ fun ReportScreen(
     reportContent: String,
     reportPeriod: Pair<LocalDate, LocalDate>? = null,
     periodType: PeriodType,
-    chartData: List<UnsafeBehaviorChartEntry> = emptyList()
+    chartData: List<UnsafeBehaviorChartEntry> = emptyList(),
 
 ) {
 
@@ -175,9 +178,11 @@ fun ReportScreenRoute(
     endDate: Long,
     chatGPTViewModel: ChatGPTViewModel = hiltViewModel(),
     unsafeBehavioursViewModel: LocalUnsafeBehavioursViewModel = hiltViewModel(),
-    locationAddressViewModel: LocationRoadViewModel = hiltViewModel()
+    locationAddressViewModel: LocationRoadViewModel = hiltViewModel(),
 ) {
     // Convert the start and end date to LocalDate
+    val context = LocalContext
+    val appContext= context.current.applicationContext
     val zoneId = ZoneId.systemDefault()
     val sDate = Instant.ofEpochMilli(startDate).atZone(zoneId).toLocalDate()
     val eDate = Instant.ofEpochMilli(endDate).atZone(zoneId).toLocalDate()
@@ -227,7 +232,7 @@ fun ReportScreenRoute(
 //            Log.d("ReportScreen", "Unsafe behaviours retrieved: ${unsafeBehaviours.size} records")
 
             // Call the ViewModel function to generate the prompt
-            locationAddressViewModel.generatePromptForBehaviours(unsafeBehaviours, periodType)
+            locationAddressViewModel.generatePromptForBehaviours(appContext,unsafeBehaviours, periodType)
         } else {
             Log.i("ReportScreen", "No unsafe behaviours found for the given criteria.")
         }

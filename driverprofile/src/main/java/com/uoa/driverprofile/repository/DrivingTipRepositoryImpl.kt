@@ -11,7 +11,7 @@ import java.util.UUID
 class DrivingTipRepositoryImpl @Inject constructor(
     private val tipsDAO: DrivingTipDao
 ): DrivingTipRepository {
-    override suspend fun fetchDrivingTipsByProfileId(profileId: UUID): Flow<List<DrivingTipEntity>> {
+    override suspend fun fetchDrivingTipsByProfileId(profileId: UUID): List<DrivingTipEntity> {
         return tipsDAO.getDrivingTipByProfileId(profileId)
     }
     override suspend fun fetchDrivingTipById(tipId: UUID): DrivingTipEntity {
@@ -22,5 +22,8 @@ class DrivingTipRepositoryImpl @Inject constructor(
     }
     override suspend fun fetchDrivingTipsByDate(date: LocalDate): List<DrivingTipEntity> {
         return tipsDAO.getDrivingTipByDate(date)
+    }
+    override suspend fun updateDrivingTip(drivingTipEntity: DrivingTipEntity) {
+        tipsDAO.updateDrivingTip(drivingTipEntity)
     }
 }

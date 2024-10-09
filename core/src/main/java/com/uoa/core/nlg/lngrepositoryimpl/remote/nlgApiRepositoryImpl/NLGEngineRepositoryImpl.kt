@@ -1,17 +1,19 @@
 package com.uoa.core.nlg.lngrepositoryimpl.remote.nlgApiRepositoryImpl
 
 import android.content.Context
-import com.uoa.core.nlg.lngrepositoryimpl.NLGEngineRepository
+import android.net.http.HttpException
+import android.os.Build
+import android.util.Log
+import androidx.annotation.RequiresExtension
+import com.uoa.core.nlg.repository.NLGEngineRepository
 import com.uoa.core.network.apiservices.ChatGPTApiService
 import com.uoa.core.network.apiservices.GeminiApiService
 import com.uoa.core.network.apiservices.OSMApiService
-import com.uoa.core.network.model.Gemini.GeminiRequest
 import com.uoa.core.network.model.GeminiResponse
 import com.uoa.core.network.model.chatGPT.ChatGPTResponse
 import com.uoa.core.network.model.chatGPT.OSMResponse
 import com.uoa.core.network.model.chatGPT.RequestBody
 import com.uoa.core.nlg.utils.getGeminiPayload
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.UUID
 import javax.inject.Inject
 
@@ -26,9 +28,20 @@ class NLGEngineRepositoryImpl @Inject constructor(
         return chatGPTApiService.getChatCompletion(requestBody)
     }
 
-    override suspend fun sendGeminiPrompt(context:Context, prompt: String): GeminiResponse {
+    @RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
+    override suspend fun sendGeminiPrompt(context: Context, prompt: String): GeminiResponse {
         val payload = getGeminiPayload(prompt)
-        return geminiApiService.generateText(payload)
+
+        try {
+            val response = geminiApiService.generateText(payload)
+            Log.d("GeminiRepository", "Gemini Response: $response") // Log the response for debugging
+            return response
+        } catch (e: HttpException) {
+            val errorMessage = "HTTP error while sending Gemini prompt: ${e.hashCode()} ${e.message}"
+            Log.e("GeminiRepository", errorMessage, e)
+            // Handle the error appropriately (e.g., show a user-friendly message, retry, etc.)
+            throw e // Re-throw the exception for higher-level handling
+        }
     }
 
     override suspend fun getRoadName(locationID: UUID): OSMResponse {

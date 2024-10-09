@@ -1,12 +1,16 @@
 package com.uoa.driverprofile.domain.usecase
 
+import android.util.Log
 import com.uoa.core.database.entities.DriverProfileEntity
 import com.uoa.core.database.repository.DriverProfileRepository
 import com.uoa.core.database.repository.DrivingTipRepository
+import com.uoa.core.database.repository.UnsafeBehaviourRepository
 import com.uoa.core.model.DrivingTip
+import com.uoa.core.model.UnsafeBehaviourModel
 import com.uoa.core.utils.toDomainModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.util.UUID
@@ -103,17 +107,10 @@ class DeleteDriverProfileByEmailUseCase @Inject constructor(
 
 class GetDrivingTipByProfileIdUseCase @Inject constructor(
     private val drivingTipRepository: DrivingTipRepository
-){
-    suspend fun execute(profileId: UUID):Flow<List<DrivingTip>>{
-        // get driving tips by profile id
-        val drivingTip= withContext(Dispatchers.IO) {
-            drivingTipRepository.fetchDrivingTipsByProfileId(profileId).map{
-                it.map { drivingTipEntity ->
-                    drivingTipEntity.toDomainModel()
-                }
-            }
-        }
-        return drivingTip
+) {
+    suspend fun execute(profileId: UUID): List<DrivingTip> {
+        return drivingTipRepository.fetchDrivingTipsByProfileId(profileId)
+            .map { it.toDomainModel() }
     }
 }
 
@@ -126,6 +123,22 @@ class GetDrivingTipByIdUseCase @Inject constructor(
             drivingTipRepository.fetchDrivingTipById(drivingTipId).toDomainModel()
         }
         return drivingTip
+    }
+}
+
+class GetUnsafeBehavioursForTipsUseCase @Inject constructor(
+    private val unsafeBehaviourRepository: UnsafeBehaviourRepository
+) {
+    suspend fun execute(): List<UnsafeBehaviourModel> {
+        Log.d("GetUnsafeBehavioursForTipsUseCase", "Fetching unsafe behaviours for tips")
+
+        // get unsafe behaviours for tips
+        val unsafeBehaviourList = unsafeBehaviourRepository.getUnsafeBehavioursForTips()
+            .firstOrNull() ?: emptyList()
+
+        Log.d("GetUnsafeBehavioursForTipsUseCase", "Fetched ${unsafeBehaviourList.size} unsafe behaviours")
+
+        return unsafeBehaviourList
     }
 }
 

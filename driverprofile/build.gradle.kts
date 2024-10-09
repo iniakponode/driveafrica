@@ -60,8 +60,8 @@ dependencies {
     implementation(libs.kotlin.coroutines.core)
     implementation(libs.material)
     implementation(libs.navigation.compose)
-//    implementation(libs.androidx.ui.desktop)
     ksp(libs.hilt.compiler)
+    implementation(libs.pdfBox)
 
 
     implementation(libs.androidx.activity.compose)
@@ -91,7 +91,7 @@ dependencies {
     ksp(libs.hilt.ext.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
 
-
+implementation(libs.generative.ai)
     testImplementation(libs.mokito.kotlin)
     testImplementation(libs.mokito.inline)
     testImplementation(libs.junit.jupiter)

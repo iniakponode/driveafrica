@@ -59,12 +59,14 @@ fun DrivingTipEntity.toDomainModel(): DrivingTip {
         title = this.title,
         meaning = this.meaning,
         penalty = this.penalty,
+        fine = this.fine,
         law = this.law,
         hostility = this.hostility!!,
         summaryTip = this.summaryTip,
         profileId = this.profileId,
         date = this.date,
-        sync = this.sync
+        sync = this.sync,
+        llm = this.llm
     )
 }
 
@@ -74,12 +76,14 @@ fun DrivingTip.toEntity(): DrivingTipEntity {
         title = this.title,
         meaning = this.meaning,
         penalty = this.penalty,
+        fine = this.fine,
         law = this.law,
         hostility = this.hostility,
         summaryTip = this.summaryTip,
         profileId = this.profileId,
         date = this.date,
-        sync = this.sync
+        sync = this.sync,
+        llm = this.llm
     )
 }
 

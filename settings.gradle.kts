@@ -19,7 +19,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "driveafrica"
+rootProject.name = "Safe Drive Africa"
 include(":app")
 include(":core")
 include(":dbda")

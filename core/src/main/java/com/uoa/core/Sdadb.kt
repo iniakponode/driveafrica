@@ -9,6 +9,7 @@ import com.uoa.core.database.daos.CauseDao
 import com.uoa.core.database.daos.DbdaResultDao
 import com.uoa.core.database.daos.DriverProfileDAO
 import com.uoa.core.database.daos.DrivingTipDao
+import com.uoa.core.database.daos.EmbeddingDao
 import com.uoa.core.database.daos.LocationDao
 import com.uoa.core.database.entities.DbdaResultEntity
 import com.uoa.core.database.daos.NLGReportDao
@@ -21,6 +22,7 @@ import com.uoa.core.database.daos.UnsafeBehaviourDao
 import com.uoa.core.database.entities.CauseEntity
 import com.uoa.core.database.entities.DriverProfileEntity
 import com.uoa.core.database.entities.DrivingTipEntity
+import com.uoa.core.database.entities.EmbeddingEntity
 import com.uoa.core.database.entities.LocationEntity
 import com.uoa.core.database.entities.RawSensorDataEntity
 import com.uoa.core.database.entities.UnsafeBehaviourEntity
@@ -37,8 +39,9 @@ import com.uoa.core.model.DriverProfile
                         UnsafeBehaviourEntity::class,
                         DriverProfileEntity::class,
                         DrivingTipEntity::class,
-                        CauseEntity::class],
-                        version = 16)
+                        CauseEntity::class,
+                     EmbeddingEntity::class],
+                        version = 19)
 @TypeConverters(Converters::class)
 abstract class Sdaddb : RoomDatabase() {
     abstract fun sensorDataDao(): SensorDataDao
@@ -51,5 +54,6 @@ abstract class Sdaddb : RoomDatabase() {
     abstract fun driverProfileDao(): DriverProfileDAO
     abstract fun drivingTipDao(): DrivingTipDao
     abstract fun causeDao(): CauseDao
+    abstract fun embeddingDao(): EmbeddingDao
 //...
 }

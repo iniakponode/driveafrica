@@ -1,18 +1,22 @@
 package com.uoa.driverprofile.presentation.viewmodel
 
+import android.app.Application
+import android.content.Context
+import android.util.Log
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uoa.core.database.entities.DriverProfileEntity
-import com.uoa.core.database.repository.DriverProfileRepository
+import com.uoa.core.database.entities.EmbeddingEntity
+import com.uoa.core.nlg.repository.EmbeddingUtilsRepository
+import com.uoa.core.nlg.RAGEngine
+import com.uoa.core.utils.EmbeddingUtils.serializeEmbedding
+import com.uoa.driverprofile.R
 import com.uoa.driverprofile.domain.usecase.DeleteDriverProfileByEmailUseCase
 import com.uoa.driverprofile.domain.usecase.GetDriverProfileByEmailUseCase
 import com.uoa.driverprofile.domain.usecase.InsertDriverProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
@@ -23,51 +27,115 @@ class DriverProfileViewModel @Inject constructor(
     private val insertDriverProfileUseCase: InsertDriverProfileUseCase,
     private val getDriverProfileByEmailUseCase: GetDriverProfileByEmailUseCase,
     private val deleteDriverProfileByEmailUseCase: DeleteDriverProfileByEmailUseCase,
+    private val embeddingUtilsRepository: EmbeddingUtilsRepository,
+
+    private val ragEngine: RAGEngine,
+    private val application: Application,
 ) : ViewModel() {
-    private val _email= MutableLiveData<String>()
+
+    private val _email = MutableLiveData<String>()
     val email: MutableLiveData<String> get() = _email
 
     private val _profile_id = MutableLiveData<String>()
     val profile_id: MutableLiveData<String> get() = _profile_id
 
-//    fun insertDriverProfile(profileId:String, em: String) {
-//        viewModelScope.launch {
-//            val driverProfileEntity= DriverProfileEntity(
-//                email = em,
-//                driverProfileId = UUID.fromString(profileId)
-//            )
-//            insertDriverProfileUseCase.execute(driverProfileEntity)
-//        }
-//
-//    }
+    init {
+        Log.d("DriverProfileViewModel", "Initializing DriverProfileViewModel")
+        // Run the embedding generation task during initialization
+        viewModelScope.launch {
+            val all_embeddings = embeddingUtilsRepository.getAllEmbeddings()
+            if (all_embeddings.isEmpty()) {
+                generateAndStorePdfEmbeddings()
+            }
+            else {
+                Log.d("DriverProfileViewModel", "Embeddings already exist in the database")
+            }
+        }
+    }
+
+    // Function to generate and store embeddings in the database
+    private suspend fun generateAndStorePdfEmbeddings() {
+        withContext(Dispatchers.IO) {
+            Log.d("DriverProfileViewModel", "Starting generateAndStorePdfEmbeddings")
+            val context = application.applicationContext
+
+            // Initialize RAGEngine session and tokenizer
+            ragEngine.initialize(context)
+
+            try {
+                // Extract text from PDFs
+                val lawText = ragEngine.extractTextFromPdf(context, R.raw.nat_dr_reg_law)
+                Log.d("DriverProfileViewModel", "Extracted lawText length: ${lawText.length}")
+                val codeText = ragEngine.extractTextFromPdf(context, R.raw.ng_high_way_code)
+                Log.d("DriverProfileViewModel", "Extracted codeText length: ${codeText.length}")
+
+                // Process chunks and store embeddings
+                processAndStoreChunks(lawText, "nat_dr_reg_law")
+                processAndStoreChunks(codeText, "ng_high_way_code")
+                Log.d("DriverProfileViewModel", "Finished generateAndStorePdfEmbeddings")
+            } catch (e: Exception) {
+                Log.e("DriverProfileViewModel", "Error during embedding generation", e)
+            } finally {
+                // Close RAGEngine session
+                ragEngine.close()
+            }
+        }
+    }
+
+    private suspend fun processAndStoreChunks(text: String, sourceType: String) {
+        Log.d("DriverProfileViewModel", "Starting processAndStoreChunks for sourceType: $sourceType")
+        val chunks = ragEngine.chunkText(text)
+        Log.d("DriverProfileViewModel", "Number of chunks to process: ${chunks.size}")
+        chunks.forEachIndexed { index, chunk ->
+            Log.d("DriverProfileViewModel", "Processing chunk $index for sourceType: $sourceType")
+            val embedding = ragEngine.generateEmbeddingFromChunk(chunk)
+            if (embedding.isNotEmpty()) {
+                val embeddingEntity = EmbeddingEntity(
+                    chunkId = UUID.randomUUID(),
+                    chunkText = chunk,
+                    embedding = serializeEmbedding(embedding),
+                    sourceType = sourceType,
+                    sourcePage = index,
+                    createdAt = System.currentTimeMillis()
+                )
+                embeddingUtilsRepository.saveEmbedding(embeddingEntity)
+                Log.d("DriverProfileViewModel", "Saved embedding for chunk $index")
+            } else {
+                Log.e("DriverProfileViewModel", "Failed to generate embedding for chunk $index")
+            }
+        }
+        Log.d("DriverProfileViewModel", "Finished processAndStoreChunks for sourceType: $sourceType")
+    }
 
     fun insertDriverProfile(profileId: UUID, email: String, callback: (Boolean) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
+            Log.d("DriverProfileViewModel", "Inserting driver profile with email: $email")
             val result = runCatching {
-                val driverProfileEntity = DriverProfileEntity(
-                    email = email,
-                    driverProfileId = profileId
-                )
+                val driverProfileEntity = DriverProfileEntity(email = email, driverProfileId = profileId)
                 insertDriverProfileUseCase.execute(driverProfileEntity)
             }
             withContext(Dispatchers.Main) {
+                Log.d("DriverProfileViewModel", "Insert driver profile result: ${result.isSuccess}")
                 callback(result.isSuccess)
             }
         }
     }
 
-
     fun getDriverProfileByEmail() {
         viewModelScope.launch {
-            getDriverProfileByEmailUseCase.execute(email.value.toString())
+            val emailValue = email.value.toString()
+            Log.d("DriverProfileViewModel", "Getting driver profile by email: $emailValue")
+            getDriverProfileByEmailUseCase.execute(emailValue)
         }
     }
 
     fun deleteDriverProfileByEmail() {
         viewModelScope.launch {
-            deleteDriverProfileByEmailUseCase.execute(email.value.toString())
+            val emailValue = email.value.toString()
+            Log.d("DriverProfileViewModel", "Deleting driver profile by email: $emailValue")
+            deleteDriverProfileByEmailUseCase.execute(emailValue)
         }
     }
-
-
 }
+
+

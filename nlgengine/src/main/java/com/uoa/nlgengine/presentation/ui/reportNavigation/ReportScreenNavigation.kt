@@ -11,6 +11,7 @@ import com.uoa.nlgengine.util.PeriodType
 
 const val REPORT_SCREEN_ROUTE = "reportScreen"
 
+
 fun NavGraphBuilder.reportScreen(navController: NavController) {
     composable(
         route = "$REPORT_SCREEN_ROUTE/{startDate}/{endDate}/{periodType}",

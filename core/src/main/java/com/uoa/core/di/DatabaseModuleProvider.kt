@@ -34,6 +34,10 @@ object DatabaseModuleProvider {
 
     @Provides
     @Singleton
+    fun provideEmbeddingDao(db: Sdaddb) = db.embeddingDao()
+
+    @Provides
+    @Singleton
     fun provideNlgReportDao(db: Sdaddb) = db.nlgReportDao()
 
     @Provides

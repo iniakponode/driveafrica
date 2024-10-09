@@ -52,6 +52,8 @@ interface UnsafeBehaviourRepository {
         endDate: LocalDate,
     ): Flow<List<UnsafeBehaviourModel>>
 
+    fun getUnsafeBehavioursForTips(): Flow<List<UnsafeBehaviourModel>>
+
     suspend fun getSensorDataBetweenDates(
         startDate: LocalDate,
         endDate: LocalDate

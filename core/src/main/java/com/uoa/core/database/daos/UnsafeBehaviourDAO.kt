@@ -32,6 +32,9 @@ interface UnsafeBehaviourDao {
     @Query("SELECT * FROM unsafe_behaviour WHERE tripId = :tripID")
     fun getUnsafeBehavioursByTripId(tripID: UUID): Flow<List<UnsafeBehaviourEntity>>
 
+    @Query("SELECT * FROM unsafe_behaviour ORDER BY id DESC LIMIT 20")
+    fun getUnsafeBehavioursForTips(): Flow<List<UnsafeBehaviourEntity>>
+
     @Query("SELECT * FROM unsafe_behaviour WHERE id = :id LIMIT 1")
     suspend fun getUnsafeBehaviourById(id: UUID): UnsafeBehaviourEntity?
 

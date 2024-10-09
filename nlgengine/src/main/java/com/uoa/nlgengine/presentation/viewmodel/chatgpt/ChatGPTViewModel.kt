@@ -3,7 +3,7 @@ package com.uoa.nlgengine.presentation.viewmodel.chatgpt
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.uoa.core.nlg.lngrepositoryimpl.NLGEngineRepository
+import com.uoa.core.nlg.repository.NLGEngineRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -32,7 +32,7 @@ class ChatGPTViewModel @Inject constructor(
                 val requestBody = RequestBody(
                     model = "gpt-3.5-turbo",
                     messages = listOf(Message(role = "user", content = prompt)),
-                    maxTokens = 200,
+                    maxTokens = 500,
                     temperature = 0f
                 )
 

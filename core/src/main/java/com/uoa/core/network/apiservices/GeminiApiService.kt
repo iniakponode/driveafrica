@@ -10,6 +10,6 @@ import retrofit2.http.Headers
 import retrofit2.http.POST
 
 interface GeminiApiService {
-        @POST("v1beta2/models/text-bison-001:generateText")
+        @POST("v1beta/models/gemini-1.5-flash:generateContent")
         suspend fun generateText(@Body payload: GeminiRequest): GeminiResponse
 }

@@ -23,10 +23,12 @@ data class DrivingTipEntity(
     val title: String,
     val meaning: String?=null,
     val penalty: String?=null,
+    val fine: String?=null,
     val law: String?=null,
     val hostility: String?=null,
     val summaryTip: String?=null,
     val sync: Boolean = false,
     val date: LocalDate,
-    val profileId: UUID
+    val profileId: UUID,
+    val llm: String?=null,
 )

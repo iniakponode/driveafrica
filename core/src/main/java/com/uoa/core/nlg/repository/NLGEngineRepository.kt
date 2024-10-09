@@ -1,4 +1,4 @@
-package com.uoa.core.nlg.lngrepositoryimpl
+package com.uoa.core.nlg.repository
 
 import android.content.Context
 import com.uoa.core.network.model.GeminiResponse

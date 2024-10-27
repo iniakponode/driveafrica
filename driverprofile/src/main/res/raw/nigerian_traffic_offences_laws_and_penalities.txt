@@ -1,0 +1,202 @@
+[
+  {
+    "offence": "Driving Without A Licence",
+    "meaning": "Operating a vehicle without a valid driver's licence.",
+    "penalty": "Suspension or bar from holding a driver’s licence depending on the nature and gravity of the offence.",
+    "fine": "N10,000 or imprisonment for up to 1 year.",
+    "law": "Regulation 67(1) of National Road Traffic Regulations.",
+    "source": "National Road Traffic Regulations, National Highway Code"
+  },
+  {
+    "offence": "Driving Under the Influence of Alcohol or Drugs",
+    "meaning": "Operating a vehicle while impaired by alcohol or drugs.",
+    "penalty": "Suspension of driver’s licence for up to 6 months.",
+    "fine": "N50,000 or 18 months imprisonment, or both.",
+    "law": "Regulation 66(1)(a) of National Road Traffic Regulations.",
+    "source": "National Road Traffic Regulations, National Highway Code"
+  },
+  {
+    "offence": "Dangerous or Reckless Driving",
+    "meaning": "Driving a vehicle on a public road in a dangerous or reckless manner.",
+    "penalty": "Suspension or bar from holding a driver’s licence.",
+    "fine": "N50,000 or imprisonment for up to 2 years.",
+    "law": "Regulation 167(1) of National Road Traffic Regulations.",
+    "source": "National Road Traffic Regulations, National Highway Code"
+  },
+  {
+    "offence": "Driving Without Vehicle Particulars",
+    "meaning": "Operating a vehicle without the appropriate vehicle particulars.",
+    "penalty": "Suspension of driver’s licence.",
+    "fine": "N3,000 or 6 months imprisonment.",
+    "law": "Regulation 67(3) of National Road Traffic Regulations.",
+    "source": "National Road Traffic Regulations"
+  },
+  {
+    "offence": "Overloading a Vehicle",
+    "meaning": "Carrying passengers or load beyond the capacity prescribed for the vehicle.",
+    "penalty": "Suspension or bar from holding a driver’s licence.",
+    "fine": "N10,000 or imprisonment for up to 6 months.",
+    "law": "Regulation 168(3) of National Road Traffic Regulations.",
+    "source": "National Road Traffic Regulations, National Highway Code"
+  },
+  {
+    "offence": "Driving With Worn-out Tyres",
+    "meaning": "Operating a vehicle with tyres that are no longer roadworthy.",
+    "penalty": "Suspension of driver’s licence.",
+    "fine": "N3,000.",
+    "law": "Regulation 168(2) of National Road Traffic Regulations.",
+    "source": "National Road Traffic Regulations, National Highway Code"
+  },
+  {
+    "offence": "Using a Phone While Driving",
+    "meaning": "Making or receiving phone calls while driving a vehicle on a public road.",
+    "penalty": "Suspension of driver’s licence.",
+    "fine": "N4,000 or 6 months imprisonment.",
+    "law": "Regulation 166(3) of National Road Traffic Regulations.",
+    "source": "National Road Traffic Regulations"
+  },
+  {
+    "offence": "Failure to Report a Road Crash",
+    "meaning": "Not reporting a crash after being involved in an accident.",
+    "penalty": "Suspension or bar from holding a driver’s licence.",
+    "fine": "N20,000.",
+    "law": "Regulation 163 of National Road Traffic Regulations.",
+    "source": "National Road Traffic Regulations"
+  },
+  {
+    "offence": "Failure to stop for Federal Road Safety Corps (FRSC)",
+    "meaning": "Failure or refusal to stop a vehicle when signaled by an FRSC officer.",
+    "penalty": "N2,000 fine or 6 months imprisonment or both.",
+    "fine": "N2,000",
+    "law": "National Road Traffic Regulations, Section 226",
+    "source": "National Road Traffic Regulations"
+  },
+  {
+    "offence": "Driving with expired or suspended licence",
+    "meaning": "It is an offence to drive when a licence has been suspended, revoked, expired, or cancelled.",
+    "penalty": "Fine or imprisonment as determined by the court.",
+    "fine": "Not specified",
+    "law": "National Road Traffic Regulations, Section 68",
+    "source": "National Road Traffic Regulations"
+  },
+  {
+    "offence": "Driving with damaged or shattered windscreen",
+    "meaning": "Operating a vehicle with a damaged or shattered windscreen.",
+    "penalty": "N3,000 fine.",
+    "fine": "N3,000",
+    "law": "National Road Traffic Regulations, Section D",
+    "source": "National Highway Code, National Road Traffic Regulations"
+  },
+  {
+    "offence": "Overloading",
+    "meaning": "Loading a vehicle beyond the allowed weight or passenger limit.",
+    "penalty": "N10,000 fine.",
+    "fine": "N10,000",
+    "law": "National Highway Code, Section D",
+    "source": "National Highway Code"
+  },
+  {
+    "offence": "Obstruction of marshal on duty",
+    "meaning": "It is an offence to obstruct a marshal in the performance of his duty.",
+    "penalty": "N3,000 fine.",
+    "fine": "N3,000",
+    "law": "National Highway Code, Section D",
+    "source": "National Highway Code"
+  },
+  {
+    "offence": "Driving without proper lights or reflectors",
+    "meaning": "Operating a vehicle without the required lighting systems, especially at night or in conditions of low visibility.",
+    "penalty": "Liable to fines.",
+    "fine": "₦5,000 for each offence.",
+    "law": "Part XV - Vehicle Requirements for Night Driving under National Road Traffic Regulations.",
+    "source": "National Road Traffic Regulations"
+  },
+  {
+    "offence": "Failure to Obey Traffic Light Signals",
+    "meaning": "Failing to stop at a red light or other traffic signals.",
+    "penalty": "Liable to fines or imprisonment.",
+    "fine": "₦5,000 for each violation.",
+    "law": "Part XXVII - Obeying Traffic Lights under National Road Traffic Regulations.",
+    "source": "National Road Traffic Regulations"
+  },
+  {
+      "offence": "Obstruction of marshal on duty",
+      "meaning": "It is an offence to obstruct a marshal in the performance of his duty.",
+      "penalty": "N3,000 fine.",
+      "fine": "N3,000",
+      "law": "National Highway Code, Section D",
+      "source": "National Highway Code"
+    },
+     {
+        "offence": "Failure to Wear a Seatbelt",
+        "meaning": "Failure to wear a seatbelt while driving or while a passenger in a moving vehicle.",
+        "penalty": "Liable to fines.",
+        "fine": "N5,000.",
+        "law": "Part XVI - Seatbelt Regulations under National Road Traffic Regulations.",
+        "source": "National Road Traffic Regulations"
+      },
+        {
+            "offence": "Driving Without a Valid Number Plate",
+            "meaning": "Operating a vehicle without a valid number plate or with a fake number plate.",
+            "penalty": "Liable to fines.",
+            "fine": "N5,000.",
+            "law": "Part XVII - Number Plate Regulations under National Road Traffic Regulations.",
+            "source": "National Road Traffic Regulations"
+        },
+        {
+            "offence": "Driving Without a Valid Vehicle Licence",
+            "meaning": "Operating a vehicle without a valid vehicle licence.",
+            "penalty": "Liable to fines.",
+            "fine": "N3,000.",
+            "law": "Part XVIII - Vehicle Licence Regulations under National Road Traffic Regulations.",
+            "source": "National Road Traffic Regulations"
+        },
+        {
+            "offence": "Driving Without a Valid Insurance Certificate",
+            "meaning": "Operating a vehicle without a valid insurance certificate.",
+            "penalty": "Liable to fines.",
+            "fine": "N5,000.",
+            "law": "Part XIX - Insurance Regulations under National Road Traffic Regulations.",
+            "source": "National Road Traffic Regulations"
+        },
+        {
+            "offence": "Driving Without a Valid Roadworthiness Certificate",
+            "meaning": "Operating a vehicle without a valid roadworthiness certificate.",
+            "penalty": "Liable to fines.",
+            "fine": "N5,000.",
+            "law": "Part XX - Roadworthiness Regulations under National Road Traffic Regulations.",
+            "source": "National Road Traffic Regulations"
+        },
+        {
+            "offence": "Driving Without a Valid Hackney Permit",
+            "meaning": "Operating a vehicle without a valid hackney permit.",
+            "penalty": "Liable to fines.",
+            "fine": "N5,000.",
+            "law": "Part XXI - Hackney Permit Regulations under National Road Traffic Regulations.",
+            "source": "National Road Traffic Regulations"
+        },
+       {
+            "offence": "Speed Limit Violation",
+            "meaning": "Exceeding the prescribed speed limit on any road.",
+            "penalty": "Liable to fines and penalties.",
+            "fine": "N5,000 for each violation.",
+            "law": "Section 35 of the National Road Traffic Regulations.",
+            "source": "National Road Traffic Regulations"
+          },
+          {
+              "offence": "Failure to stop for Federal Road Safety Corps (FRSC)",
+              "meaning": "Failure or refusal to stop a vehicle when signaled by an FRSC officer.",
+              "penalty": "N2,000 fine or 6 months imprisonment or both.",
+              "fine": "N2,000",
+              "law": "National Road Traffic Regulations, Section 226",
+              "source": "National Road Traffic Regulations"
+            },
+            {
+                "offence": "Driving Without Number Plate",
+                "meaning": "Operating a vehicle without a proper number plate or missing vehicle identification number plates.",
+                "penalty": "Fine or imprisonment depending on the circumstances.",
+                "fine": "N3,000 or 6 months imprisonment.",
+                "law": "Regulation 166 of National Road Traffic Regulations.",
+                "source": "National Road Traffic Regulations, National Highway Code"
+              },
+]

@@ -10,7 +10,7 @@ data class DbdaResultEntity(
     val tripDataId: Long,
     val harshAcceleration: Boolean,
     val harshDeceleration: Boolean,
-    val tailgaiting: Boolean,
+    val cornering: Boolean,
     val speeding: Boolean,
     val causes: String,
     val causeUpdated: Boolean,

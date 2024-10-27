@@ -1,22 +1,39 @@
 package com.uoa.core.database.daos
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.uoa.core.database.entities.RawSensorDataEntity
+import com.uoa.core.database.entities.SensorEntity
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
+import java.time.LocalDate
+import java.util.Date
+import java.util.UUID
 
 @Dao
 interface RawSensorDataDao {
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRawSensorData(rawSensorData: RawSensorDataEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRawSensorDataBatch(rawSensorDataList: List<RawSensorDataEntity>)
+
+    @Query("SELECT * FROM raw_sensor_data WHERE tripId = :tripId")
+    fun getRawSensorDataByTripId(tripId: UUID): Flow<List<RawSensorDataEntity>>
+
+    @Query("SELECT * FROM raw_sensor_data WHERE locationId = :locationId")
+    fun getRawSensorDataByLocationId(locationId: UUID): Flow<List<RawSensorDataEntity>>
 
     @Query("SELECT * FROM raw_sensor_data WHERE timestamp >= :start AND timestamp <= :end")
     fun getRawSensorDataBetween(start: Instant, end: Instant): Flow<List<RawSensorDataEntity>>
 
+    @Query("SELECT * FROM raw_sensor_data WHERE sync = :synced")
+    suspend fun getSensorDataBySyncStatus(synced: Boolean): List<RawSensorDataEntity>
+
     @Query("SELECT * FROM raw_sensor_data WHERE id = :id")
-    suspend fun getRawSensorDataById(id: Int): RawSensorDataEntity?
+    suspend fun getRawSensorDataById(id: UUID): RawSensorDataEntity?
 
     @Query("SELECT * FROM raw_sensor_data WHERE sync = 0")
     fun getUnsyncedRawSensorData(): Flow<List<RawSensorDataEntity>>
@@ -26,4 +43,13 @@ interface RawSensorDataDao {
 
     @Query("DELETE FROM raw_sensor_data")
     suspend fun deleteAllRawSensorData()
+
+    @Query("SELECT * FROM raw_sensor_data WHERE date BETWEEN :startDate AND :endDate")
+    fun getSensorDataBetweenDates(startDate: LocalDate, endDate: LocalDate): Flow<List<RawSensorDataEntity>>
+
+    @Query("SELECT * FROM raw_sensor_data WHERE tripId = :tripId")
+    fun getSensorDataByTripId(tripId: UUID): Flow<List<RawSensorDataEntity>>
+
+    @Query("SELECT * FROM raw_sensor_data WHERE date BETWEEN :startDate AND :endDate LIMIT :limit OFFSET :offset")
+    suspend fun getRawSensorDataPaginated(startDate: Date, endDate: Date, limit: Int, offset: Int): List<RawSensorDataEntity>
 }

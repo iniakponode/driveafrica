@@ -18,6 +18,9 @@ object DatabaseModuleProvider {
     @Singleton
     fun provideDatabaseModule(app: Application): Sdaddb {
         return Room.databaseBuilder(app, Sdaddb::class.java, "sda-db")
+//            .setQueryCallback(RoomDatabase.QueryCallback { sqlQuery, bindArgs ->
+//                Log.d("RoomQuery", "SQL Query: $sqlQuery SQL Args: $bindArgs")
+//            }, Executors.newSingleThreadExecutor())
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -28,6 +31,10 @@ object DatabaseModuleProvider {
     @Provides
     @Singleton
     fun provideDbdaResultDao(db: Sdaddb) = db.dbdaResultDao()
+
+    @Provides
+    @Singleton
+    fun provideEmbeddingDao(db: Sdaddb) = db.embeddingDao()
 
     @Provides
     @Singleton
@@ -44,24 +51,45 @@ object DatabaseModuleProvider {
     @Provides
     @Singleton
     fun provideLocationDataDao(db: Sdaddb) = db.locationDataDao()
+
+    @Provides
+    @Singleton
+    fun provideDriverProfileDao(db: Sdaddb) = db.driverProfileDao()
+
+    @Provides
+    @Singleton
+    fun provideDrivingTipDao(db: Sdaddb) = db.drivingTipDao()
+
+    @Provides
+    @Singleton
+    fun provideUnsafeBehaviourDao(db: Sdaddb) = db.unsafeBehaviourDao()
+
+    @Provides
+    @Singleton
+    fun provideCauseDao(db: Sdaddb) = db.causeDao()
+
 }
 
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class SensorDataDaoC
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class DbdaResultDaoC
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class NlgReportDaoC
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class TripDaoC
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class LocationDataDaoC
+//@Qualifier
+//@Retention(AnnotationRetention.BINARY)
+//annotation class SensorDataDaoC
+//
+//@Qualifier
+//@Retention(AnnotationRetention.BINARY)
+//annotation class DbdaResultDaoC
+//
+//@Qualifier
+//@Retention(AnnotationRetention.BINARY)
+//annotation class NlgReportDaoC
+//
+//@Qualifier
+//@Retention(AnnotationRetention.BINARY)
+//annotation class TripDaoC
+//
+//@Qualifier
+//@Retention(AnnotationRetention.BINARY)
+//annotation class LocationDataDaoC
+//
+//@Qualifier
+//@Retention(AnnotationRetention.BINARY)
+//annotation class UnsafeBehaviourDaoC

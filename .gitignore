@@ -15,4 +15,4 @@
 .cxx
 local.properties
 /api/.env
-/core/src/main/assets/minilm.onnx
+core/src/main/assets/minilm.onnx

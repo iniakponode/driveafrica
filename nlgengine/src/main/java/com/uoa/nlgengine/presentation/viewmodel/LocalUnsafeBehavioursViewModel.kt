@@ -49,7 +49,10 @@ class LocalUnsafeBehavioursViewModel @Inject constructor(private val unsafeBehav
             // Reset the state before fetching new data
             _unsafeBehaviours.value = emptyList()
             val unsafeBehavioursModelList = unsafeBehavioursBtwnDatesUseCase.execute(startDate, endDate)
-            Log.d("LocalUnsafeBehavioursVM", "Fetched unsafe behaviours: $unsafeBehavioursModelList")
+            unsafeBehavioursModelList.chunked(100).forEach { chunk ->
+                Log.d("LocalUnsafeBehavioursVM", "Unsafe Behaviours between $startDate and $endDate: $chunk")
+            }
+//            Log.d("LocalUnsafeBehavioursVM", "Fetched unsafe behaviours: $unsafeBehavioursModelList")
             _unsafeBehaviours.value = unsafeBehavioursModelList
             _isLoading.value = false
         }
@@ -63,7 +66,10 @@ class LocalUnsafeBehavioursViewModel @Inject constructor(private val unsafeBehav
             val tripId = trip?.tripId
             if (tripId != null) {
                 val unsafeBehavioursListByTripId = unsafeBehaviourByTripId.execute(tripId)
-                Log.d("LocalUnsafeBehavioursVM", "Fetched unsafe behaviours by trip ID: $unsafeBehavioursListByTripId")
+                unsafeBehavioursListByTripId.take(5).forEach { chunk ->
+                    Log.d("LocalUnsafeBehavioursVM", "Unsafe Behaviours for trip $tripId: $chunk")
+                }
+//                Log.d("LocalUnsafeBehavioursVM", "Fetched unsafe behaviours by trip ID: $unsafeBehavioursListByTripId")
                 _unsafeBehaviours.value = unsafeBehavioursListByTripId
                 _isLoading.value = false
             } else {

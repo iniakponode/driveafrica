@@ -32,7 +32,12 @@ class UnsafeBehaviourByTripIdUseCase @Inject constructor(private val unsafeBehav
         val unsafeBehaviourList = unsafeBehaviourRepository.getUnsafeBehavioursByTripId(tripId)
             .firstOrNull() ?: emptyList()
 
-        Log.d("UnsafeBehaviourByTripId", "Unsafe Behaviours for trip $tripId: $unsafeBehaviourList")
+//
+//        unsafeBehaviourList.chunked(1000).forEach { chunk ->
+//            Log.d("UnsafeBehaviourByTripId", "Unsafe Behaviours for trip $tripId: $chunk")
+//        }
+        Log.d("UnsafeBehaviourByTripId", "Number of unsafe behaviours for trip $tripId: ${unsafeBehaviourList.size}")
+
         return unsafeBehaviourList
 
     }

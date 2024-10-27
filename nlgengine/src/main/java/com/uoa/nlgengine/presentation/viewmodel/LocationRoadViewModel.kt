@@ -139,71 +139,150 @@ class LocationRoadViewModel @Inject constructor(
         }
     }
 
-        private suspend fun buildPrompt(
-            context: Context,
-            unsafeBehaviours: List<UnsafeBehaviourModel>,
-            summaryData: Map<LocationDateHourKey, BehaviourSummary>,
-            periodType: PeriodType
-        ): String {
-            val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+//        private suspend fun buildPrompt(
+//            context: Context,
+//            unsafeBehaviours: List<UnsafeBehaviourModel>,
+//            summaryData: Map<LocationDateHourKey, BehaviourSummary>,
+//            periodType: PeriodType
+//        ): String {
+//            val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+//
+//            // Include the period the report covers
+//            val startDate = unsafeBehaviours.minOfOrNull { it.timestamp }?.let {
+//                Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
+//                    .format(dateFormatter)
+//            }
+//            val endDate = unsafeBehaviours.maxOfOrNull { it.timestamp }?.let {
+//                Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
+//                    .format(dateFormatter)
+//            }
+//
+//            val periodText = when (periodType) {
+//                PeriodType.TODAY -> "Report for Today"
+//                PeriodType.THIS_WEEK -> "Report for This Week"
+//                PeriodType.LAST_WEEK -> "Report for Last Week"
+//                PeriodType.CUSTOM_PERIOD -> {
+//                    if (startDate != null && endDate != null && startDate == endDate) {
+//                        "Report for $startDate"
+//                    } else if (startDate != null && endDate != null) {
+//                        "Report Period: $startDate to $endDate"
+//                    } else {
+//                        "Report for Selected Period"
+//                    }
+//                }
+//
+//                PeriodType.LAST_TRIP -> "Report for the Last Trip"
+//                else -> "Report"
+//            }
+//
+//            val promptBuilder = StringBuilder()
+//                .append("$periodText\n\n")
+//                .append("You are a driving safety specialist in Nigeria. Based on the following data, generate a friendly and encouraging driving behavior report for the driver on their selected report filter ($periodType). The report should:\n")
+//                .append("- Must have only between 150-300 words.\n\n")
+//                .append("- Acknowledge the driver's efforts and positive aspects.\n")
+//                .append("- Gently highlight areas for improvement without direct criticism.\n")
+//                .append("- Offer practical, actionable tips to enhance safety.\n")
+//                .append("- Use an uplifting and motivational tone.\n")
+//                .append("- The senders name in the a complimentary closing section to be 'Your Driving Safety Specialist Agent'.\n\n")
+//                .append("- Must include the numbers given in this prompt in the response without hallucination.\n\n")
+//                .append("- You will need to decode the Base64 encoded JSON data to get the driving offences, penalties, fines, and laws.\n")
+//                .append("- Reference the specific dates, incidents, and locations provided.\n")
+//                .append("- Ensure to use only the given data for fines, laws, and sections without hallucination.\n")
+//                .append("- Summary of Unsafe Behaviors Per Date and Hour:\n")
+//
+//            summaryData.forEach { (key, summary) ->
+//                val formattedDate = key.date.format(dateFormatter)
+//                val formattedHour = formatHour(key.hour)
+//                promptBuilder
+//                    .append("Location: ${summary.location}, Date: $formattedDate, Hour: $formattedHour\n")
+//                    .append("Total Behaviors: ${summary.totalBehaviors}\n")
+//                    .append("Alcohol Influence Count: ${summary.alcoholInfluenceCount}\n")
+//                    .append("Behavior Counts: ${summary.behaviorCounts.entries.joinToString { "${it.key}: ${it.value}" }}\n")
+//                    .append("Most Frequent Behavior: ${summary.mostFrequentBehavior}\n\n")
+//                    .append("Base64Encoded Json Driving Offences, Penalties, Fines, and Laws: ${compressAndEncodeJson(context)}\n")
+//            }
+//
+//            return promptBuilder.toString()
+//        }
 
-            // Include the period the report covers
-            val startDate = unsafeBehaviours.minOfOrNull { it.timestamp }?.let {
-                Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
-                    .format(dateFormatter)
-            }
-            val endDate = unsafeBehaviours.maxOfOrNull { it.timestamp }?.let {
-                Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
-                    .format(dateFormatter)
-            }
 
-            val periodText = when (periodType) {
-                PeriodType.TODAY -> "Report for Today"
-                PeriodType.THIS_WEEK -> "Report for This Week"
-                PeriodType.LAST_WEEK -> "Report for Last Week"
-                PeriodType.CUSTOM_PERIOD -> {
-                    if (startDate != null && endDate != null && startDate == endDate) {
-                        "Report for $startDate"
-                    } else if (startDate != null && endDate != null) {
-                        "Report Period: $startDate to $endDate"
-                    } else {
-                        "Report for Selected Period"
-                    }
-                }
+    private suspend fun buildPrompt(
+        context: Context,
+        unsafeBehaviours: List<UnsafeBehaviourModel>,
+        summaryData: Map<LocationDateHourKey, BehaviourSummary>,
+        periodType: PeriodType
+    ): String {
+        val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
-                PeriodType.LAST_TRIP -> "Report for the Last Trip"
-                else -> "Report"
-            }
-
-            val promptBuilder = StringBuilder()
-                .append("$periodText\n\n")
-                .append("You are a driving safety specialist in Nigeria. Based on the following data, generate a friendly and encouraging driving behavior report for the driver on their selected report filter ($periodType). The report should:\n")
-                .append("- Must have only between 150-300 words.\n\n")
-                .append("- Acknowledge the driver's efforts and positive aspects.\n")
-                .append("- Gently highlight areas for improvement without direct criticism.\n")
-                .append("- Offer practical, actionable tips to enhance safety.\n")
-                .append("- Use an uplifting and motivational tone.\n")
-                .append("- The senders name in the a complimentary closing section to be 'Your Driving Safety Specialist Agent'.\n\n")
-                .append("- Must include the numbers given in this prompt in the response without hallucination.\n\n")
-                .append("- You will need to decode the Base64 encoded JSON data to get the driving offences, penalties, fines, and laws.\n")
-                .append("- Reference the specific dates, incidents, and locations provided.\n")
-                .append("- Ensure to use only the given data for fines, laws, and sections without hallucination.\n")
-                .append("- Summary of Unsafe Behaviors Per Date and Hour:\n")
-
-            summaryData.forEach { (key, summary) ->
-                val formattedDate = key.date.format(dateFormatter)
-                val formattedHour = formatHour(key.hour)
-                promptBuilder
-                    .append("Location: ${summary.location}, Date: $formattedDate, Hour: $formattedHour\n")
-                    .append("Total Behaviors: ${summary.totalBehaviors}\n")
-                    .append("Alcohol Influence Count: ${summary.alcoholInfluenceCount}\n")
-                    .append("Behavior Counts: ${summary.behaviorCounts.entries.joinToString { "${it.key}: ${it.value}" }}\n")
-                    .append("Most Frequent Behavior: ${summary.mostFrequentBehavior}\n\n")
-                    .append("Base64Encoded Json Driving Offences, Penalties, Fines, and Laws: ${compressAndEncodeJson(context)}\n")
-            }
-
-            return promptBuilder.toString()
+        // Include the period the report covers
+        val startDate = unsafeBehaviours.minOfOrNull { it.timestamp }?.let {
+            Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
+                .format(dateFormatter)
         }
+        val endDate = unsafeBehaviours.maxOfOrNull { it.timestamp }?.let {
+            Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
+                .format(dateFormatter)
+        }
+
+        val periodText = when (periodType) {
+            PeriodType.TODAY -> "Report for Today"
+            PeriodType.THIS_WEEK -> "Report for This Week"
+            PeriodType.LAST_WEEK -> "Report for Last Week"
+            PeriodType.CUSTOM_PERIOD -> {
+                if (startDate != null && endDate != null && startDate == endDate) {
+                    "Report for $startDate"
+                } else if (startDate != null && endDate != null) {
+                    "Report Period: $startDate to $endDate"
+                } else {
+                    "Report for Selected Period"
+                }
+            }
+            PeriodType.LAST_TRIP -> "Report for the Last Trip"
+            else -> "Report"
+        }
+
+        val promptBuilder = StringBuilder()
+            .append("$periodText\n\n")
+            .append("You are a driving safety specialist in Nigeria. Based on the following data, generate a friendly and encouraging driving behavior report for the driver on their selected report filter ($periodType). The report should:\n")
+            .append("- Must have only between 150-200 words.\n")
+            .append("- Acknowledge the driver's efforts and positive aspects.\n")
+            .append("- Gently highlight areas for improvement without direct criticism.\n")
+            .append("- Offer practical, actionable tips to enhance safety.\n")
+            .append("- Use an uplifting and motivational tone.\n")
+            .append("- The sender's name in the complimentary closing section should be 'Your Driving Safety Specialist Agent'.\n")
+            .append("- Must include the numbers given in this prompt in the response without hallucination.\n")
+            .append("- You will need to decode the Base64 encoded JSON data to get the driving offences, penalties, fines, and laws.\n")
+            .append("- Reference the specific dates, incidents, and locations provided.\n")
+            .append("- Ensure to use only the given data for fines, laws, and sections without hallucination.\n\n")
+            .append("After generating the report, please ensure the response includes the key components of the Theory of Planned Behavior (TPB), specifically:\n")
+            .append("- **Attitudes**: Reflect on the driver's positive and negative evaluations of performing the behavior.\n")
+            .append("- **Subjective Norms**: Reference the social pressure or norms influencing the driver's behavior.\n")
+            .append("- **Perceived Behavioral Control**: Address the driver's perception of their ability to perform the behavior.\n")
+            .append("Also, ensure that the report:\n")
+            .append("- Maintains a supportive tone throughout.\n")
+            .append("- Specifies the unsafe behaviors observed.\n")
+            .append("- Include the corresponding location (Road name) as given from the data and time for the most frequent incident.\n")
+            .append("- State the risks inherent in the identified unsafe behaviours.\n")
+            .append("- State the benefits inherent especially in economic (fuel consumption, vehicle health, etc) and life related terms if the drivers could improve and change from the identified unsafe behaviours.\n")
+            .append("- Has a statement about the alcohol influence based on the given data.\n")
+            .append("- Strictly adheres to the data provided in this prompt without adding any information not directly traceable to the prompt.\n\n")
+            .append("- If any of the above components are missing, please identify and include them before finalizing the response.\n\n")
+            .append("Summary of Unsafe Behaviors Per Date and Hour:\n")
+
+        summaryData.forEach { (key, summary) ->
+            val formattedDate = key.date.format(dateFormatter)
+            val formattedHour = formatHour(key.hour)
+            promptBuilder
+                .append("Location: ${summary.location}, Date: $formattedDate, Hour: $formattedHour\n")
+                .append("Total Behaviors: ${summary.totalBehaviors}\n")
+                .append("Alcohol Influence Count: ${summary.alcoholInfluenceCount}\n")
+                .append("Behavior Counts: ${summary.behaviorCounts.entries.joinToString { "${it.key}: ${it.value}" }}\n")
+                .append("Most Frequent Behavior: ${summary.mostFrequentBehavior}\n\n")
+//                .append("Base64Encoded Json Driving Offences, Penalties, Fines, and Laws: ${compressAndEncodeJson(context)}\n")
+        }
+
+        return promptBuilder.toString()
+    }
 
     fun prepareChartData(summaryDataByDateHour: Map<DateHourKey, HourlySummary>): List<UnsafeBehaviorChartEntry> {
         // Aggregate behavior counts per hour
@@ -226,8 +305,10 @@ class LocationRoadViewModel @Inject constructor(
             try {
                 val prompt = generatePrompt(context, unsafeBehaviours, periodType)
                 _generatedPrompt.value = prompt
-
-                Log.d("LocationRoadViewModel", "Generated Prompt in ViewModel: $prompt")
+                prompt.chunked(100).forEach { chunk ->
+                    Log.d("LocationRoadViewModel", "Generated Prompt in ViewModel: $chunk")
+                }
+//                Log.d("LocationRoadViewModel", "Generated Prompt in ViewModel: $prompt")
 
             } catch (e: Exception) {
                 Log.e("LocationRoadViewModel", "Error generating prompt", e)

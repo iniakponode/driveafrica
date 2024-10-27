@@ -116,8 +116,8 @@ fun SensorControlScreen(
             Text(
                 text = when {
                     !multiplePermissionState.allPermissionsGranted && !collectionStatus -> "Grant Location Permissions"
-                    multiplePermissionState.allPermissionsGranted && !collectionStatus -> "Start Data Collection"
-                    else -> "Stop Data Collection"
+                    multiplePermissionState.allPermissionsGranted && !collectionStatus -> "Start Trip"
+                    else -> "End Trip"
                 }
             )
         }
@@ -144,8 +144,8 @@ private fun getButtonText(
 ): String {
     return when {
         !multiplePermissionState.allPermissionsGranted && !collectionStatus -> "Grant Location Permissions"
-        multiplePermissionState.allPermissionsGranted && !collectionStatus -> "Start Data Collection"
-        else -> "Stop Data Collection"
+        multiplePermissionState.allPermissionsGranted && !collectionStatus -> "Start Trip"
+        else -> "End Trip"
     }
 }
 

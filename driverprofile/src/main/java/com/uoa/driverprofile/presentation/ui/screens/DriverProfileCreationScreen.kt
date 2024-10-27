@@ -53,15 +53,15 @@ fun DriverProfileCreationScreen(
             onValueChange = { newEmail ->
                 onEmailChange(newEmail)
             },
-            label = { Text("Enter Email") },
+            label = { Text("Enter Profile ID given to you") },
             isError = isError,
             modifier = Modifier.fillMaxWidth()
         )
         if (isError) {
             LaunchedEffect(isError) {
-                onShowSnackbar("Email cannot be empty", null)
+                onShowSnackbar("This field cannot be empty", null)
             }
-            Text("Email cannot be empty", color = MaterialTheme.colorScheme.error)
+            Text("This field cannot be empty", color = MaterialTheme.colorScheme.error)
         }
         Button(
             onClick = {

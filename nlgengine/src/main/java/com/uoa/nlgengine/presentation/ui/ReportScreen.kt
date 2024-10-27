@@ -11,6 +11,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 //import androidx.compose.foundation.layout.FlowColumnScopeInstance.align
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Card
@@ -29,8 +31,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -46,7 +53,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-
+import com.uoa.nlgengine.R
 @Composable
 fun ReportScreen(
     navController: NavController,
@@ -54,9 +61,7 @@ fun ReportScreen(
     reportPeriod: Pair<LocalDate, LocalDate>? = null,
     periodType: PeriodType,
     chartData: List<UnsafeBehaviorChartEntry> = emptyList(),
-
 ) {
-
     NLGEngineTheme {
         Scaffold(
             topBar = {
@@ -66,108 +71,136 @@ fun ReportScreen(
                 )
             }
         ) { paddingValues ->
-            LazyColumn(
+            // Background image or gradient
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.onPrimary)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.surface
+                            )
+                        )
+                    )
                     .padding(paddingValues)
-                    .padding(5.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = 16.dp)
             ) {
-                item {
-                    Text(
-                        text = "Your Driving Behaviour Report",
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    )
-                }
-                item {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Header with icon
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Icon(
-                            imageVector = Icons.Default.DateRange,
-                            contentDescription = "Date",
-                            tint = MaterialTheme.colorScheme.primary
+                            painter = painterResource(id = R.drawable.report_new),
+                            contentDescription = "Report Icon",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(20.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        val formattedDate = LocalDate.now()
-                            .format(DateTimeFormatter.ofPattern("dd MMMM yyyy"))
+                        Spacer(modifier = Modifier.width(9.dp))
                         Text(
-                            text = "Date of Report: $formattedDate",
-                            style = MaterialTheme.typography.bodyMedium
+                            text = "Your Driving Behaviour Report",
+                            style = MaterialTheme.typography.titleSmall
+                            .copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            ),
+//                            modifier = Modifier.weight(1f)
                         )
                     }
-                }
-                item {
-                    // Display the period type with styling
-                    val periodText = when (periodType) {
-                        PeriodType.TODAY -> "Report for Today"
-                        PeriodType.THIS_WEEK -> "Report for This Week"
-                        PeriodType.LAST_WEEK -> "Report for Last Week"
-                        PeriodType.CUSTOM_PERIOD -> {
-                            val formatter = DateTimeFormatter.ofPattern("dd MMMM yyyy")
-                            val formattedStartDate = reportPeriod?.first?.format(formatter) ?: "N/A"
-                            val formattedEndDate = reportPeriod?.second?.format(formatter) ?: "N/A"
-                            "Report Period: From $formattedStartDate To $formattedEndDate"
-                        }
-                        PeriodType.LAST_TRIP -> "Report for the Last Trip"
-                        else -> "No Filter Selected"
-                    }
-                    Text(
-                        text = periodText,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                    )
-                }
-                item {
-                    // Use a card to display the report content
+                                        // Report content
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp),
+                            .weight(1f),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White,
+                        ),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+
+                            // Date and period information
+                            val formattedDate = LocalDate.now()
+                                .format(DateTimeFormatter.ofPattern("dd MMMM yyyy"))
+                            Icon(
+                                painter = painterResource(id = R.drawable.date_new),
+                                contentDescription = "Date Icon",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(9.dp))
+                            Text(
+                                text = "Report Date: $formattedDate",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Display the period type with styling
+                            val periodText = when (periodType) {
+                                PeriodType.TODAY -> "Report for Today"
+                                PeriodType.THIS_WEEK -> "Report for This Week"
+                                PeriodType.LAST_WEEK -> "Report for Last Week"
+                                PeriodType.CUSTOM_PERIOD -> {
+                                    val formatter = DateTimeFormatter.ofPattern("dd MMMM yyyy")
+                                    val formattedStartDate = reportPeriod?.first?.format(formatter) ?: "N/A"
+                                    val formattedEndDate = reportPeriod?.second?.format(formatter) ?: "N/A"
+                                    "Report Period: From $formattedStartDate To $formattedEndDate"
+                                }
+                                PeriodType.LAST_TRIP -> "Report for the Last Trip"
+                                else -> "No Filter Selected"
+                            }
+                            Text(
+                                text = periodText,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
                             Text(
                                 text = reportContent,
                                 style = MaterialTheme.typography.bodyLarge.copy(
-                                    lineHeight = 24.sp
-                                ),
-                                modifier = Modifier.padding(vertical = 4.dp, horizontal = 4.dp)
-                                    .align(Alignment.End)
+                                    lineHeight = 24.sp,
+                                    color = Color.Black
+                                )
                             )
                         }
                     }
-                }
-//                item {
+
+                    // Optional: Add a motivational quote or message
 //                    Text(
-//                        text = "Unsafe Behaviours Over Time",
-//                        style = MaterialTheme.typography.titleMedium.copy(
-//                            fontWeight = FontWeight.Bold,
+//                        text = "“Safe driving is a reward in itself. Keep up the good work!”",
+//                        style = MaterialTheme.typography.bodyMedium.copy(
+//                            fontStyle = FontStyle.Italic,
 //                            color = MaterialTheme.colorScheme.primary
 //                        ),
-//                        modifier = Modifier.padding(vertical = 8.dp)
+//                        textAlign = TextAlign.Center,
+//                        modifier = Modifier.fillMaxWidth()
 //                    )
 //
-//                    if (chartData.isEmpty()) {
-//                        Text(
-//                            text = "No data available for the chart.",
-//                            style = MaterialTheme.typography.bodyMedium,
-//                            modifier = Modifier.padding(16.dp)
-//                        )
-//                    } else {
-//                        // Display the chart
-//                        ChartScreen(chartData = chartData)
-//                    }
-//                }
+//                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
         }
     }
 }
+
 
 
 @Composable

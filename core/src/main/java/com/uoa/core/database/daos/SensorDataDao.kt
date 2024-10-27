@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import com.uoa.core.database.entities.RawSensorDataEntity
 import com.uoa.core.database.entities.SensorEntity
 
 @Dao
@@ -23,8 +24,8 @@ interface SensorDataDao {
     @Query("SELECT * FROM sensor_data WHERE timestamp BETWEEN :startTime AND :endTime")
     suspend fun getSensorDataByTimePeriod(startTime: Long, endTime: Long): List<SensorEntity>
 
-    @Query("SELECT * FROM sensor_data WHERE synced = :synced")
-    suspend fun getSensorDataBySyncStatus(synced: Boolean): List<SensorEntity>
+    @Query("SELECT * FROM raw_sensor_data WHERE sync = :synced")
+    suspend fun getSensorDataBySyncStatus(synced: Boolean): List<RawSensorDataEntity>
 
     @Query("UPDATE sensor_data SET synced=:synced WHERE id = :id")
     suspend fun updateUploadStatus(id: Long, synced: Boolean)

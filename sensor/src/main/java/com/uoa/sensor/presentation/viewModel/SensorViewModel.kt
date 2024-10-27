@@ -1,8 +1,6 @@
 package com.uoa.sensor.presentation.viewModel
 
-import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.Data
@@ -10,18 +8,18 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkQuery
-import com.uoa.core.utils.Event
 import com.uoa.sensor.hardware.HardwareModule
 import com.uoa.sensor.worker.SensorWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 @HiltViewModel
 class SensorViewModel @Inject constructor(
     private val workManager: WorkManager,
-    private val hardwareModule: HardwareModule
+    private val hardwareModule: HardwareModule,
 ) : ViewModel() {
 
     private val _collectionStatus = MutableStateFlow(false)
@@ -33,9 +31,14 @@ class SensorViewModel @Inject constructor(
         }
     }
 
-    private fun enqueueSensorWorker(taskType: String, isLocationPermissionGranted: Boolean) {
+    private fun enqueueSensorWorker(
+        taskType: String,
+        isLocationPermissionGranted: Boolean,
+        tripId: UUID
+    ) {
         val data = Data.Builder()
             .putString("TASK_TYPE", taskType)
+            .putString("TRIP_ID", tripId.toString())
             .putBoolean("LOCATION_PERMISSION_GRANTED", isLocationPermissionGranted)
             .build()
 
@@ -69,7 +72,6 @@ class SensorViewModel @Inject constructor(
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun cancelSensorWorker() {
         viewModelScope.launch {
             workManager.cancelAllWorkByTag("sensorWork").result.addListener({
@@ -80,17 +82,16 @@ class SensorViewModel @Inject constructor(
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun startSensorCollection(taskType: String, isLocationPermissionGranted: Boolean) {
+    fun startSensorCollection(taskType: String, isLocationPermissionGranted: Boolean, tripId: UUID) {
 //        hardwareModule.startDataCollection(isLocationPermissionGranted)
-        enqueueSensorWorker(taskType, isLocationPermissionGranted)
+        enqueueSensorWorker(taskType, isLocationPermissionGranted, tripId)
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun stopSensorCollection(taskType: String) {
+    fun stopSensorCollection() {
         cancelSensorWorker()
 
     }
+
 }
 
 

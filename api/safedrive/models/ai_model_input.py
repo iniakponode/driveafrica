@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Float, ForeignKey, BINARY
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, BINARY
 from sqlalchemy.orm import relationship
 from safedrive.database.base import Base
 from uuid import uuid4, UUID
@@ -32,6 +32,7 @@ class AIModelInput(Base):
     speed_std = Column(Float, nullable=False)
     course_std = Column(Float, nullable=False)
     acceleration_y_original_mean = Column(Float, nullable=False)
+    synced=Column(Boolean, nullable=False, default=False)
 
     # Relationships
     trip = relationship('Trip', back_populates='ai_model_inputs')

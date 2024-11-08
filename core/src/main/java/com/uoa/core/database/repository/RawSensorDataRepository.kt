@@ -8,7 +8,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 interface RawSensorDataRepository {
-fun getRawSensorDataBetween(start: Instant, end: Instant): Flow<List<RawSensorData>>
+fun getRawSensorDataBetween(start: LocalDate, end: LocalDate): Flow<List<RawSensorData>>
 fun getRawSensorDataByTripId(tripId: UUID): Flow<List<RawSensorDataEntity>>
 suspend fun getSensorDataByTripId(tripId: UUID): Flow<List<RawSensorDataEntity>>
 fun getRawSensorDataByLocationId(locationId: UUID): Flow<List<RawSensorDataEntity>>

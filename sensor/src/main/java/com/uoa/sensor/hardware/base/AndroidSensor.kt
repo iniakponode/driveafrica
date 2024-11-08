@@ -43,7 +43,6 @@ abstract class AndroidSensor(
         sensorManager.unregisterListener(this)
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onSensorChanged(event: SensorEvent?) {
         event?.let {
             if (it.sensor.type == sensorType) {

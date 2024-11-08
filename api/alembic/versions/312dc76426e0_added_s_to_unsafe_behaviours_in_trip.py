@@ -1,8 +1,8 @@
-"""Changed DrivingTips to DrivingTip
+"""added s to unsafe_behaviours in trip
 
-Revision ID: 8fa22ef11d8d
-Revises: d35853966e69
-Create Date: 2024-10-26 00:45:58.157430
+Revision ID: 312dc76426e0
+Revises: a281668694a0
+Create Date: 2024-10-27 16:55:28.918556
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '8fa22ef11d8d'
-down_revision: Union[str, None] = 'd35853966e69'
+revision: str = '312dc76426e0'
+down_revision: Union[str, None] = 'a281668694a0'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

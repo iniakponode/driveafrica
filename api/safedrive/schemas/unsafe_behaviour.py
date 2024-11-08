@@ -1,96 +1,83 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
 
 class UnsafeBehaviourBase(BaseModel):
     """
-    Base schema for Unsafe Behaviour data, containing common attributes shared across different schemas.
+    Base schema for Unsafe Behaviour data.
 
     Attributes:
-    - id (UUID): Unique identifier for the unsafe behaviour.
-    - tripId (UUID): Identifier of the trip associated with this unsafe behaviour.
-    - locationId (Optional[UUID]): Identifier of the location associated with this behaviour.
-    - behaviorType (str): Type of unsafe behaviour observed (e.g., speeding, harsh braking).
-    - severity (float): Severity level of the unsafe behaviour.
-    - timestamp (int): Epoch timestamp when the behaviour was recorded.
-    - date (Optional[datetime]): Date when the behaviour occurred.
-    - updatedAt (Optional[datetime]): Timestamp when the record was last updated.
-    - updated (bool): Indicator of whether the record has been updated.
-    - synced (bool): Indicator whether the data has been synced.
-    - alcoholInfluence (bool): Indicator if alcohol influence was detected.
+    - **id**: Unique identifier for the unsafe behaviour.
+    - **trip_id**: UUID of the trip associated with this unsafe behaviour.
+    - **location_id**: UUID of the location associated with this behaviour.
+    - **behaviour_type**: Type of unsafe behaviour observed (e.g., speeding, harsh braking).
+    - **severity**: Severity level of the unsafe behaviour.
+    - **timestamp**: Epoch timestamp when the behaviour was recorded.
+    - **date**: Date when the behaviour occurred.
+    - **updated_at**: Timestamp when the record was last updated.
+    - **updated**: Indicator of whether the record has been updated.
+    - **synced**: Indicator whether the data has been synced.
+    - **alcohol_influence**: Indicator if alcohol influence was detected.
     """
-    id: UUID
-    tripId: UUID
-    locationId: Optional[UUID] = None
-    behaviorType: str
-    severity: float
-    timestamp: int
-    date: Optional[datetime] = None
-    updatedAt: Optional[datetime] = None
-    updated: bool = False
-    synced: bool = False
-    alcoholInfluence: bool = False
+    id: UUID = Field(..., description="Unique identifier for the unsafe behaviour.")
+    trip_id: UUID = Field(..., description="UUID of the trip associated with this unsafe behaviour.")
+    location_id: Optional[UUID] = Field(None, description="UUID of the location associated with this behaviour.")
+    driver_profile_id: UUID = Field(..., description="UUID of the driving profile associated with this unsafe behaviour.")
+    behaviour_type: str = Field(..., description="Type of unsafe behaviour observed.")
+    severity: float = Field(..., description="Severity level of the unsafe behaviour.")
+    timestamp: int = Field(..., description="Epoch timestamp when the behaviour was recorded.")
+    date: Optional[datetime] = Field(None, description="Date when the behaviour occurred.")
+    updated_at: Optional[datetime] = Field(None, description="Timestamp when the record was last updated.")
+    updated: bool = Field(False, description="Indicator of whether the record has been updated.")
+    synced: bool = Field(False, description="Indicator whether the data has been synced.")
+    alcohol_influence: bool = Field(False, description="Indicator if alcohol influence was detected.")
+    synced: bool = Field(False, description="Indicates whether the data has been synced.")
 
     class Config:
-        orm_mode = True
+        from_attributes = True  # For Pydantic v2
 
 class UnsafeBehaviourCreate(BaseModel):
     """
     Schema for creating a new Unsafe Behaviour record.
-
-    Attributes:
-    - tripId (UUID): Identifier of the trip associated with this unsafe behaviour.
-    - locationId (Optional[UUID]): Identifier of the location associated with this behaviour.
-    - behaviorType (str): Type of unsafe behaviour observed (e.g., speeding, harsh braking).
-    - severity (float): Severity level of the unsafe behaviour.
-    - timestamp (int): Epoch timestamp when the behaviour was recorded.
-    - date (Optional[datetime]): Date when the behaviour occurred.
-    - alcoholInfluence (bool): Indicator if alcohol influence was detected.
     """
-    tripId: UUID
-    locationId: Optional[UUID] = None
-    behaviorType: str
-    severity: float
-    timestamp: int
-    date: Optional[datetime] = None
-    alcoholInfluence: bool = False
+    trip_id: UUID = Field(..., description="UUID of the trip associated with this unsafe behaviour.")
+    location_id: Optional[UUID] = Field(None, description="UUID of the location associated with this behaviour.")
+    driver_profile_id: UUID = Field(..., description="UUID of the driving profile associated with this unsafe behaviour.")
+    behaviour_type: str = Field(..., description="Type of unsafe behaviour observed.")
+    severity: float = Field(..., description="Severity level of the unsafe behaviour.")
+    timestamp: int = Field(..., description="Epoch timestamp when the behaviour was recorded.")
+    date: Optional[datetime] = Field(None, description="Date when the behaviour occurred.")
+    alcohol_influence: bool = Field(False, description="Indicator if alcohol influence was detected.")
+    synced: Optional[bool] = Field(False, description="Indicates whether the data has been synced.")
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class UnsafeBehaviourUpdate(BaseModel):
     """
     Schema for updating an existing Unsafe Behaviour record.
 
-    Attributes:
-    - locationId (Optional[UUID]): Optionally update the location associated with this behaviour.
-    - behaviorType (Optional[str]): Optionally update the type of unsafe behaviour.
-    - severity (Optional[float]): Optionally update the severity level of the unsafe behaviour.
-    - timestamp (Optional[int]): Optionally update the epoch timestamp when the behaviour was recorded.
-    - date (Optional[datetime]): Optionally update the date when the behaviour occurred.
-    - updatedAt (Optional[datetime]): Optionally update the timestamp for last update.
-    - updated (Optional[bool]): Optionally update the update indicator.
-    - synced (Optional[bool]): Optionally update the sync status.
-    - alcoholInfluence (Optional[bool]): Optionally update the alcohol influence indicator.
+    All fields are optional.
     """
-    locationId: Optional[UUID] = None
-    behaviorType: Optional[str] = None
-    severity: Optional[float] = None
-    timestamp: Optional[int] = None
-    date: Optional[datetime] = None
-    updatedAt: Optional[datetime] = None
-    updated: Optional[bool] = None
-    synced: Optional[bool] = None
-    alcoholInfluence: Optional[bool] = None
+    location_id: Optional[UUID] = Field(None, description="Optionally update the location associated with this behaviour.")
+    trip_id: UUID = Field(..., description="UUID of the trip associated with this unsafe behaviour.")
+    driver_profile_id: UUID = Field(..., description="UUID of the driving profile associated with this unsafe behaviour.")
+    behaviour_type: Optional[str] = Field(None, description="Optionally update the type of unsafe behaviour.")
+    severity: Optional[float] = Field(None, description="Optionally update the severity level.")
+    timestamp: Optional[int] = Field(None, description="Optionally update the timestamp when the behaviour was recorded.")
+    date: Optional[datetime] = Field(None, description="Optionally update the date when the behaviour occurred.")
+    updated_at: Optional[datetime] = Field(None, description="Optionally update the last updated timestamp.")
+    updated: Optional[bool] = Field(None, description="Optionally update the updated indicator.")
+    synced: Optional[bool] = Field(None, description="Optionally update the sync status.")
+    alcohol_influence: Optional[bool] = Field(None, description="Optionally update the alcohol influence indicator.")
+    synced: Optional[bool] = Field(None, description="Optionally update the sync status.")
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class UnsafeBehaviourResponse(UnsafeBehaviourBase):
     """
     Schema for the response format of Unsafe Behaviour data.
-
-    Inherits from UnsafeBehaviourBase.
     """
     pass

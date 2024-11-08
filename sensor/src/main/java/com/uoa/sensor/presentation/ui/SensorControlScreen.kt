@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.google.accompanist.permissions.rememberPermissionState
+import com.uoa.core.mlclassifier.MinMaxValuesLoader
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.ml.presentation.viewmodel.AlcoholInfluenceViewModel
@@ -41,6 +43,7 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 
+@RequiresApi(Build.VERSION_CODES.Q)
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun SensorControlScreen(
@@ -48,35 +51,52 @@ fun SensorControlScreen(
     tripViewModel: TripViewModel = viewModel(),
     alcoholInfluenceViewModel: AlcoholInfluenceViewModel = hiltViewModel()
 ) {
-//    val context = LocalContext.current as ComponentActivity
     val collectionStatus by sensorViewModel.collectionStatus.collectAsState()
+    val isVehicleMoving by sensorViewModel.isVehicleMoving.collectAsState()
     val alcoholInfluence by alcoholInfluenceViewModel.alcoholInfluence.observeAsState()
-//    val tripId by tripViewModel.currentTripId.collectAsState()
     val context = LocalContext.current
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     val profileIdString = prefs.getString(DRIVER_PROFILE_ID, null)
-
     val driverProfileId = UUID.fromString(profileIdString)
 
-    val coroutineScope = rememberCoroutineScope()
-    val multiplePermissionState = rememberMultiplePermissionsState(
+
+
+    // Check and request POST_NOTIFICATIONS permission for Android 13+ devices
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val permissionState = rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
+        val context = LocalContext.current.applicationContext
+        LaunchedEffect(Unit) {
+            // Initialize MinMaxValuesLoader with the application context
+            // Get the application context using LocalContext.current
+
+            if (!permissionState.hasPermission) {
+                permissionState.launchPermissionRequest()
+            }
+        }
+    }
+
+    // Step 1: Request foreground location permissions
+    val foregroundPermissionState = rememberMultiplePermissionsState(
         permissions = listOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACTIVITY_RECOGNITION,
+            Manifest.permission.POST_NOTIFICATIONS,
+            Manifest.permission.FOREGROUND_SERVICE
         )
+    )
+
+    val coroutineScope = rememberCoroutineScope()
+
+    // Step 2: Request background location permission separately
+    val backgroundPermissionState = rememberPermissionState(
+        permission = Manifest.permission.ACCESS_BACKGROUND_LOCATION
     )
 
     // Check WorkManager status on screen entry
     LaunchedEffect(Unit) {
         sensorViewModel.checkWorkManagerStatus()
-//        get the stored DriverProfile ID from the shared preferences
-
     }
-
-//    // React to collection status change
-//    LaunchedEffect(collectionStatus) {
-//        Toast.makeText(context, collectionStatus.toString(), Toast.LENGTH_SHORT).show()
-//    }
 
     Column(
         modifier = Modifier
@@ -85,48 +105,48 @@ fun SensorControlScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        LocationPermissions(multiplePermissionState)
+        // Step 1: Display foreground location permissions
+        LocationPermissions(foregroundPermissionState)
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(onClick = {
-            val tripID=tripViewModel.updateTripId(UUID.randomUUID())
-            if (!multiplePermissionState.allPermissionsGranted && !collectionStatus) {
-                multiplePermissionState.launchMultiplePermissionRequest()
-            } else if (multiplePermissionState.allPermissionsGranted && !collectionStatus) {
+            val tripID = tripViewModel.updateTripId(UUID.randomUUID())
+
+            // Request foreground permissions first
+            if (!foregroundPermissionState.allPermissionsGranted) {
+                foregroundPermissionState.launchMultiplePermissionRequest()
+            } else if (foregroundPermissionState.allPermissionsGranted && !backgroundPermissionState.hasPermission) {
+                // If foreground permissions are granted, request background permission next
+                backgroundPermissionState.launchPermissionRequest()
+            } else if (foregroundPermissionState.allPermissionsGranted && backgroundPermissionState.hasPermission && !collectionStatus) {
+                // Start trip if all permissions are granted
                 tripViewModel.startTrip(driverProfileId, tripID)
                 sensorViewModel.startSensorCollection("START", true, tripID)
                 sensorViewModel.updateCollectionStatus(true)
-            }
-            else if (!multiplePermissionState.allPermissionsGranted && !collectionStatus) {
-
-                tripViewModel.startTrip(driverProfileId, tripID)
-                sensorViewModel.startSensorCollection("START", false, tripID)
-                sensorViewModel.updateCollectionStatus(true)
-            }
-            else {
-//                tripViewModel.endTrip(tripID)
+                sensorViewModel.checkWorkManagerStatus()
+            } else {
+                // End trip
                 sensorViewModel.stopSensorCollection()
                 sensorViewModel.updateCollectionStatus(false)
-//              alcoholInfluenceViewModel.classifySaveAndUpdateUnsafeBehaviour(tripID)
-//                alcoholInfluenceViewModel.saveInfluenceToCauseTable(tripID)
-//                Log.d("Alcohol Class TripID","Classification TripID $tripID")
             }
         }) {
             Text(
                 text = when {
-                    !multiplePermissionState.allPermissionsGranted && !collectionStatus -> "Grant Location Permissions"
-                    multiplePermissionState.allPermissionsGranted && !collectionStatus -> "Start Trip"
-                    else -> "End Trip"
+                    !foregroundPermissionState.allPermissionsGranted -> "Grant Location Permissions"
+                    foregroundPermissionState.allPermissionsGranted && !backgroundPermissionState.hasPermission -> "Grant Background Location Permission"
+                    else -> if (!collectionStatus) "Start Trip" else "End Trip"
                 }
             )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        Text(text = if (collectionStatus) "Collecting Data..." else "Data Collection Stopped, \nAlcohol Influenced: ${alcoholInfluence.toString()}")
     }
 }
+
+
+
+
 
 @Composable
 fun SensorControlScreenRoute(
@@ -151,9 +171,9 @@ private fun getButtonText(
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun LocationPermissions(multiplePermissionState: MultiplePermissionsState) {
-    val allPermissionsGranted = multiplePermissionState.allPermissionsGranted
-    val shouldShowRationale = multiplePermissionState.shouldShowRationale
+fun LocationPermissions(foregroundPermissionState: MultiplePermissionsState) {
+    val allPermissionsGranted = foregroundPermissionState.allPermissionsGranted
+    val shouldShowRationale = foregroundPermissionState.shouldShowRationale
 
     if (!allPermissionsGranted) {
         Text(

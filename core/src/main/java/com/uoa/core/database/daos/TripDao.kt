@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import com.uoa.core.database.entities.LocationEntity
 import com.uoa.core.database.entities.TripEntity
 import java.util.UUID
 
@@ -16,6 +17,9 @@ interface TripDao {
 //    suspend fun updateTrip(eTime:Long, id:Long)
     @Update
     suspend fun updateTrip(tripEntity: TripEntity)
+
+    @Query("SELECT * FROM trip_data WHERE id IN (:ids)")
+    suspend fun getTripsByIds(ids: List<UUID>): List<TripEntity>
 
     @Query("UPDATE trip_data SET synced=:synced WHERE id = :id")
     suspend fun updateUploadStatus(id:Int, synced: Boolean)

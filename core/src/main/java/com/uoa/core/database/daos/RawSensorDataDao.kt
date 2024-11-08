@@ -26,8 +26,8 @@ interface RawSensorDataDao {
     @Query("SELECT * FROM raw_sensor_data WHERE locationId = :locationId")
     fun getRawSensorDataByLocationId(locationId: UUID): Flow<List<RawSensorDataEntity>>
 
-    @Query("SELECT * FROM raw_sensor_data WHERE timestamp >= :start AND timestamp <= :end")
-    fun getRawSensorDataBetween(start: Instant, end: Instant): Flow<List<RawSensorDataEntity>>
+    @Query("SELECT * FROM raw_sensor_data WHERE date BETWEEN :startDate AND :endDate")
+    fun getRawSensorDataBetween(startDate: LocalDate, endDate: LocalDate): Flow<List<RawSensorDataEntity>>
 
     @Query("SELECT * FROM raw_sensor_data WHERE sync = :synced")
     suspend fun getSensorDataBySyncStatus(synced: Boolean): List<RawSensorDataEntity>

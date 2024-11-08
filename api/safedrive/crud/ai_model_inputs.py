@@ -21,6 +21,28 @@ class CRUDModelInputs:
         :param model: The SQLAlchemy model class.
         """
         self.model = model
+    
+    def batch_create(self, db: Session, data_in: List[AIModelInputCreate]) -> List[AIModelInput]:
+        try:
+            db_objs = [self.model(**data.model_dump()) for data in data_in]
+            db.bulk_save_objects(db_objs)
+            db.commit()
+            logger.info(f"Batch inserted {len(db_objs)} AIModelInput records.")
+            return db_objs
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error during batch insertion of AIModelInput: {str(e)}")
+            raise e
+
+    def batch_delete(self, db: Session, ids: List[int]) -> None:
+        try:
+            db.query(self.model).filter(self.model.id.in_(ids)).delete(synchronize_session=False)
+            db.commit()
+            logger.info(f"Batch deleted {len(ids)} AIModelInput records.")
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error during batch deletion of AIModelInput: {str(e)}")
+            raise e
 
     def create(self, db: Session, obj_in: AIModelInputCreate) -> AIModelInput:
         """

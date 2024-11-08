@@ -1,31 +1,42 @@
-from uuid import uuid4
-from sqlalchemy import Column, Integer, String, Boolean
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, String, DateTime, Boolean, BINARY, ForeignKey
+from uuid import uuid4, UUID
+from sqlalchemy.orm import relationship
 from safedrive.database.base import Base
+import logging
 
-def generate_uuid():
- return str(uuid4())  # Generates a UUID string
+logger = logging.getLogger(__name__)
+
+def generate_uuid_binary():
+    return uuid4().bytes
 
 class NLGReport(Base):
     """
-    NLG Report Model represents a Natural Language Generation (NLG) report stored in the database.
-    It captures information related to reports generated for driving behaviors using LLM models.
+    NLGReport model represents a generated report with metadata and associations.
 
     Attributes:
-    - id (int): The unique identifier for the NLG report.
-    - user_id (str): The ID of the user who received the report.
-    - report_text (str): The content of the generated report.
-    - date_range (str): The date range for which the report is applicable.
-    - synced (bool): Boolean indicating if the report has been synced with the server.
+    - **id**: Primary key, UUID in binary format.
+    - **user_id**: Foreign key, UUID in binary format, references the user who generated the report.
+    - **report_text**: Text content of the generated report.
+    - **generated_at**: Timestamp of report generation.
+    - **synced**: Boolean indicating if the report is synced with a remote server.
     """
-   
-    __tablename__ = 'nlg_report'
+    __tablename__ = "nlg_report"
 
-    id = Column(Integer, primary_key=True, autoincrement=True, default=generate_uuid)
-    user_id = Column(String(255), nullable=False)
-    report_text = Column(String(2000), nullable=False)
-    date_range = Column(String(255), nullable=False)
-    synced = Column(Boolean)
+    id = Column(BINARY(16), primary_key=True, default=generate_uuid_binary)
+    driver_profile_id = Column(BINARY(16), ForeignKey('driver_profile.driver_profile_id'), nullable=False)
+    report_text = Column(String(500), nullable=False)
+    generated_at = Column(DateTime, nullable=False)
+    synced = Column(Boolean, nullable=False, default=False)
+    
+    driver_profile=relationship("DriverProfile", back_populates="nlg_reports")
 
     def __repr__(self):
-        return f"<NLGReport(id={self.id}, user_id='{self.user_id}', synced={self.synced})>"
+        return f"<NLGReport(id={self.id.hex()}, driver_profile_id={self.driver_profile_id.hex()}, synced={self.synced})>"
+
+    @property
+    def id_uuid(self):
+        return UUID(bytes=self.id)
+
+    @property
+    def user_id_uuid(self):
+        return UUID(bytes=self.driver_profile_id)

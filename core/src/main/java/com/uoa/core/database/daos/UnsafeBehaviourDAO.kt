@@ -40,13 +40,11 @@ interface UnsafeBehaviourDao {
 
     // Custom SQL query to update specific fields where updated = false
     @Query(" UPDATE unsafe_behaviour " +
-            "SET alcoholInfluence = :alcoholInfluence, " +
-            "updatedAt = :updatedAt, " +
+            "SET updatedAt = :updatedAt, " +
             "updated = :updated " +
             "WHERE id IN (:ids) AND updated = 0"
     )
     suspend fun updateUnsafeBehaviourFields(
-        alcoholInfluence: Boolean,
         updatedAt: Date,
         updated: Boolean,
         ids: List<UUID>
@@ -69,7 +67,6 @@ interface UnsafeBehaviourDao {
 
                 // Perform the batch update using the optimized SQL query
                 updateUnsafeBehaviourFields(
-                    alcoholInfluence = alcoholInf,
                     updatedAt = updatedAt,
                     updated = true,
                     ids = ids

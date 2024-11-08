@@ -1,5 +1,5 @@
 from typing import Optional
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean
+from sqlalchemy import JSON, Column, Integer, String, Float, DateTime, ForeignKey, Boolean
 from sqlalchemy.dialects.mysql import BINARY
 from sqlalchemy.orm import relationship
 from safedrive.database.base import Base
@@ -28,16 +28,16 @@ class RawSensorData(Base):
 
     __tablename__ = "raw_sensor_data"
 
-    id = Column(BINARY(16), primary_key=True, default=generate_uuid_binary)
+    id = Column(BINARY(16), primary_key=True, unique=True, default=generate_uuid_binary)
     sensor_type = Column(Integer, nullable=False)
     sensor_type_name = Column(String(255), nullable=False)
-    values = Column(String(1024), nullable=False)  # Increased size for larger data
+    values = Column(JSON, nullable=False)  # Use JSON to store list data
     timestamp = Column(Integer, nullable=False)
     date = Column(DateTime)
     accuracy = Column(Integer, nullable=False)
-    location_id = Column(BINARY(16), ForeignKey('location.id'), nullable=True)
-    trip_id = Column(BINARY(16), ForeignKey('trip.id'), nullable=True)
-    sync = Column(Boolean, default=False)
+    location_id = Column(BINARY(16), ForeignKey('location.id'))
+    trip_id = Column(BINARY(16), ForeignKey('trip.id'))
+    sync = Column(Boolean, nullable=False)
 
     # Relationships
     location = relationship("Location", back_populates="raw_sensor_data")

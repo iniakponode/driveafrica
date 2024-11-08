@@ -14,7 +14,7 @@ class OnnxModelRunner(private val context: Context, private val ortEnvironmentWr
     init {
         try {
             // Load the ONNX model
-            val modelBytes = "decision_tree_model.ort".loadModelFile()
+            val modelBytes = "pruned_decision_tree_model.with_runtime_opt.ort".loadModelFile()
             session = ortEnvironmentWrapper.createSession(modelBytes.array())
         } catch (e: Exception) {
             e.printStackTrace()
@@ -46,7 +46,8 @@ class OnnxModelRunner(private val context: Context, private val ortEnvironmentWr
 
         // Since it's a binary classification model, convert output to true/false
         val isAlcoholInfluenced = result[0][0] > 0.5 // Adjust threshold if needed
-        Log.d("alcoho", "isAlcoholInfluenced: $isAlcoholInfluenced")
+        Log.d("alcohol", "${result[0][0]}")
+        Log.d("alcohol", "isAlcoholInfluenced: $isAlcoholInfluenced")
         return isAlcoholInfluenced
     }
 }

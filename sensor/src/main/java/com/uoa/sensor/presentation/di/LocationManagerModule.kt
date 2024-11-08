@@ -14,7 +14,6 @@ import dagger.hilt.components.SingletonComponent
 @InstallIn(SingletonComponent::class)
 object LocationManagerModule {
     // Provide the LocationManager implementation
-    @RequiresApi(Build.VERSION_CODES.O)
     @Provides
     fun provideLocationManager(
 //        @ApplicationContext context: Context,

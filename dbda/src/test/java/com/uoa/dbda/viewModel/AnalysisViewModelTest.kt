@@ -2,12 +2,12 @@ package com.uoa.dbda.viewModel
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.nhaarman.mockitokotlin2.any
+import com.uoa.core.behaviouranalysis.UnsafeBehaviorAnalyser
 import com.uoa.core.database.entities.RawSensorDataEntity
 import com.uoa.core.utils.toDomainModel
 import com.uoa.dbda.domain.usecase.FetchRawSensorDataByDateUseCase
 import com.uoa.dbda.domain.usecase.FetchRawSensorDataByTripIdUseCase
 import com.uoa.dbda.domain.usecase.InsertUnsafeBehaviourUseCase
-import com.uoa.dbda.domain.usecase.analyser.UnsafeBehaviorAnalyser
 import com.uoa.dbda.presentation.viewModel.AnalysisViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

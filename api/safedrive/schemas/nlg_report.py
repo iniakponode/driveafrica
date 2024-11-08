@@ -1,65 +1,62 @@
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
+from uuid import UUID
 
 class NLGReportBase(BaseModel):
     """
-    Base class for the NLG Report model, defining common attributes.
+    Base schema for NLG Report.
 
     Attributes:
-    - id (int): The unique identifier for the NLG report.
-    - userId (str): The user identifier related to the report.
-    - reportText (str): The text of the NLG report.
-    - dateRange (str): The date range for which the report is applicable.
-    - synced (bool): Indicator whether the report has been synced.
+    - **id**: Unique identifier for the report.
+    - **user_id**: Identifier for the user who generated the report.
+    - **report_text**: Full text content of the report.
+    - **generated_at**: Generation date and time of the report.
+    - **synced**: Indicates if the report has been synced.
     """
-    id: int
-    userId: str
-    reportText: str
-    dateRange: str
+    id: UUID
+    driver_profile_id: UUID
+    report_text: str
+    generated_at: datetime
     synced: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class NLGReportCreate(BaseModel):
     """
-    Schema for creating a new NLG Report record.
+    Schema for creating a new NLG Report.
 
     Attributes:
-    - userId (str): The user identifier related to the report.
-    - reportText (str): The text of the NLG report.
-    - dateRange (str): The date range for which the report is applicable.
-    - synced (Optional[bool]): Indicator whether the report has been synced, defaults to False.
+    - **user_id**: Identifier for the user who generated the report.
+    - **report_text**: Text content of the report.
+    - **generated_at**: Generation date and time of the report.
+    - **synced**: Boolean indicating if the report has been synced.
     """
-    userId: str
-    reportText: str
-    dateRange: str
+    driver_profile_id: UUID
+    report_text: str
+    generated_at: datetime
     synced: Optional[bool] = False
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class NLGReportUpdate(BaseModel):
     """
-    Schema for updating an existing NLG Report record.
+    Schema for updating an existing NLG Report.
 
     Attributes:
-    - reportText (Optional[str]): Optionally update the text of the report.
-    - dateRange (Optional[str]): Optionally update the date range of the report.
-    - synced (Optional[bool]): Optionally update the sync status.
+    - **report_text**: Optional update to the report content.
+    - **synced**: Optional update to sync status.
     """
-    reportText: Optional[str] = None
-    dateRange: Optional[str] = None
+    report_text: Optional[str] = None
     synced: Optional[bool] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class NLGReportResponse(NLGReportBase):
     """
-    Schema for the response format of an NLG Report record.
-
-    Inherits all attributes from NLGReportBase.
+    Schema for NLG Report response format, inherits from NLGReportBase.
     """
     pass

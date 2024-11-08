@@ -54,14 +54,14 @@ interface UnsafeBehaviourRepository {
 
     fun getUnsafeBehavioursForTips(): Flow<List<UnsafeBehaviourModel>>
 
-    suspend fun getSensorDataBetweenDates(
-        startDate: LocalDate,
-        endDate: LocalDate
-    ): Flow<List<RawSensorDataEntity>>
+//    suspend fun getSensorDataBetweenDates(
+//        startDate: LocalDate,
+//        endDate: LocalDate
+//    ): Flow<List<RawSensorDataEntity>>
 
-    suspend fun getSensorDataByTripId(tripId: UUID): Flow<List<RawSensorDataEntity>>
+//    suspend fun getSensorDataByTripId(tripId: UUID): Flow<List<RawSensorDataEntity>>
 
-    suspend fun getSensorDataBySyncStatus(synced: Boolean): List<RawSensorData>
+//    suspend fun getSensorDataBySyncStatus(synced: Boolean): List<RawSensorData>
 
     suspend fun getLastInsertedUnsafeBehaviour(): UnsafeBehaviourEntity?
 

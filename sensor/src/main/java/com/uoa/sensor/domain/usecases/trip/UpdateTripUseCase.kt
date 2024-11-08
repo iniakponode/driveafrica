@@ -21,12 +21,16 @@ class UpdateTripUseCaseOld @Inject constructor(private val tripRepository: TripD
 }
 
 class UpdateTripUseCase @Inject constructor(private val tripRepository: TripDataRepositoryImpl) {
-    operator fun invoke(tripId: UUID) {
+    operator fun invoke(
+                        tripId: UUID,
+                        influence:String
+    ) {
         CoroutineScope(Dispatchers.IO).launch {
             val tripToFromdb = tripRepository.getTripById(tripId)
             val tripToUpdate = tripToFromdb!!.copy(
                 endTime = System.currentTimeMillis(),
-                endDate = Date()
+                endDate = Date(),
+                influence=influence
             )
             tripRepository.updateTrip(tripToUpdate)
         }

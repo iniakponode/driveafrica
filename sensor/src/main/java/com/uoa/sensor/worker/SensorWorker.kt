@@ -5,8 +5,10 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.uoa.sensor.hardware.HardwareModule
+import com.uoa.sensor.notifications.VehicleNotificationManager
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.delay
@@ -19,23 +21,49 @@ class SensorWorker @AssistedInject constructor(
     private val hardwareModule: HardwareModule
 ) : CoroutineWorker(context, workerParams) {
 
+    private val notificationManager = VehicleNotificationManager(context)
+
+    // Track last state to avoid repeated notifications
+    private var lastVehicleMovingState: Boolean? = null
+    private var sensorsStoppedNotified = false
+
+    // Define a notification ID for this foreground service
+    private val notificationId = 1
+
     @RequiresApi(Build.VERSION_CODES.O)
     override suspend fun doWork(): Result {
+        // Start the worker as a foreground service
+        setForeground(getForegroundInfo())
+
         val taskType = inputData.getString("TASK_TYPE")
-        val tripId= inputData.getString("TRIP_ID")
+        val tripId = inputData.getString("TRIP_ID")
         val tripIdUUID = UUID.fromString(tripId)
         val isLocationPermissionGranted = inputData.getBoolean("LOCATION_PERMISSION_GRANTED", false)
+
         return when (taskType) {
             "START" -> {
                 hardwareModule.startDataCollection(isLocationPermissionGranted, tripIdUUID)
+
                 try {
+                    // Start monitoring vehicle movement in a coroutine
+                    monitorVehicleMovementState()
+
+                    // Continuous data collection simulation while the worker is active
                     while (!isStopped) {
-                        // Simulate continuous data collection
-                        delay(1000)
+                        delay(1000) // Simulate ongoing data collection
                     }
                 } catch (e: InterruptedException) {
-                    Result.failure()
+                    return Result.failure()
+                } finally {
+                    // Notify user that sensors are stopped and clear other notifications
+                    if (!sensorsStoppedNotified) {
+                        notificationManager.displayNotification("Sensors State","Sensors stopped. No data collection in progress.")
+                        sensorsStoppedNotified = true
+                    } else {
+                        notificationManager.clearNotification()
+                    }
                 }
+
                 Result.success()
             }
 
@@ -43,4 +71,38 @@ class SensorWorker @AssistedInject constructor(
         }
     }
 
+    override suspend fun getForegroundInfo(): ForegroundInfo {
+        // Build a notification to represent the ongoing sensor collection
+        val notification = notificationManager.buildForegroundNotification(
+            title = "Sensors in Background",
+            message = "Sensors are running\nto collect data in the background...."
+        )
+
+        // Return a ForegroundInfo object with the notification
+        return ForegroundInfo(notificationId, notification)
+    }
+
+    private suspend fun monitorVehicleMovementState() {
+        // Launch a coroutine to observe the isVehicleMoving state
+        while (!isStopped) {
+            val isVehicleMoving = hardwareModule.isVehicleMoving()
+
+            // Notify only when there's a change in state
+            if (lastVehicleMovingState != isVehicleMoving) {
+                lastVehicleMovingState = isVehicleMoving
+
+                if (isVehicleMoving) {
+                    // Notify once when vehicle starts moving
+                    notificationManager.displayNotification("Vehicle State","Sensor data collection has started.")
+                } else {
+                    // Notify once when waiting for vehicle to move
+                    notificationManager.displayNotification("Vehicle State","Waiting for vehicle to start moving to collect data.")
+                }
+            }
+
+            // Check state every 5 seconds
+            delay(5000)
+        }
+    }
 }
+

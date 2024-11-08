@@ -6,10 +6,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uoa.nlgengine.data.model.BehaviourSummary
 import com.uoa.core.database.repository.LocationRepository
+import com.uoa.core.database.repository.TripDataRepository
 import com.uoa.core.model.LocationData
 import com.uoa.core.model.UnsafeBehaviourModel
 import com.uoa.core.network.apiservices.OSMApiService
-import com.uoa.core.nlg.compressAndEncodeJson
 import com.uoa.core.utils.toDomainModel
 import com.uoa.nlgengine.data.model.DateHourKey
 import com.uoa.nlgengine.data.model.HourlySummary
@@ -33,11 +33,13 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 import javax.inject.Inject
+import kotlin.math.log
 
 
 @HiltViewModel
-class LocationRoadViewModel @Inject constructor(
+class NLGEngineViewModel @Inject constructor(
     private val locationRepository: LocationRepository,
+    private val tripRepository: TripDataRepository,
     private val osmApiService: OSMApiService
 ) : ViewModel() {
 
@@ -61,12 +63,26 @@ class LocationRoadViewModel @Inject constructor(
 
                 // Step 1: Extract unique location IDs
                 val uniqueLocationIds = unsafeBehaviours.mapNotNull { it.locationId }.distinct()
-                Log.d("LocationRoadViewModel", "Unique location IDs: $uniqueLocationIds")
+                Log.d("NLGEngineViewModel", "Unique location IDs: $uniqueLocationIds")
+                val uniqueTripIds=unsafeBehaviours.map { it.tripId }.distinct()
+                Log.d("LocationRoadViewModel", "Unique location IDs: $uniqueTripIds")
 
                 // Step 2: Get locations from repository
                 val locationMap = locationRepository.getLocationsByIds(uniqueLocationIds)
                     .associateBy { it.id }
                 Log.d("LocationRoadViewModel", "Created location map")
+
+                val trips=tripRepository.getTripByIds(uniqueTripIds)
+
+//                Count number of alcohol influenced trips
+                var alInfCount: Int=0
+                trips.forEach{
+                    if (it.influence=="alcohol"){
+                        alInfCount+=1
+                    }
+                }
+                Log.d("NLGEngine","Count of Alcohol influenced Trips $alInfCount")
+
 
                 // Step 3: Extract unique coordinates and reverse geocode with concurrency
                 val roadNameCache = mutableMapOf<Pair<Double, Double>, String?>()
@@ -107,11 +123,12 @@ class LocationRoadViewModel @Inject constructor(
                 }
 
                 // Create BehaviorSummary instances
+
                 val summaryData = aggregatedData.mapValues { entry ->
                     val behaviors = entry.value
                     val behaviorCounts = behaviors.groupingBy { it.behaviorType }.eachCount()
                     val mostFrequentBehavior = behaviorCounts.maxByOrNull { it.value }?.key ?: "N/A"
-                    val alcoholInfluenceCount = behaviors.count { it.alcoholInfluence }
+                    val alcoholInfluenceCount = alInfCount
 
                     BehaviourSummary(
                         date = entry.key.date,

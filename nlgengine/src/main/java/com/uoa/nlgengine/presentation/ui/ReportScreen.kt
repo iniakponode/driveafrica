@@ -4,17 +4,12 @@ package com.uoa.nlgengine.presentation.ui
 // Beutifully designed with Jetpack Compose and scrollable with a back button and navigation
 // to previous screen.
 
-import android.app.Application
-import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 //import androidx.compose.foundation.layout.FlowColumnScopeInstance.align
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,9 +30,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -46,7 +39,7 @@ import com.uoa.core.ui.DAAppTopNavBar
 import com.uoa.nlgengine.data.model.UnsafeBehaviorChartEntry
 import com.uoa.nlgengine.presentation.ui.theme.NLGEngineTheme
 import com.uoa.nlgengine.presentation.viewmodel.LocalUnsafeBehavioursViewModel
-import com.uoa.nlgengine.presentation.viewmodel.LocationRoadViewModel
+import com.uoa.nlgengine.presentation.viewmodel.NLGEngineViewModel
 import com.uoa.nlgengine.presentation.viewmodel.chatgpt.ChatGPTViewModel
 import com.uoa.nlgengine.util.PeriodType
 import java.time.Instant
@@ -211,7 +204,7 @@ fun ReportScreenRoute(
     endDate: Long,
     chatGPTViewModel: ChatGPTViewModel = hiltViewModel(),
     unsafeBehavioursViewModel: LocalUnsafeBehavioursViewModel = hiltViewModel(),
-    locationAddressViewModel: LocationRoadViewModel = hiltViewModel(),
+    locationAddressViewModel: NLGEngineViewModel = hiltViewModel(),
 ) {
     // Convert the start and end date to LocalDate
     val context = LocalContext

@@ -14,5 +14,4 @@ data class UnsafeBehaviourModel(
     val updatedAt:Date?,
     val updated:Boolean=false,
     val synced: Boolean=false,
-    val alcoholInfluence: Boolean=false,
 )

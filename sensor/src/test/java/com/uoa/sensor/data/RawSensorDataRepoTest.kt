@@ -34,8 +34,8 @@ class RawSensorDataRepoTest {
 
     @Test
     fun testGetRawSensorDataBetween() = runTest {
-        val start = Instant.now()
-        val end = Instant.now().plusSeconds(3600)
+        val start = Instant.now().atZone(ZoneId.systemDefault()).toLocalDate()
+        val end = Instant.now().plusSeconds(3600).atZone(ZoneId.systemDefault()).toLocalDate()
         val rawSensorDataEntity = RawSensorDataEntity(
             id = UUID.randomUUID(),
             // initialize other fields

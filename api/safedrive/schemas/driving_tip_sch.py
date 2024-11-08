@@ -1,66 +1,64 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from uuid import UUID
-from datetime import date
+from datetime import datetime
 
 class DrivingTipBase(BaseModel):
     """
-    Base schema for Driving Tip entity representing attributes that are common across different operations.
+    Base schema for DrivingTip containing common attributes.
 
     Attributes:
-        tipId (UUID): The unique identifier for the driving tip.
-        title (str): The title of the driving tip.
-        meaning (Optional[str]): Explanation of the behavior. Defaults to None.
-        penalty (Optional[str]): Applicable penalties in a neutral tone. Defaults to None.
-        fine (Optional[str]): Applicable fines in a neutral tone. Defaults to None.
-        law (Optional[str]): Relevant laws stated factually. Defaults to None.
-        hostility (Optional[str]): Indicates any hostile action or behavior. Defaults to None.
-        summaryTip (Optional[str]): Encouraging, actionable advice. Defaults to None.
-        sync (bool): Indicates whether the tip is synced. Defaults to False.
-        date (date): The date the driving tip was created.
-        profileId (UUID): The identifier of the driver profile associated with the tip.
-        llm (Optional[str]): Indicates the language model used for generating the tip. Defaults to None.
+    - **tip_id**: Unique identifier for the driving tip.
+    - **title**: Title of the driving tip.
+    - **meaning**: Explanation of the tip's meaning.
+    - **penalty**: Penalty details, if applicable.
+    - **fine**: Fine amount associated with the tip.
+    - **law**: Related law to the tip.
+    - **hostility**: Hostility level, if applicable.
+    - **summary_tip**: Summary of the tip.
+    - **sync**: Flag indicating if the data has been synced.
+    - **date**: Date the tip was recorded.
+    - **profile_id**: UUID of the driver profile.
+    - **llm**: The language model used for generating the tip.
     """
-    tipId: UUID
+    tip_id: UUID
     title: str
     meaning: Optional[str] = None
     penalty: Optional[str] = None
     fine: Optional[str] = None
     law: Optional[str] = None
     hostility: Optional[str] = None
-    summaryTip: Optional[str] = None
-    sync: bool = False
-    date: date
-    profileId: UUID
+    summary_tip: Optional[str] = None
+    sync: bool
+    date: datetime
+    profile_id: UUID
     llm: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
-class DrivingTipCreate(DrivingTipBase):
+class DrivingTipCreate(BaseModel):
     """
-    Schema for creating a new Driving Tip entity.
-    Inherits all attributes from DrivingTipBase.
+    Schema for creating a new DrivingTip.
     """
-    pass
+    title: str
+    meaning: Optional[str] = None
+    penalty: Optional[str] = None
+    fine: Optional[str] = None
+    law: Optional[str] = None
+    hostility: Optional[str] = None
+    summary_tip: Optional[str] = None
+    sync: bool
+    date: datetime
+    profile_id: UUID
+    llm: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 class DrivingTipUpdate(BaseModel):
     """
-    Schema for updating an existing Driving Tip entity.
-    Attributes are optional to allow partial updates.
-
-    Attributes:
-        title (Optional[str]): The title of the driving tip.
-        meaning (Optional[str]): Explanation of the behavior.
-        penalty (Optional[str]): Applicable penalties in a neutral tone.
-        fine (Optional[str]): Applicable fines in a neutral tone.
-        law (Optional[str]): Relevant laws stated factually.
-        hostility (Optional[str]): Indicates any hostile action or behavior.
-        summaryTip (Optional[str]): Encouraging, actionable advice.
-        sync (Optional[bool]): Indicates whether the tip is synced.
-        date (Optional[date]): The date the driving tip was created.
-        profileId (Optional[UUID]): The identifier of the driver profile associated with the tip.
-        llm (Optional[str]): Indicates the language model used for generating the tip.
+    Schema for updating an existing DrivingTip.
     """
     title: Optional[str] = None
     meaning: Optional[str] = None
@@ -68,18 +66,17 @@ class DrivingTipUpdate(BaseModel):
     fine: Optional[str] = None
     law: Optional[str] = None
     hostility: Optional[str] = None
-    summaryTip: Optional[str] = None
+    summary_tip: Optional[str] = None
     sync: Optional[bool] = None
-    date: Optional[date] = None
-    profileId: Optional[UUID] = None
+    date: Optional[datetime] = None
+    profile_id: Optional[UUID] = None
     llm: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class DrivingTipResponse(DrivingTipBase):
     """
-    Schema for response when retrieving a Driving Tip entity.
-    Inherits all attributes from DrivingTipBase.
+    Response schema for DrivingTip.
     """
     pass

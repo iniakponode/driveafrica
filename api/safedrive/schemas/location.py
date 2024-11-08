@@ -1,74 +1,72 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
 
 class LocationBase(BaseModel):
     """
-    Base class for the Location model, defining common attributes.
+    Base schema for the Location model.
 
     Attributes:
-    - id (UUID): The unique identifier for each location entry.
-    - latitude (float): The latitude coordinate of the location.
-    - longitude (float): The longitude coordinate of the location.
-    - timestamp (int): The timestamp indicating when the location data was recorded.
-    - date (datetime): The date corresponding to the location data.
-    - altitude (float): The altitude of the location in meters.
-    - speed (float): The speed of the vehicle/person at the given location.
-    - distance (float): The distance traveled from the previous location.
-    - sync (bool): Indicator whether the data has been synced.
+    - **id**: The unique identifier for each location entry.
+    - **latitude**: The latitude coordinate of the location.
+    - **longitude**: The longitude coordinate of the location.
+    - **timestamp**: The timestamp indicating when the location data was recorded (epoch milliseconds).
+    - **date**: The date corresponding to the location data.
+    - **altitude**: The altitude of the location in meters.
+    - **speed**: The speed at the given location.
+    - **distance**: The distance traveled from the previous location.
+    - **sync**: Indicator whether the data has been synced.
     """
-    id: UUID
-    latitude: float
-    longitude: float
-    timestamp: int
-    date: datetime
-    altitude: float
-    speed: float
-    distance: float
-    sync: bool
+    id: UUID = Field(..., description="The unique identifier for each location entry.")
+    latitude: float = Field(..., description="The latitude coordinate of the location.")
+    longitude: float = Field(..., description="The longitude coordinate of the location.")
+    timestamp: int = Field(..., description="The timestamp when the location data was recorded (epoch milliseconds).")
+    date: datetime = Field(..., description="The date corresponding to the location data.")
+    altitude: float = Field(..., description="The altitude of the location in meters.")
+    speed: float = Field(..., description="The speed at the given location.")
+    distance: float = Field(..., description="The distance traveled from the previous location.")
+    sync: bool = Field(False, description="Indicates whether the data has been synced.")
 
     class Config:
-        orm_mode = True
+        from_attributes = True  # For Pydantic v2
 
-class LocationCreate(LocationBase):
+class LocationCreate(BaseModel):
     """
     Schema for creating a new Location record.
-
-    Inherits all attributes from LocationBase.
     """
-    pass
+    latitude: float = Field(..., description="The latitude coordinate of the location.")
+    longitude: float = Field(..., description="The longitude coordinate of the location.")
+    timestamp: int = Field(..., description="The timestamp when the location data was recorded (epoch milliseconds).")
+    date: datetime = Field(..., description="The date corresponding to the location data.")
+    altitude: float = Field(..., description="The altitude of the location in meters.")
+    speed: float = Field(..., description="The speed at the given location.")
+    distance: float = Field(..., description="The distance traveled from the previous location.")
+    sync: Optional[bool] = Field(False, description="Indicates whether the data has been synced.")
+
+    class Config:
+        from_attributes = True
 
 class LocationUpdate(BaseModel):
     """
     Schema for updating an existing Location record.
 
-    Attributes:
-    - latitude (Optional[float]): Optionally update the latitude of the location.
-    - longitude (Optional[float]): Optionally update the longitude of the location.
-    - timestamp (Optional[int]): Optionally update the timestamp of the location.
-    - date (Optional[datetime]): Optionally update the date of the location.
-    - altitude (Optional[float]): Optionally update the altitude.
-    - speed (Optional[float]): Optionally update the speed at the given location.
-    - distance (Optional[float]): Optionally update the distance traveled from the previous location.
-    - sync (Optional[bool]): Optionally update the sync status.
+    All fields are optional.
     """
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    timestamp: Optional[int] = None
-    date: Optional[datetime] = None
-    altitude: Optional[float] = None
-    speed: Optional[float] = None
-    distance: Optional[float] = None
-    sync: Optional[bool] = None
+    latitude: Optional[float] = Field(None, description="Optionally update the latitude of the location.")
+    longitude: Optional[float] = Field(None, description="Optionally update the longitude of the location.")
+    timestamp: Optional[int] = Field(None, description="Optionally update the timestamp of the location.")
+    date: Optional[datetime] = Field(None, description="Optionally update the date of the location.")
+    altitude: Optional[float] = Field(None, description="Optionally update the altitude.")
+    speed: Optional[float] = Field(None, description="Optionally update the speed at the given location.")
+    distance: Optional[float] = Field(None, description="Optionally update the distance traveled from the previous location.")
+    sync: Optional[bool] = Field(None, description="Optionally update the sync status.")
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class LocationResponse(LocationBase):
     """
     Schema for the response format of a Location record.
-
-    Inherits all attributes from LocationBase.
     """
     pass

@@ -18,7 +18,7 @@ import java.util.UUID
 class RawSensorDataRepositoryImpl(private val rawSensorDataDao: RawSensorDataDao):
     RawSensorDataRepository {
 
-    override fun getRawSensorDataBetween(start: Instant, end: Instant): Flow<List<RawSensorData>> {
+    override fun getRawSensorDataBetween(start: LocalDate, end: LocalDate): Flow<List<RawSensorData>> {
         val rawSensorDataFlow=rawSensorDataDao.getRawSensorDataBetween(start, end)
         return rawSensorDataFlow.map { rawSensorDataList ->
             rawSensorDataList.map { it.toDomainModel() }

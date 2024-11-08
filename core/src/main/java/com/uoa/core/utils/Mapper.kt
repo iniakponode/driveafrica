@@ -96,6 +96,7 @@ fun Trip.toEntity(): TripEntity {
         endTime = this.endTime,
         startDate = this.startDate,
         endDate = this.endDate,
+        influence = this.influence,
         synced = this.synced
     )
 }
@@ -108,6 +109,7 @@ fun TripEntity.toDomainModel(): Trip {
         endTime = this.endTime,
         startDate = this.startDate,
         endDate = this.endDate,
+        influence=this.influence,
         synced = this.synced
     )
 }
@@ -234,7 +236,7 @@ fun UnsafeBehaviourEntity.toDomainModel(): UnsafeBehaviourModel {
         updatedAt = safeUpdatedAt,
         updated=this.updated,
         synced = this.synced,
-        alcoholInfluence = this.alcoholInfluence
+
     )
 }
 
@@ -253,7 +255,6 @@ fun UnsafeBehaviourModel.toEntity(): UnsafeBehaviourEntity {
         updatedAt = safeUpdatedAt,
         updated=this.updated,
         synced = this.synced,
-        alcoholInfluence = this.alcoholInfluence
     )
 }
 

@@ -28,6 +28,7 @@ allprojects {
                 jvmTarget = "1.8"
             }
         }
+
     }
 }
 

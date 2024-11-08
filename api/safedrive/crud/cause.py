@@ -1,71 +1,90 @@
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from uuid import UUID
-from datetime import datetime
-from safedrive.models.cause import Cause
+from typing import List, Optional
+from safedrive.models.cause import Cause, generate_uuid_binary
 from safedrive.schemas.cause import CauseCreate, CauseUpdate
+import logging
 
-class CauseCRUD:
-    def __init__(self, db: Session):
-        self.db = db
+logger = logging.getLogger(__name__)
 
-    def get(self, cause_id: UUID) -> Cause:
-        with self.db as session:
-            return session.query(Cause).filter(Cause.id == cause_id).first()
+class CRUDCause:
+    """
+    CRUD operations for Cause.
 
-    def create(self, cause_data: CauseCreate) -> Cause:
-        with self.db as session:
-            new_cause = Cause(
-                id=cause_data.id,
-                unsafeBehaviourId=cause_data.unsafeBehaviourId,
-                name=cause_data.name,
-                influence=cause_data.influence,
-                createdAt=datetime.utcnow(),
-                updatedAt=None
-            )
+    Methods:
+    - **create**: Adds a new Cause record.
+    - **get**: Retrieves a Cause by UUID.
+    - **get_all**: Retrieves all Causes.
+    - **update**: Updates a Cause record.
+    - **delete**: Deletes a Cause record.
+    """
+    def __init__(self, model):
+        self.model = model
+
+    def create(self, db: Session, obj_in: CauseCreate) -> Cause:
+        # Initialize Cause instance with model_dump of obj_in
+        db_obj = self.model(**obj_in.model_dump(), id=generate_uuid_binary())
+        
+        # Check if 'unsafe_behaviour_id' exists and is a UUID, then convert to binary if necessary
+        if hasattr(db_obj, 'unsafe_behaviour_id') and isinstance(getattr(db_obj, 'unsafe_behaviour_id'), UUID):
+            setattr(db_obj, 'unsafe_behaviour_id', getattr(db_obj, 'unsafe_behaviour_id').bytes)
+        
+        db.add(db_obj)
+        try:
+            db.commit()
+            logger.info(f"Created Cause with ID: {db_obj.id}")
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error creating Cause: {str(e)}")
+            raise HTTPException(status_code=500, detail="Error creating Cause")
+        
+        db.refresh(db_obj)
+        return db_obj
+
+
+    def get(self, db: Session, id: UUID) -> Optional[Cause]:
+        cause = db.query(self.model).filter(self.model.id == id.bytes).first()
+        if cause:
+            logger.info(f"Retrieved Cause with ID: {id}")
+        else:
+            logger.warning(f"Cause with ID {id} not found.")
+        return cause
+
+    def get_all(self, db: Session, skip: int = 0, limit: int = 100) -> List[Cause]:
+        causes = db.query(self.model).offset(skip).limit(limit).all()
+        logger.info(f"Retrieved {len(causes)} Causes.")
+        return causes
+
+    def update(self, db: Session, db_obj: Cause, obj_in: CauseUpdate) -> Cause:
+        obj_data = obj_in.model_dump(exclude_unset=True)
+        for field in obj_data:
+            setattr(db_obj, field, obj_data[field])
+        db.add(db_obj)
+        try:
+            db.commit()
+            logger.info(f"Updated Cause with ID: {db_obj.id}")
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error updating Cause: {str(e)}")
+            raise e
+        db.refresh(db_obj)
+        return db_obj
+
+    def delete(self, db: Session, id: UUID) -> Optional[Cause]:
+        obj = db.query(self.model).filter(self.model.id == id.bytes).first()
+        if obj:
+            db.delete(obj)
             try:
-                session.add(new_cause)
-                session.commit()
-                session.refresh(new_cause)
+                db.commit()
+                logger.info(f"Deleted Cause with ID: {id}")
             except Exception as e:
-                session.rollback()
+                db.rollback()
+                logger.error(f"Error deleting Cause: {str(e)}")
                 raise e
-            return new_cause
+        else:
+            logger.warning(f"Cause with ID {id} not found for deletion.")
+        return obj
 
-    def update(self, cause_id: UUID, cause_data: CauseUpdate) -> Cause:
-        with self.db as session:
-            existing_cause = session.query(Cause).filter(Cause.id == cause_id).first()
-            if not existing_cause:
-                return None
-
-            for key, value in cause_data.dict(exclude_unset=True).items():
-                setattr(existing_cause, key, value)
-            existing_cause.updatedAt = datetime.utcnow()
-
-            try:
-                session.commit()
-                session.refresh(existing_cause)
-            except Exception as e:
-                session.rollback()
-                raise e
-            return existing_cause
-
-    def delete(self, cause_id: UUID) -> bool:
-        with self.db as session:
-            existing_cause = session.query(Cause).filter(Cause.id == cause_id).first()
-            if not existing_cause:
-                return False
-
-            try:
-                session.delete(existing_cause)
-                session.commit()
-            except Exception as e:
-                session.rollback()
-                raise e
-            return True
-
-    def get_all(self, skip: int = 0, limit: int = 10) -> list[Cause]:
-        with self.db as session:
-            return session.query(Cause).offset(skip).limit(limit).all()
-
-# Instantiate the CRUD utility for cause operations
-cause_crud = CauseCRUD(db=Session())
+# Initialize CRUD instance for Cause
+cause_crud = CRUDCause(Cause)

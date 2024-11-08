@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 19,
-    "identityHash": "086685513353f0e3d1357637f212c722",
+    "identityHash": "9e1a9e2f9edd9958589ac7f12f3a8aea",
     "entities": [
       {
         "tableName": "raw_sensor_data",
@@ -280,7 +280,7 @@
       },
       {
         "tableName": "trip_data",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `driverPId` BLOB, `startDate` TEXT, `endDate` TEXT, `startTime` INTEGER NOT NULL, `endTime` INTEGER, `synced` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`driverPId`) REFERENCES `driver_profile`(`driverProfileId`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `driverPId` BLOB, `startDate` TEXT, `endDate` TEXT, `startTime` INTEGER NOT NULL, `endTime` INTEGER, `influence` TEXT, `synced` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`driverPId`) REFERENCES `driver_profile`(`driverProfileId`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
         "fields": [
           {
             "fieldPath": "id",
@@ -316,6 +316,12 @@
             "fieldPath": "endTime",
             "columnName": "endTime",
             "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "influence",
+            "columnName": "influence",
+            "affinity": "TEXT",
             "notNull": false
           },
           {
@@ -1000,7 +1006,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '086685513353f0e3d1357637f212c722')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9e1a9e2f9edd9958589ac7f12f3a8aea')"
     ]
   }
 }

@@ -4,6 +4,7 @@ import com.uoa.core.database.daos.CauseDao
 import com.uoa.core.database.daos.RawSensorDataDao
 import com.uoa.core.database.daos.UnsafeBehaviourDao
 import com.uoa.core.database.repository.CauseRepository
+import com.uoa.core.database.repository.RawSensorDataRepository
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
 import com.uoa.dbda.domain.usecase.GetUnsafeBehavioursBetweenDatesUseCase
 import com.uoa.dbda.domain.usecase.GetUnsafeBehavioursBySyncStatusUseCase
@@ -11,10 +12,10 @@ import com.uoa.dbda.domain.usecase.GetUnsafeBehavioursByTripIdUseCase
 import com.uoa.dbda.domain.usecase.InsertUnsafeBehaviourUseCase
 import com.uoa.dbda.domain.usecase.UpdateUnsafeBehaviourUseCase
 import com.uoa.dbda.repository.UnsafeBehaviourRepositoryImpl
-import com.uoa.dbda.domain.usecase.AnalyzeUnsafeBehaviorUseCase
+//import com.uoa.dbda.domain.usecase.AnalyzeUnsafeBehaviorUseCase
 import com.uoa.dbda.domain.usecase.FetchRawSensorDataByDateUseCase
 import com.uoa.dbda.domain.usecase.FetchRawSensorDataByTripIdUseCase
-import com.uoa.dbda.domain.usecase.analyser.UnsafeBehaviorAnalyser
+//import com.uoa.dbda.domain.usecase.analyser.UnsafeBehaviorAnalyser
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,16 +36,16 @@ object DBDAModules {
     }
 
 //    provide UnsafeBehaviourAnalyser provider here
-    @Provides
-    fun provideUnsafeBehaviourAnalyser(): UnsafeBehaviorAnalyser {
-        return UnsafeBehaviorAnalyser()
-    }
+//    @Provides
+//    fun provideUnsafeBehaviourAnalyser(): UnsafeBehaviorAnalyser {
+//        return UnsafeBehaviorAnalyser()
+//    }
 
     // provide AnalyseUnsafeBehaviourUseCase provider here
-    @Provides
-    fun provideAnalyzeUnsafeBehaviourUseCase(unsafeBehaviourRepositoryImpl: UnsafeBehaviourRepositoryImpl, unsafeBehaviourAnalyser: UnsafeBehaviorAnalyser): AnalyzeUnsafeBehaviorUseCase {
-        return AnalyzeUnsafeBehaviorUseCase(unsafeBehaviourAnalyser,unsafeBehaviourRepositoryImpl)
-    }
+//    @Provides
+//    fun provideAnalyzeUnsafeBehaviourUseCase(unsafeBehaviourRepositoryImpl: UnsafeBehaviourRepositoryImpl, unsafeBehaviourAnalyser: UnsafeBehaviorAnalyser): AnalyzeUnsafeBehaviorUseCase {
+//        return AnalyzeUnsafeBehaviorUseCase(unsafeBehaviourAnalyser,unsafeBehaviourRepositoryImpl)
+//    }
 
 //    Provides GetUnsafeBehavioursBetweenDatesUseCase
     @Provides
@@ -77,13 +78,13 @@ object DBDAModules {
     }
 
     @Provides
-    fun provideFetchRawSensorDataByDateUseCase(unsafeBehaviourRepositoryImpl: UnsafeBehaviourRepositoryImpl): FetchRawSensorDataByDateUseCase {
-        return FetchRawSensorDataByDateUseCase(unsafeBehaviourRepositoryImpl)
+    fun provideFetchRawSensorDataByDateUseCase(rawSensorDataRepo: RawSensorDataRepository): FetchRawSensorDataByDateUseCase {
+        return FetchRawSensorDataByDateUseCase(rawSensorDataRepo)
     }
 
     @Provides
-    fun provideFetchRawSensorDataByTripIdUseCase(unsafeBehaviourRepositoryImpl: UnsafeBehaviourRepositoryImpl): FetchRawSensorDataByTripIdUseCase {
-        return FetchRawSensorDataByTripIdUseCase(unsafeBehaviourRepositoryImpl)
+    fun provideFetchRawSensorDataByTripIdUseCase(rawSensorDataRepo: RawSensorDataRepository): FetchRawSensorDataByTripIdUseCase {
+        return FetchRawSensorDataByTripIdUseCase(rawSensorDataRepo)
     }
 
 }

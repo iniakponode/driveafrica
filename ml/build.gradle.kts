@@ -88,6 +88,7 @@ dependencies {
     implementation(libs.androidx.hilt.common)
     implementation(libs.hilt.ext.work)
     implementation(project(":core"))
+//    implementation(project(":sensor"))
     implementation(libs.generative.ai)
     implementation(libs.androidx.hilt.navigation.compose)
     ksp(libs.hilt.ext.compiler)

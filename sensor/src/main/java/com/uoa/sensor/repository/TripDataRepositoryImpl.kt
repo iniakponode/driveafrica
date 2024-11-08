@@ -1,5 +1,6 @@
 package com.uoa.sensor.repository
 
+import android.util.Log
 import com.uoa.core.database.daos.TripDao
 import com.uoa.core.database.repository.TripDataRepository
 import com.uoa.core.model.Trip
@@ -13,6 +14,31 @@ class TripDataRepositoryImpl @Inject constructor(private val tripDataDao: TripDa
 
     override suspend fun insertTrip(trip: Trip){
         return tripDataDao.insertTrip(trip.toEntity())
+    }
+
+    override suspend fun getTripByIds(ids: List<UUID>): List<Trip>{
+        Log.d("TripRepository", "getTripByIds called with ids: $ids")
+
+        try {
+            val tripEntities = tripDataDao.getTripsByIds(ids)
+            Log.d("TripRepository", "Retrieved tripEntities: $tripEntities")
+            val tripDataList = tripEntities.map {
+                val domainModel = it.toDomainModel()
+                Log.d("TripRepository", "Converted to domain model: $domainModel")
+                domainModel
+            }
+            Log.d(
+                "TripRepository",
+                "Returning tripsDataList with size: ${tripDataList.size}"
+            )
+            return tripDataList
+        }
+        catch (e: Exception) {
+            Log.e("TripRepository", "Error getting trips by ids: $ids", e)
+
+            return emptyList()
+
+        }
     }
 
     override suspend fun updateTrip(trip: Trip) {

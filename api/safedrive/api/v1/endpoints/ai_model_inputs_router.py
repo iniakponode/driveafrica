@@ -145,3 +145,21 @@ def delete_ai_model_input(
     except Exception as e:
         logger.exception("Error deleting AI model input")
         raise HTTPException(status_code=500, detail="Internal Server Error")
+    
+@router.post("/ai_model_inputs/batch_create", status_code=201)
+def batch_create_ai_model_inputs(data: List[AIModelInputCreate], db: Session = Depends(get_db)):
+    try:
+        created_inputs = ai_model_inputs_crud.batch_create(db=db, data_in=data)
+        return {"message": f"{len(created_inputs)} AIModelInput records created."}
+    except Exception as e:
+        logger.error(f"Error in batch create AIModelInput: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch creation failed.")
+
+@router.delete("/ai_model_inputs/batch_delete", status_code=204)
+def batch_delete_ai_model_inputs(ids: List[UUID], db: Session = Depends(get_db)):
+    try:
+        ai_model_inputs_crud.batch_delete(db=db, ids=ids)
+        return {"message": f"{len(ids)} AIModelInput records deleted."}
+    except Exception as e:
+        logger.error(f"Error in batch delete AIModelInput: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch deletion failed.")

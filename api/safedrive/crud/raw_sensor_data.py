@@ -21,31 +21,51 @@ class CRUDRawSensorData:
         """
         self.model = model
 
-    def create(self, db: Session, obj_in: RawSensorDataCreate) -> RawSensorData:
-        """
-        Create a new raw sensor data record in the database.
-
-        :param db: The database session.
-        :param obj_in: The schema with input data for creation.
-        :return: The created raw sensor data.
-        """
+    def batch_create(self, db: Session, data_in: List[RawSensorDataCreate]) -> List[RawSensorData]:
         try:
-            obj_data = obj_in.dict()
-            # Convert UUID fields to bytes
-            if 'location_id' in obj_data and isinstance(obj_data['location_id'], UUID):
-                obj_data['location_id'] = obj_data['location_id'].bytes
-            if 'trip_id' in obj_data and isinstance(obj_data['trip_id'], UUID):
-                obj_data['trip_id'] = obj_data['trip_id'].bytes
-            db_obj = self.model(**obj_data)
-            db.add(db_obj)
+            db_objs = [self.model(**data.model_dump()) for data in data_in]
+            db.bulk_save_objects(db_objs)
             db.commit()
-            db.refresh(db_obj)
-            logger.info(f"Created raw sensor data with ID: {db_obj.id.hex()}")
-            return db_obj
+            logger.info(f"Batch inserted {len(db_objs)} RawSensorData records.")
+            return db_objs
         except Exception as e:
             db.rollback()
-            logger.exception("Error creating raw sensor data in database.")
-            raise
+            logger.error(f"Error during batch insertion of RawSensorData: {str(e)}")
+            raise e
+
+    def batch_delete(self, db: Session, ids: List[int]) -> None:
+        try:
+            db.query(self.model).filter(self.model.id.in_(ids)).delete(synchronize_session=False)
+            db.commit()
+            logger.info(f"Batch deleted {len(ids)} RawSensorData records.")
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error during batch deletion of RawSensorData: {str(e)}")
+            raise e
+
+    def create(self, db: Session, obj_in: RawSensorDataCreate) -> RawSensorData:
+        # Convert UUID fields to bytes
+        obj_in_data = obj_in.model_dump(exclude={'values'})
+        if 'location_id' in obj_in_data and isinstance(obj_in_data['location_id'], UUID):
+            obj_in_data['location_id'] = obj_in_data['location_id'].bytes
+        if 'trip_id' in obj_in_data and isinstance(obj_in_data['trip_id'], UUID):
+            obj_in_data['trip_id'] = obj_in_data['trip_id'].bytes
+
+        db_obj = self.model(
+            **obj_in_data,  # Unpack the modified dictionary
+            values=obj_in.values  # Automatically serialize list as JSON
+        )
+        
+        db.add(db_obj)
+        try:
+            db.commit()
+            logger.info(f"Created RawSensorData with ID: {db_obj.id}")
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error creating RawSensorData: {str(e)}")
+            raise e
+        db.refresh(db_obj)
+        return db_obj
 
     def get(self, db: Session, id: UUID) -> Optional[RawSensorData]:
         """

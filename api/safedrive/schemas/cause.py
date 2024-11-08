@@ -5,55 +5,65 @@ from datetime import datetime
 
 class CauseBase(BaseModel):
     """
-    Base schema for Cause entity representing attributes that are common across different operations.
+    Base schema for Cause containing common attributes.
 
     Attributes:
-        id (UUID): The unique identifier for the cause.
-        unsafeBehaviourId (UUID): The identifier for the related unsafe behaviour.
-        name (str): The name of the cause.
-        influence (Optional[bool]): Indicates whether the cause has influence. Defaults to None.
-        createdAt (datetime): The timestamp when the cause was created.
-        updatedAt (Optional[datetime]): The timestamp when the cause was last updated. Defaults to None.
+    - **id**: Unique identifier for the cause.
+    - **unsafe_behaviour_id**: Identifier of the associated unsafe behavior.
+    - **name**: Description of the cause.
+    - **influence**: Indicates if the cause is influential.
+    - **created_at**: Creation timestamp.
+    - **updated_at**: Last update timestamp.
     """
     id: UUID
-    unsafeBehaviourId: UUID
+    unsafe_behaviour_id: UUID
     name: str
     influence: Optional[bool] = None
-    createdAt: datetime
-    updatedAt: Optional[datetime] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    synced: Optional[bool] = False
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
-class CauseCreate(CauseBase):
+class CauseCreate(BaseModel):
     """
-    Schema for creating a new Cause entity.
-    Inherits all attributes from CauseBase.
+    Schema for creating a new Cause.
+
+    Attributes:
+    - **unsafe_behaviour_id**: Identifier of the associated unsafe behavior.
+    - **name**: Description of the cause.
+    - **influence**: Indicates if the cause is influential.
+    - **created_at**: Creation timestamp.
     """
-    pass
+    unsafe_behaviour_id: UUID
+    name: str
+    influence: Optional[bool] = None
+    created_at: datetime
+    synced: Optional[bool] = False
+
+    class Config:
+        from_attributes = True
 
 class CauseUpdate(BaseModel):
     """
-    Schema for updating an existing Cause entity.
-    Attributes are optional to allow partial updates.
+    Schema for updating an existing Cause.
 
     Attributes:
-        unsafeBehaviourId (Optional[UUID]): The identifier for the related unsafe behaviour.
-        name (Optional[str]): The name of the cause.
-        influence (Optional[bool]): Indicates whether the cause has influence.
-        updatedAt (Optional[datetime]): The timestamp when the cause was last updated.
+    - **name**: Optionally update the cause description.
+    - **influence**: Optionally update the influence status.
+    - **updated_at**: Optionally update the timestamp for last update.
     """
-    unsafeBehaviourId: Optional[UUID] = None
     name: Optional[str] = None
     influence: Optional[bool] = None
-    updatedAt: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    synced: Optional[bool] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class CauseResponse(CauseBase):
     """
-    Schema for response when retrieving a Cause entity.
-    Inherits all attributes from CauseBase.
+    Response schema for Cause, inheriting from CauseBase.
     """
     pass

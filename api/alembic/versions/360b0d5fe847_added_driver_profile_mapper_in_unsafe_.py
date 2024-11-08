@@ -1,8 +1,8 @@
-"""Changed Trip to TripData
+"""added driver_profile mapper in unsafe_behaviours
 
-Revision ID: feb5a90a7b01
-Revises: c9e988bc5fce
-Create Date: 2024-10-26 00:41:07.588999
+Revision ID: 360b0d5fe847
+Revises: 312dc76426e0
+Create Date: 2024-10-27 16:59:31.064607
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'feb5a90a7b01'
-down_revision: Union[str, None] = 'c9e988bc5fce'
+revision: str = '360b0d5fe847'
+down_revision: Union[str, None] = '312dc76426e0'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

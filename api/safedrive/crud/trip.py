@@ -20,6 +20,28 @@ class CRUDTrip:
         :param model: The SQLAlchemy model class.
         """
         self.model = model
+        
+    def batch_create(self, db: Session, data_in: List[TripCreate]) -> List[Trip]:
+        try:
+            db_objs = [self.model(**data.model_dump()) for data in data_in]
+            db.bulk_save_objects(db_objs)
+            db.commit()
+            logger.info(f"Batch inserted {len(db_objs)} Trip records.")
+            return db_objs
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error during batch insertion of Trip: {str(e)}")
+            raise e
+
+    def batch_delete(self, db: Session, ids: List[int]) -> None:
+        try:
+            db.query(self.model).filter(self.model.id.in_(ids)).delete(synchronize_session=False)
+            db.commit()
+            logger.info(f"Batch deleted {len(ids)} Trip records.")
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error during batch deletion of Trip: {str(e)}")
+            raise e
 
     def create(self, db: Session, obj_in: TripCreate) -> Trip:
         """
@@ -30,7 +52,7 @@ class CRUDTrip:
         :return: The created trip.
         """
         try:
-            obj_data = obj_in.dict()
+            obj_data = obj_in.model_dump()
             # Convert UUID fields to bytes
             if 'driver_profile_id' in obj_data and isinstance(obj_data['driver_profile_id'], UUID):
                 obj_data['driver_profile_id'] = obj_data['driver_profile_id'].bytes

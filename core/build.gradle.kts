@@ -86,6 +86,7 @@ dependencies {
     implementation(libs.firebase.dataconnect)
     implementation(libs.generative.ai)
     implementation(libs.pdfBox)
+    implementation(libs.androidx.constraintlayout)
 //    implementation(libs.compose.preview.renderer)
     ksp(libs.hilt.compiler)
 

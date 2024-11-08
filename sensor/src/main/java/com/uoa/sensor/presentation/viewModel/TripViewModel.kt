@@ -26,7 +26,13 @@ class TripViewModel @Inject constructor(
     fun startTrip(driverProfileId: UUID?, tripId: UUID){
         viewModelScope.launch {
             val startTime = System.currentTimeMillis()
-            val trip = Trip(driverPId = driverProfileId, startTime = startTime, endTime = null, startDate = Date(), endDate = null, id = tripId)
+            val trip = Trip(driverPId = driverProfileId,
+                startTime = startTime, endTime = null,
+                startDate = Date(),
+                endDate = null,
+                id = tripId,
+                influence = ""
+            )
             insertTripUseCase(trip)
             _currentTripId.value = tripId
             _currentTripId.emit(tripId)
@@ -41,13 +47,13 @@ class TripViewModel @Inject constructor(
         return tripId
     }
 
-    fun endTrip(tripId: UUID) {
-        viewModelScope.launch {
-                    updateTripUseCase(tripId)
-//
-                    Log.i("TripID", "Trip ended with id: ${currentTripId.value}")
-                }
-            }
+//    fun endTrip(tripId: UUID) {
+//        viewModelScope.launch {
+//                    updateTripUseCase(tripId)
+////
+//                    Log.i("TripID", "Trip ended with id: ${currentTripId.value}")
+//                }
+//            }
 }
 
 

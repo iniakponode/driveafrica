@@ -1,0 +1,1 @@
+{"feature_names": ["hour_of_day_mean", "day_of_week_mean", "speed_std", "course_std", "accelerationYOriginal_mean"], "data_min": [6.107680332, 0.0, 5.6165470536050535, 6.172914100347297, -2.96312841], "data_max": [23.0, 6.0, 127.69700605183044, 153.47945113163124, 9.758828275]}

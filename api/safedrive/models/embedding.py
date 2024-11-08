@@ -1,46 +1,42 @@
-from sqlalchemy import Column, String, Integer, LargeBinary
-from sqlalchemy.dialects.mysql import BINARY
+from sqlalchemy import Boolean, Column, String, Integer, DateTime, BINARY
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.types import TIMESTAMP
-from uuid import UUID, uuid4
+from sqlalchemy.dialects.mysql import BINARY
 from safedrive.database.base import Base
+from uuid import uuid4, UUID
+import logging
+from datetime import datetime
 
-def generate_uuid():
-        return str(uuid4())  # Generates a UUID string
-    
+logger = logging.getLogger(__name__)
+
+def generate_uuid_binary():
+    return uuid4().bytes
+
 class Embedding(Base):
-    
-    
     """
-    Represents the embeddings stored for different text chunks.
+    Embedding model representing the text embedding table in the database.
 
     Attributes:
-    - chunk_id (UUID): The unique identifier for the chunk.
-    - chunk_text (str): The actual text content of the chunk.
-    - embedding (bytes): The embedding representation of the chunk, serialized as binary.
-    - source_type (str): The type of source that the chunk is associated with (e.g., regulation or law).
-    - source_page (int): The page number in the source where the chunk can be found.
-    - created_at (int): A timestamp indicating when the embedding was created.
+    - **chunk_id**: Primary key UUID for each text embedding.
+    - **chunk_text**: The chunk of text.
+    - **embedding**: Base64 encoded embedding for the text.
+    - **source_type**: Source type of the chunked text (e.g., Research Article).
+    - **source_page**: Page number from where the text originates.
+    - **created_at**: Timestamp of creation.
     """
 
-    
-    __tablename__ = "embeddings"
+    __tablename__ = "embedding"
 
-    chunk_id = Column(BINARY(16), primary_key=True, default=generate_uuid, comment="Unique identifier for each chunk of text.")
-    chunk_text = Column(String(5000), nullable=False, comment="The text content of the chunk.")
-    embedding = Column(LargeBinary, nullable=False, comment="Serialized embedding vector for the chunk.")
-    source_type = Column(String(255), nullable=False, comment="The type of source (e.g., nat_dr_reg_law, ng_high_way_code).")
-    source_page = Column(Integer, nullable=True, comment="The page number for traceability.")
-    created_at = Column(TIMESTAMP, nullable=False, comment="The timestamp indicating when the embedding was created.")
-
-    def __init__(self, chunk_id: UUID, chunk_text: str, embedding: bytes, source_type: str, source_page: int, created_at: int):
-        self.chunk_id = chunk_id.bytes
-        self.chunk_text = chunk_text
-        self.embedding = embedding
-        self.source_type = source_type
-        self.source_page = source_page
-        self.created_at = created_at
+    chunk_id = Column(BINARY(16), primary_key=True, default=generate_uuid_binary)
+    chunk_text = Column(String(255), nullable=False)
+    embedding = Column(String(1024), nullable=False)
+    source_type = Column(String(50), nullable=False)
+    source_page = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.now())
+    synced=Column(Boolean, nullable=False, default=False)
 
     def __repr__(self):
-        return f"<Embedding(chunk_id={self.chunk_id}, source_type={self.source_type}, source_page={self.source_page})>"
+        return f"<Embedding(chunk_id={self.chunk_id.hex()}, source_type={self.source_type}, source_page={self.source_page})>"
+
+    @property
+    def id_uuid(self) -> UUID:
+        return UUID(bytes=self.chunk_id)

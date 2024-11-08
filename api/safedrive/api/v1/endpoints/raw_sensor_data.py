@@ -138,3 +138,21 @@ def delete_raw_sensor_data(
     except Exception as e:
         logger.exception("Error deleting raw sensor data")
         raise HTTPException(status_code=500, detail="Internal Server Error")
+    
+@router.post("/raw_sensor_data/batch_create", status_code=201)
+def batch_create_raw_sensor_data(data: List[RawSensorDataCreate], db: Session = Depends(get_db)):
+    try:
+        created_data = raw_sensor_data_crud.batch_create(db=db, data_in=data)
+        return {"message": f"{len(created_data)} RawSensorData records created."}
+    except Exception as e:
+        logger.error(f"Error in batch create RawSensorData: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch creation failed.")
+
+@router.delete("/raw_sensor_data/batch_delete", status_code=204)
+def batch_delete_raw_sensor_data(ids: List[UUID], db: Session = Depends(get_db)):
+    try:
+        raw_sensor_data_crud.batch_delete(db=db, ids=ids)
+        return {"message": f"{len(ids)} RawSensorData records deleted."}
+    except Exception as e:
+        logger.error(f"Error in batch delete RawSensorData: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch deletion failed.")

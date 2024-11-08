@@ -1,5 +1,6 @@
 package com.uoa.ml.domain
 
+import android.hardware.Sensor
 import android.util.Log
 import com.uoa.core.database.entities.CauseEntity
 import com.uoa.core.database.entities.RawSensorDataEntity
@@ -10,7 +11,7 @@ import com.uoa.core.database.repository.RawSensorDataRepository
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
 import com.uoa.core.mlclassifier.OnnxModelRunner
 import com.uoa.core.utils.toEntity
-import com.uoa.ml.Utils
+import com.uoa.ml.UtilsNew
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -21,77 +22,73 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.withContext
+import java.util.TimeZone
 
-class RunClassificationUseCase @Inject constructor(val utils: Utils,
+class RunClassificationUseCase @Inject constructor(val utils: UtilsNew,
                                                    private val rawSensorDataRepository: RawSensorDataRepository,
                                                    private val locationRepo: LocationRepository,
                                                    private val onnxModelRunner: OnnxModelRunner) {
 
-    fun invoke(tripId: UUID): Boolean{
 
+    suspend fun invoke(tripId: UUID): Boolean {
         var alcoholInfluence = false
-        CoroutineScope(Dispatchers.IO).launch {
-
+        withContext(Dispatchers.IO) {
             val rawSensorDataList = rawSensorDataRepository.getSensorDataByTripId(tripId)
-            // Extract timestamps and convert to Timestamp objects
             val timestamps = mutableListOf<Timestamp>()
-            rawSensorDataList.collect { rawSensorData ->
-                rawSensorData.forEach() {
-                    if (it.locationId!=null)
-                        timestamps.add(Timestamp(it.timestamp))
-                }
-            }
-            val speeds= mutableListOf<Float>()
-            rawSensorDataList.collect { rawSensorData ->
-                rawSensorData.forEach() {
-                    if (it.locationId!=null)
-                        speeds.add(it.values[0])
-                }
-            }
-
-            val collectedRawSensorDataList= mutableListOf<RawSensorDataEntity>()
+            val speeds = mutableListOf<Float>()
+            val collectedRawSensorDataList = mutableListOf<RawSensorDataEntity>()
+            val listOfAccelerationY = mutableListOf<Float>()
 
             rawSensorDataList.collect { rawSensorData ->
-                rawSensorData.forEach() {
-                    if (it.locationId!=null)
-                        collectedRawSensorDataList.add(it)
-                }
-            }
-
-            val listOfAccelerationY= mutableListOf<Float>()
-            rawSensorDataList.collect { rawSensorData ->
-                rawSensorData.forEach() {
-                    if (it.sensorType==1 && it.locationId!=null)
-                        listOfAccelerationY.add(it.values[1])
+                rawSensorData.forEach { data ->
+                    if (data.locationId != null) {
+                        timestamps.add(Timestamp(data.timestamp))
+                        speeds.add(data.values[0])
+                        collectedRawSensorDataList.add(data)
+                        if (data.sensorType == Sensor.TYPE_ACCELEROMETER) {
+                            listOfAccelerationY.add(data.values[1])
+                        }
+                    }
                 }
             }
 
             val locations = locationRepo.getLocationDataByTripId(tripId)
 
+            if (timestamps.isNotEmpty()) {
 
-            if (timestamps.isNotEmpty()){
-                val hourOfDayMean = utils.extractHourOfDayMean(timestamps)
-                val dayOfWeekMean = utils.extractDayOfWeekMean(timestamps)
+                // Replace with your training time zone
+                val timeZone = TimeZone.getTimeZone("UTC+1")
+                val deviceTimeZone = TimeZone.getDefault()
 
-                // Assuming utils functions take Timestamp objects
-                val speedStd = utils.extractSpeedStd(speeds)
-                val courseStd = utils.computeStandardDeviationOfCourses(
+                // Normalized feature extraction
+                val hourOfDayMean = utils.extractNormalizedHourOfDayMean(timestamps, timeZone)
+                val dayOfWeekMean = utils.extractNormalizedDayOfWeekMean(timestamps, timeZone)
+                val speedStd = utils.extractNormalizedSpeedStd(speeds)
+                val courseStd = utils.computeNormalizedStandardDeviationOfCourses(
                     collectedRawSensorDataList,
                     locations[0],
                     locations[1],
                     locations[2]
                 )
-                val accelerationYOriginalMean = utils.extractAccelerationYOriginalMean(listOfAccelerationY)
-
-                alcoholInfluence=onnxModelRunner.runInference(hourOfDayMean, dayOfWeekMean, speedStd, courseStd, accelerationYOriginalMean)
+                val accelerationYOriginalMean = utils.extractNormalizedAccelerationYOriginalMean(listOfAccelerationY)
+                // Run inference
+                alcoholInfluence = onnxModelRunner.runInference(
+                    hourOfDayMean,
+                    dayOfWeekMean,
+                    speedStd,
+                    courseStd,
+                    accelerationYOriginalMean
+                )
             } else {
                 // Handle the case where no timestamps are available
                 Log.d("Alcohol TimeStamps", "No timestamps available")
             }
         }
-        Log.d("Alcohol Infl", alcoholInfluence.toString())
+        Log.d("Alcohol Influence", alcoholInfluence.toString())
         return alcoholInfluence
     }
+
 }
 
 class UpDateUnsafeBehaviourCauseUseCase @Inject constructor(

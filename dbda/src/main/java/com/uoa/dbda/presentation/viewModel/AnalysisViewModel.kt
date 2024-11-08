@@ -7,18 +7,18 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.uoa.core.database.entities.RawSensorDataEntity
+import com.uoa.core.behaviouranalysis.UnsafeBehaviorAnalyser
 import com.uoa.core.model.RawSensorData
 import com.uoa.dbda.domain.usecase.FetchRawSensorDataByDateUseCase
 import com.uoa.dbda.domain.usecase.FetchRawSensorDataByTripIdUseCase
 import com.uoa.dbda.domain.usecase.InsertUnsafeBehaviourUseCase
-import com.uoa.dbda.domain.usecase.analyser.UnsafeBehaviorAnalyser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
 import com.uoa.core.utils.toDomainModel
 import com.uoa.core.utils.toEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import javax.inject.Inject
 
 @HiltViewModel
@@ -32,7 +32,7 @@ class AnalysisViewModel @Inject constructor(
     private val _analysisResult = MutableLiveData<List<RawSensorData>>()
     val analysisResult: LiveData<List<RawSensorData>> get() = _analysisResult
 
-    @RequiresApi(Build.VERSION_CODES.O)
+
     fun analyseUnsafeBehaviourByTrip(tripId: UUID) {
         viewModelScope.launch {
             try {
@@ -53,8 +53,7 @@ class AnalysisViewModel @Inject constructor(
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun analyseUnsafeBehaviourByDate(startDate: Long, endDate: Long) {
+    fun analyseUnsafeBehaviourByDate(startDate: LocalDate, endDate: LocalDate) {
         viewModelScope.launch {
             try {
                 val rawSensorDataList = fetchRawSensorDataByDateUseCase.execute(startDate, endDate).first()
@@ -74,4 +73,6 @@ class AnalysisViewModel @Inject constructor(
             }
         }
     }
+
+
 }

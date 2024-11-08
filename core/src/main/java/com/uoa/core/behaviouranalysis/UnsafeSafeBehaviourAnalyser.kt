@@ -14,7 +14,6 @@ import kotlin.math.sqrt
 
 class UnsafeBehaviorAnalyser {
 
-    @RequiresApi(Build.VERSION_CODES.O)
     fun analyse(sensorDataList: List<RawSensorDataEntity>): List<UnsafeBehaviourModel> {
         val unsafeBehaviours = mutableListOf<UnsafeBehaviourModel>()
 
@@ -135,8 +134,8 @@ class UnsafeBehaviorAnalyser {
         const val ACCELEROMETER_TYPE = 1 // Assuming 1 is the sensorType for accelerometer
         const val SPEED_TYPE = 2 // Assuming 2 is the sensorType for speed
         const val ROTATION_VECTOR_TYPE = 11 // Assuming 11 is the sensorType for rotation vector
-        const val ACCELERATION_THRESHOLD = 0.9 // Example threshold for harsh acceleration (m/s^2)
-        const val BRAKING_THRESHOLD = -0.9 // Example threshold for harsh braking (m/s^2)
+        const val ACCELERATION_THRESHOLD = 3.5 // Example threshold for harsh acceleration (m/s^2)
+        const val BRAKING_THRESHOLD = -3.5 // Example threshold for harsh braking (m/s^2)
         const val SPEED_LIMIT = -30.0 // Example speed limit (m/s)
         const val SWERVING_THRESHOLD = 0.1 // Example threshold for swerving (rad/s)
     }

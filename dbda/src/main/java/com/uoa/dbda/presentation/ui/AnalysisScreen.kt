@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uoa.dbda.presentation.viewModel.AnalysisViewModel
+import java.time.Instant
+import java.time.ZoneId
 import java.util.Date
 import java.util.UUID
 
@@ -55,7 +57,11 @@ fun AnalysisScreen(
         // Button to analyze by date range
         Button(onClick = {
             if (startDate != null && endDate != null) {
-                analysisViewModel.analyseUnsafeBehaviourByDate(startDate!!, endDate!!)
+                //    suspend fun execute(startDate: Long, endDate: Long): Flow<List<RawSensorData>> {
+            val zoneId = ZoneId.systemDefault()
+            val sDate = Instant.ofEpochMilli(startDate!!).atZone(zoneId).toLocalDate()
+            val eDate = Instant.ofEpochMilli(endDate!!).atZone(zoneId).toLocalDate()
+                analysisViewModel.analyseUnsafeBehaviourByDate(sDate!!, eDate!!)
             }
         }) {
             Text("Analyze by Date Range")

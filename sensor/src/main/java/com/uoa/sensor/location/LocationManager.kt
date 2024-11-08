@@ -32,30 +32,53 @@ class LocationManager @Inject constructor(
     private val locationCheckIntervalMillis: Long = 20 * 60 * 1000 // 20 minutes in milliseconds
     private val locationThresholdDistanceMeters: Float = 50f // Example threshold distance in meters
     private var lastRecordedLocation: Location? = null
+
+
+    interface VehicleMotionListener {
+        fun onVehicleMotionDetected()
+        fun onVehicleMotionStopped()
+    }
+
+    private var vehicleMotionListener: VehicleMotionListener? = null
+
+    fun setVehicleMotionListener(listener: VehicleMotionListener) {
+        this.vehicleMotionListener = listener
+    }
+
+
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(locationResult: LocationResult) {
             locationResult.locations.lastOrNull()?.let {
-                val newLocation = Location("").apply {
-                    latitude = it.latitude
-                    longitude = it.longitude
-                    altitude = it.altitude
-                    speed = it.speed
-                }
-                val distance = lastRecordedLocation?.distanceTo(newLocation) ?: 0f
-                if (shouldRecordNewLocation(newLocation)) {
-                    val locationData = LocationData(
-                        id =UUID.randomUUID(), // will be auto-generated
-                        latitude = it.latitude.toLong(),
-                        longitude = it.longitude.toLong(),
-                        altitude = it.altitude,
-                        speed = it.speed.toDouble(),
-                        distance= distance.toDouble(),
-                        timestamp = it.time,
-                        date = Date(it.time),
-                        sync = false
-                    )
-                    lastRecordedLocation = newLocation
-                    addToLocationDataBuffer(locationData)
+                // Only process accurate locations
+                if (it.accuracy <= locationThresholdDistanceMeters) {
+                    val newLocation = Location("").apply {
+                        latitude = it.latitude
+                        longitude = it.longitude
+                        altitude = it.altitude
+                        speed = it.speed
+                    }
+                    val distance = lastRecordedLocation?.distanceTo(newLocation) ?: 0f
+                    if (shouldRecordNewLocation(newLocation)) {
+                        val locationData = LocationData(
+                            id = UUID.randomUUID(), // will be auto-generated
+                            latitude = it.latitude.toLong(),
+                            longitude = it.longitude.toLong(),
+                            altitude = it.altitude,
+                            speed = it.speed.toDouble(),
+                            distance = distance.toDouble(),
+                            timestamp = it.time,
+                            date = Date(it.time),
+                            sync = false
+                        )
+                        lastRecordedLocation = newLocation
+                        addToLocationDataBuffer(locationData)
+                        // Check speed to determine vehicle movement
+                        if (newLocation.speed * 3.6 > 5) { // Speed in km/h greater than 5
+                            vehicleMotionListener?.onVehicleMotionDetected()
+                        } else {
+                            vehicleMotionListener?.onVehicleMotionStopped()
+                        }
+                    }
                 }
             }
         }
@@ -70,7 +93,7 @@ class LocationManager @Inject constructor(
     }
 
     fun startLocationUpdates() {
-        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, locationCheckIntervalMillis) // 1 hour
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, locationCheckIntervalMillis) // 1 hour
             .setWaitForAccurateLocation(true)
             .setMinUpdateIntervalMillis(locationCheckIntervalMillis) // 1 hour
             .setMaxUpdateDelayMillis(locationCheckIntervalMillis) // 1 hour

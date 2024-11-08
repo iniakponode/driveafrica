@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pymysql import IntegrityError
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
@@ -6,171 +7,69 @@ from safedrive.database.db import get_db
 from safedrive.schemas.driver_profile import (
     DriverProfileCreate,
     DriverProfileUpdate,
-    DriverProfileResponse,
+    DriverProfileResponse
 )
-from safedrive.crud.driver_profile import DriverProfileCRUD
+from safedrive.crud.driver_profile import driver_profile_crud
 import logging
 
-# Set up logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)  # Adjust as needed
-
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
-# Create a new driver profile
 @router.post("/driver_profiles/", response_model=DriverProfileResponse)
-def create_driver_profile(
-    *,
-    db: Session = Depends(get_db),
-    profile_in: DriverProfileCreate,
-) -> DriverProfileResponse:
+def create_driver_profile(*, db: Session = Depends(get_db), profile_in: DriverProfileCreate) -> DriverProfileResponse:
+     """
+    Creates a new driver profile.
+    - **profile_in**: Data for creating the driver profile.
     """
-    Create a new driver profile.
+     try:
+            new_profile = driver_profile_crud.create(db=db, obj_in=profile_in)
+            logger.info(f"DriverProfile created with ID: {new_profile.id_uuid}")
+            return DriverProfileResponse(driver_profile_id=new_profile.id_uuid, **profile_in.model_dump())
+        
+     except IntegrityError as e:
+            # Check if the IntegrityError is due to a duplicate email entry
+            if 'Duplicate entry' in str(e.orig):
+                logger.warning(f"Duplicate ID entry: {profile_in.email}")
+                raise HTTPException(status_code=400, detail="ID already exists.")
+            else:
+                logger.error(f"Database integrity error: {str(e)}")
+                raise HTTPException(status_code=500, detail="Database integrity error.")
+        
+     except Exception as e:
+            logger.error(f"Unexpected error creating DriverProfile: {str(e)}")
+            raise HTTPException(status_code=500, detail="An unexpected error occurred while creating the driver profile.")
 
-    - **email**: Email address of the driver.
-    - **sync**: Optional boolean indicating if the profile has been synced.
-    """
-    driver_profile_crud = DriverProfileCRUD(db)
-    try:
-        if not profile_in.email:
-            logger.error("Email is required to create a driver profile.")
-            raise HTTPException(status_code=400, detail="Email is required")
-        new_profile = driver_profile_crud.create(driver_profile_data=profile_in)
-        logger.info(f"Driver profile created with ID: {new_profile.driver_profile_id}")
-        return DriverProfileResponse.model_validate(new_profile)
-    except Exception as e:
-        logger.exception("Error creating driver profile")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
-    
-# Get all driver profiles
-@router.get("/driver_profiles/", response_model=List[DriverProfileResponse])
-def get_all_driver_profiles(
-    db: Session = Depends(get_db),
-    skip: int = 0,
-    limit: int = 10,
-) -> List[DriverProfileResponse]:
-    """
-    Retrieve all driver profiles with pagination.
-
-    - **skip**: Number of profiles to skip.
-    - **limit**: Maximum number of profiles to return.
-    """
-    driver_profile_crud = DriverProfileCRUD(db)
-    try:
-        profiles = driver_profile_crud.get_all(skip=skip, limit=limit)
-        logger.info(f"Retrieved {len(profiles)} driver profiles")
-        return [DriverProfileResponse.model_validate(profile) for profile in profiles]
-    except Exception as e:
-        logger.exception("Error retrieving driver profiles")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
-    
-# Get all driver profile by ID
 @router.get("/driver_profiles/{profile_id}", response_model=DriverProfileResponse)
-def get_driver_profile(
-    profile_id: UUID,
-    db: Session = Depends(get_db),
-) -> DriverProfileResponse:
-    """
-    Retrieve a driver profile by ID.
+def get_driver_profile(profile_id: UUID, db: Session = Depends(get_db)) -> DriverProfileResponse:
+    profile = driver_profile_crud.get(db=db, id=profile_id)
+    if not profile:
+        logger.warning(f"DriverProfile with ID {profile_id} not found.")
+        raise HTTPException(status_code=404, detail="Driver profile not found")
+    logger.info(f"Retrieved DriverProfile with ID: {profile_id}")
+    return DriverProfileResponse(driver_profile_id=profile.id_uuid, email=profile.email, sync=profile.sync)
 
-    - **profile_id**: UUID of the driver profile.
-    """
-    driver_profile_crud = DriverProfileCRUD(db)
-    try:
-        profile = driver_profile_crud.get(id=profile_id)
-        if not profile:
-            logger.warning(f"Driver profile with ID {profile_id} not found.")
-            raise HTTPException(status_code=404, detail="Driver profile not found")
-        logger.info(f"Retrieved driver profile with ID: {profile_id}")
-        return DriverProfileResponse.model_validate(profile)
-    except HTTPException as e:
-        # Re-raise HTTPException so FastAPI can handle it
-        raise e
-    except Exception as e:
-        logger.exception("Error retrieving driver profile")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
-    
-# Get a driver's profile by email
-@router.get("/driver_profiles/email/{email}", response_model=DriverProfileResponse)
-def get_driver_profile_by_email(
-    email: str,
-    db: Session = Depends(get_db),
-) -> DriverProfileResponse:
-    """
-    Retrieve a driver profile by email.
+@router.get("/driver_profiles/", response_model=List[DriverProfileResponse])
+def get_all_driver_profiles(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)) -> List[DriverProfileResponse]:
+    profiles = driver_profile_crud.get_all(db=db, skip=skip, limit=limit)
+    logger.info(f"Retrieved {len(profiles)} DriverProfiles.")
+    return [DriverProfileResponse(driver_profile_id=profile.id_uuid, email=profile.email, sync=profile.sync) for profile in profiles]
 
-    - **email**: Email address of the driver profile.
-    """
-    driver_profile_crud = DriverProfileCRUD(db)
-    try:
-        profile = driver_profile_crud.get_by_email(email=email)
-        if not profile:
-            logger.warning(f"Driver profile with email {email} not found.")
-            raise HTTPException(status_code=404, detail="Driver profile not found")
-        logger.info(f"Retrieved driver profile with email: {email}")
-        return DriverProfileResponse.model_validate(profile)
-    except HTTPException as e:
-        # Re-raise HTTPException so FastAPI can handle it
-        raise e
-    except Exception as e:
-        logger.exception("Error retrieving driver profile by email")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
-
-# Get a driver profile by id
 @router.put("/driver_profiles/{profile_id}", response_model=DriverProfileResponse)
-def update_driver_profile(
-    profile_id: UUID,
-    *,
-    db: Session = Depends(get_db),
-    profile_in: DriverProfileUpdate,
-) -> DriverProfileResponse:
-    """
-    Update an existing driver profile.
+def update_driver_profile(profile_id: UUID, *, db: Session = Depends(get_db), profile_in: DriverProfileUpdate) -> DriverProfileResponse:
+    profile = driver_profile_crud.get(db=db, id=profile_id)
+    if not profile:
+        logger.warning(f"DriverProfile with ID {profile_id} not found for update.")
+        raise HTTPException(status_code=404, detail="Driver profile not found")
+    updated_profile = driver_profile_crud.update(db=db, db_obj=profile, obj_in=profile_in)
+    logger.info(f"Updated DriverProfile with ID: {profile_id}")
+    return DriverProfileResponse(driver_profile_id=updated_profile.id_uuid, email=updated_profile.email, sync=updated_profile.sync)
 
-    - **profile_id**: UUID of the driver profile to update.
-    - **email**: Optional updated email address.
-    - **sync**: Optional updated sync status.
-    """
-    driver_profile_crud = DriverProfileCRUD(db)
-    try:
-        profile = driver_profile_crud.get(id=profile_id)
-        if not profile:
-            logger.warning(f"Driver profile with ID {profile_id} not found for update.")
-            raise HTTPException(status_code=404, detail="Driver profile not found")
-        updated_profile = driver_profile_crud.update(id=profile_id, obj_in=profile_in)
-        logger.info(f"Updated driver profile with ID: {profile_id}")
-        return DriverProfileResponse.model_validate(updated_profile)
-    except HTTPException as e:
-        # Re-raise HTTPException so FastAPI can handle it
-        raise e
-    except Exception as e:
-        logger.exception("Error updating driver profile")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
-
-
-# Delete a driver profile by ID
 @router.delete("/driver_profiles/{profile_id}", response_model=DriverProfileResponse)
-def delete_driver_profile(
-    profile_id: UUID,
-    db: Session = Depends(get_db),
-) -> DriverProfileResponse:
-    """
-    Delete a driver profile by ID.
-
-    - **profile_id**: UUID of the driver profile to delete.
-    """
-    driver_profile_crud = DriverProfileCRUD(db)
-    try:
-        profile = driver_profile_crud.get(id=profile_id)
-        if not profile:
-            logger.warning(f"Driver profile with ID {profile_id} not found for deletion.")
-            raise HTTPException(status_code=404, detail="Driver profile not found")
-        deleted_profile = driver_profile_crud.delete(id=profile_id)
-        logger.info(f"Deleted driver profile with ID: {profile_id}")
-        return DriverProfileResponse.model_validate(deleted_profile)
-    except HTTPException as e:
-        # Re-raise HTTPException so FastAPI can handle it
-        raise e
-    except Exception as e:
-        logger.exception("Error deleting driver profile")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+def delete_driver_profile(profile_id: UUID, db: Session = Depends(get_db)) -> DriverProfileResponse:
+    profile = driver_profile_crud.get(db=db, id=profile_id)
+    if not profile:
+        logger.warning(f"DriverProfile with ID {profile_id} not found for deletion.")
+        raise HTTPException(status_code=404, detail="Driver profile not found")
+    deleted_profile = driver_profile_crud.delete(db=db, id=profile_id)
+    logger.info(f"Deleted DriverProfile with ID: {profile_id}")
+    return DriverProfileResponse(driver_profile_id=deleted_profile.id_uuid, email=deleted_profile.email, sync=deleted_profile.sync)

@@ -22,6 +22,8 @@ import com.uoa.sensor.hardware.GravitySensorM
 import com.uoa.sensor.hardware.GyroscopeSensor
 import com.uoa.sensor.hardware.GyroscopeSensorM
 import com.uoa.sensor.hardware.HardwareModule
+import com.uoa.sensor.hardware.LinearAccelerationM
+import com.uoa.sensor.hardware.LinearAccelerationSensor
 //import com.uoa.sensor.hardware.LinearAcceleration
 //import com.uoa.sensor.hardware.LinearAccelerationM
 import com.uoa.sensor.hardware.MagnetometerSensor
@@ -103,14 +105,13 @@ object HardwareModuleProvider{
         return GravitySensor(context)
     }
 
-//    @Provides
-//    @LinearAccelerationM
-//    fun provideLinearAcceleration(@ApplicationContext context: Context): LinearAcceleration {
-//        // Provide an instance of LinearAcceleration
-//        return LinearAcceleration(context)
-//    }
+    @Provides
+    @LinearAccelerationM
+    fun provideLinearAcceleration(@ApplicationContext context: Context): LinearAccelerationSensor {
+        // Provide an instance of LinearAcceleration
+        return LinearAccelerationSensor(context)
+    }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     @Provides
     @Singleton
     fun provideHardwareModule(
@@ -119,7 +120,7 @@ object HardwareModuleProvider{
         @RotationVectorSensorM rotationVectorSensor: RotationVectorSensor,
         @MagnetometerSensorM magnetometerSensor: MagnetometerSensor,
         @SignificantMotionSensorM significantMotionSensor: SignificantMotion,
-//        @LinearAccelerationM linearAccelerationSensor: LinearAcceleration,
+        @LinearAccelerationM linearAccelerationSensor: LinearAccelerationSensor,
         @GravitySensorM gravitySensor: GravitySensor,
         locationManager: LocationManager,
         manageSensorDataSizeAndSave: ManageSensorDataSizeAndSave,
@@ -138,7 +139,7 @@ object HardwareModuleProvider{
             magnetometerSensor,
             significantMotionSensor,
             gravitySensor,
-//            linearAccelerationSensor,
+            linearAccelerationSensor,
             locationManager,
             manageSensorDataSizeAndSave,
             runClassificationUseCase,

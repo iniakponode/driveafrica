@@ -13,6 +13,7 @@ import androidx.lifecycle.liveData
 import androidx.lifecycle.viewModelScope
 import com.uoa.core.database.entities.EmbeddingEntity
 import com.uoa.core.database.repository.DrivingTipRepository
+import com.uoa.core.database.repository.TripDataRepository
 import com.uoa.core.model.DrivingTip
 import com.uoa.core.model.UnsafeBehaviourModel
 import com.uoa.core.network.model.chatGPT.Message
@@ -51,6 +52,7 @@ class DrivingTipsViewModel @Inject constructor(
     private val geminiCaller: GenerativeModel,
     private val embeddingUtilsRepository: EmbeddingUtilsRepository,
     private val ragEngine: JsonContentBasedRAGEngine,
+    private val tripRepository: TripDataRepository,
     application: Application
 ) : ViewModel() {
 
@@ -311,7 +313,7 @@ class DrivingTipsViewModel @Inject constructor(
 //
 //    }
 
-    private fun createAIPromptFromChunks(
+    private suspend fun createAIPromptFromChunks(
         unsafeBehavior: UnsafeBehaviourModel,
         contextText: String,
         context: Context
@@ -333,7 +335,13 @@ class DrivingTipsViewModel @Inject constructor(
 
         // Prepare a base prompt text
         val behaviorType = unsafeBehavior.behaviorType
-        val cause = if (unsafeBehavior.alcoholInfluence) "Alcohol" else "No Alcohol"
+
+        val trip=tripRepository.getTripById(unsafeBehavior.tripId)
+
+//                Count number of alcohol influenced trips
+
+
+        val cause = trip?.influence
 
         return if (relevantJsonData != null) {
             """

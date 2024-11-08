@@ -26,17 +26,24 @@ class AlcoholInfluenceViewModel @Inject constructor(
     val alcoholInfluence: LiveData<Boolean> get() = _alcoholInfluence
 
     fun classifySaveAndUpdateUnsafeBehaviour(tripId: UUID) {
+        viewModelScope.launch{
             val influence = runClassificationUseCase.invoke(tripId)
             Log.d("AlcoholIn", "Influence: $influence")
             _alcoholInfluence.value = influence
             upDateUnsafeBehaviourCauseUseCase.invoke(tripId, influence)
+        }
+
     }
 
-    fun saveInfluenceToCauseTable(tripId: UUID): Boolean {
+    fun saveInfluenceToCauseTable(tripId: UUID){
+        viewModelScope.launch{
             val influence = runClassificationUseCase.invoke(tripId)
             Log.d("AlcoholIn", "Influence: $influence")
             saveInfluenceToCause.invoke(tripId, influence)
             Log.d("AlcoholIn", "Influence saved to cause table")
-            return influence
+//            return influence
+
+        }
+
     }
 }

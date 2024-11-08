@@ -5,7 +5,8 @@ import com.uoa.core.database.repository.LocationRepository
 import com.uoa.core.database.repository.RawSensorDataRepository
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
 import com.uoa.core.mlclassifier.OnnxModelRunner
-import com.uoa.ml.Utils
+//import com.uoa.ml.Utils
+import com.uoa.ml.UtilsNew
 import com.uoa.ml.domain.BatchInsertCauseUseCase
 import com.uoa.ml.domain.BatchUpDateUnsafeBehaviourCauseUseCase
 import com.uoa.ml.domain.RunClassificationUseCase
@@ -23,7 +24,7 @@ object UsecaseClassModules {
     @Provides
     @Singleton
     fun provideRunClassificationUseCase(
-        utils: Utils,
+        utils: UtilsNew,
         rawSensorDataRepository: RawSensorDataRepository,
         locationRepo: LocationRepository,
         onnxModelRunner: OnnxModelRunner

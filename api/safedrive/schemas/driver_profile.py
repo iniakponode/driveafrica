@@ -1,74 +1,47 @@
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
 from typing import Optional
 from uuid import UUID
 
 class DriverProfileBase(BaseModel):
     """
-    Base schema for Driver Profile entity. Defines common attributes.
-
-    Attributes:
-    - **driver_profile_id**: Unique identifier for the driver profile.
-    - **email**: Email address of the driver.
-    - **sync**: Indicates if the driver profile has been synced.
+    Base schema for DriverProfile, including common attributes.
     """
-    driver_profile_id: UUID = Field(
-        ...,
-        description="Unique identifier for the driver profile."
-    )
-    email: EmailStr = Field(
-        ...,
-        description="Email address of the driver."
-    )
-    sync: Optional[bool] = Field(
-        False,
-        description="Indicates if the driver profile has been synced."
-    )
+    driver_profile_id: UUID
+    email: str
+    sync: bool
 
     class Config:
-        from_attributes = True  # Pydantic v2
+        from_attributes = True
 
 class DriverProfileCreate(BaseModel):
     """
-    Schema for creating a new Driver Profile.
-
+    Schema for creating a new DriverProfile.
+    
     Attributes:
-    - **email**: Email address of the driver.
-    - **sync**: Optional sync status.
+    - **email**: The driver's email (unique).
+    - **sync**: Indicates if data is synced (optional).
     """
-    email: EmailStr = Field(
-        ...,
-        description="Email address of the driver."
-    )
-    sync: Optional[bool] = Field(
-        False,
-        description="Sync status of the driver profile."
-    )
-
-    class Config:
-        from_attributes = True
+    email: str
+    sync: Optional[bool] = False
 
 class DriverProfileUpdate(BaseModel):
     """
-    Schema for updating an existing Driver Profile.
+    Schema for updating a DriverProfile.
 
     Attributes:
-    - **email**: Optional updated email address.
-    - **sync**: Optional updated sync status.
+    - **email**: Optionally updated email.
+    - **sync**: Optionally updated sync status.
     """
-    email: Optional[EmailStr] = Field(
-        None,
-        description="Updated email address of the driver."
-    )
-    sync: Optional[bool] = Field(
-        None,
-        description="Updated sync status."
-    )
-
-    class Config:
-        from_attributes = True
+    email: Optional[str] = None
+    sync: Optional[bool] = None
 
 class DriverProfileResponse(DriverProfileBase):
     """
-    Schema for representing a Driver Profile response.
+    Response schema for DriverProfile, with UUID conversion for JSON responses.
     """
-    pass
+    driver_profile_id: UUID
+    email: str
+    sync: bool
+    
+    class Config:
+        from_attributes = True

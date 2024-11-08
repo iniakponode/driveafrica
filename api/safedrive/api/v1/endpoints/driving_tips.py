@@ -3,60 +3,117 @@ from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 from safedrive.database.db import get_db
-from safedrive.schemas.driving_tip_sch import DrivingTipCreate, DrivingTipUpdate, DrivingTipBase as DrivingTip
+from safedrive.schemas.driving_tip_sch import DrivingTipCreate, DrivingTipUpdate, DrivingTipResponse
 from safedrive.crud.driving_tip import driving_tip_crud
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
-# Endpoint to create a new driving tip
-@router.post("/driving-tips/", response_model=DrivingTip)
-def create_driving_tip(*, db: Session = Depends(get_db), tip_in: DrivingTipCreate) -> DrivingTip:
+@router.post("/driving_tips/", response_model=DrivingTipResponse)
+def create_driving_tip(*, db: Session = Depends(get_db), tip_in: DrivingTipCreate) -> DrivingTipResponse:
     try:
-        if not tip_in.title or not tip_in.profileId:
-            raise HTTPException(status_code=400, detail="Title and Profile ID are required")
-        return driving_tip_crud.create(db=db, obj_in=tip_in)
+        new_tip = driving_tip_crud.create(db=db, obj_in=tip_in)
+        logger.info(f"Created DrivingTip with ID: {new_tip.tip_id}")
+        return DrivingTipResponse(tip_id=new_tip.tip_id, **tip_in.model_dump())
+    except ValueError as e:
+        logger.error(f"Validation error while creating DrivingTip: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error creating driving tip: {str(e)}")
+        logger.error(f"Unexpected error while creating DrivingTip: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error creating driving tip")
 
-# Endpoint to get a driving tip by ID
-@router.get("/driving-tips/{tip_id}", response_model=DrivingTip)
-def get_driving_tip(tip_id: UUID, db: Session = Depends(get_db)) -> DrivingTip:
-    try:
-        tip = driving_tip_crud.get(db=db, id=tip_id)
-        if not tip:
-            raise HTTPException(status_code=404, detail="Driving tip not found")
-        return tip
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving driving tip: {str(e)}")
-
-# Endpoint to get all driving tips with optional pagination
-@router.get("/driving-tips/", response_model=List[DrivingTip])
-def get_all_driving_tips(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)) -> List[DrivingTip]:
-    try:
-        if limit > 100:
-            raise HTTPException(status_code=400, detail="Limit cannot exceed 100 items")
-        return driving_tip_crud.get_all(db=db, skip=skip, limit=limit)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving driving tips: {str(e)}")
-
-# Endpoint to update an existing driving tip
-@router.put("/driving-tips/{tip_id}", response_model=DrivingTip)
-def update_driving_tip(tip_id: UUID, *, db: Session = Depends(get_db), tip_in: DrivingTipUpdate) -> DrivingTip:
+@router.get("/driving_tips/{tip_id}", response_model=DrivingTipResponse)
+def get_driving_tip(tip_id: UUID, db: Session = Depends(get_db)) -> DrivingTipResponse:
     try:
         tip = driving_tip_crud.get(db=db, id=tip_id)
         if not tip:
+            logger.warning(f"DrivingTip with ID {tip_id} not found.")
             raise HTTPException(status_code=404, detail="Driving tip not found")
-        return driving_tip_crud.update(db=db, db_obj=tip, obj_in=tip_in)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error updating driving tip: {str(e)}")
+         # Convert SQLAlchemy objects to Pydantic response models
+        return  DrivingTipResponse(
+                tip_id=tip.tip_id,
+                title=tip.title,
+                meaning=tip.meaning,
+                penalty=tip.penalty,
+                fine=tip.fine,
+                law=tip.law,
+                hostility=tip.hostility,
+                summary_tip=tip.summary_tip,
+                sync=tip.sync,
+                date=tip.date,
+                profile_id=tip.profile_id,
+                llm=tip.llm
+            )
+         
+        
+    except ValueError as e:
+        logger.error(f"Error retrieving DrivingTip: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
 
-# Endpoint to delete a driving tip by ID
-@router.delete("/driving-tips/{tip_id}", response_model=DrivingTip)
-def delete_driving_tip(tip_id: UUID, db: Session = Depends(get_db)) -> DrivingTip:
+@router.get("/driving_tips/", response_model=List[DrivingTipResponse])
+def get_all_driving_tips(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)) -> List[DrivingTipResponse]:
     try:
-        tip = driving_tip_crud.get(db=db, id=tip_id)
-        if not tip:
-            raise HTTPException(status_code=404, detail="Driving tip not found")
-        return driving_tip_crud.delete(db=db, id=tip_id)
+        tips = driving_tip_crud.get_all(db=db, skip=skip, limit=limit)
+        logger.info(f"Retrieved {len(tips)} DrivingTips.")
+        
+        # Convert SQLAlchemy objects to Pydantic response models
+        return [
+            DrivingTipResponse(
+                tip_id=tip.tip_id,
+                title=tip.title,
+                meaning=tip.meaning,
+                penalty=tip.penalty,
+                fine=tip.fine,
+                law=tip.law,
+                hostility=tip.hostility,
+                summary_tip=tip.summary_tip,
+                sync=tip.sync,
+                date=tip.date,
+                profile_id=tip.profile_id,
+                llm=tip.llm
+            )
+            for tip in tips
+        ]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error deleting driving tip: {str(e)}")
+        logger.error(f"Error retrieving DrivingTips: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error retrieving driving tips")
+
+@router.put("/driving_tips/{tip_id}", response_model=DrivingTipResponse)
+def update_driving_tip(tip_id: UUID, *, db: Session = Depends(get_db), tip_in: DrivingTipUpdate) -> DrivingTipResponse:
+    tip = driving_tip_crud.get(db=db, id=tip_id)
+    if not tip:
+        logger.warning(f"DrivingTip with ID {tip_id} not found for update.")
+        raise HTTPException(status_code=404, detail="Driving tip not found")
+    try:
+        updated_tip = driving_tip_crud.update(db=db, db_obj=tip, obj_in=tip_in)
+        logger.info(f"Updated DrivingTip with ID: {tip_id}")
+        return DrivingTipResponse(tip_id=updated_tip.tip_id, **tip_in.dict())
+    except ValueError as e:
+        logger.error(f"Validation error while updating DrivingTip: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/driving_tips/{tip_id}", response_model=DrivingTipResponse)
+def delete_driving_tip(tip_id: UUID, db: Session = Depends(get_db)) -> DrivingTipResponse:
+    tip = driving_tip_crud.get(db=db, id=tip_id)
+    if not tip:
+        logger.warning(f"DrivingTip with ID {tip_id} not found for deletion.")
+        raise HTTPException(status_code=404, detail="Driving tip not found")
+    try:
+        deleted_tip = driving_tip_crud.delete(db=db, id=tip_id)
+        logger.info(f"Deleted DrivingTip with ID: {tip_id}")
+        return DrivingTipResponse(tip_id=deleted_tip.tip_id, 
+                                  title=deleted_tip.title, 
+                                  meaning=deleted_tip.meaning, 
+                                  penalty=deleted_tip.penalty, 
+                                  fine=deleted_tip.fine, 
+                                  law=deleted_tip.law,
+                                  hostility=deleted_tip.hostility, 
+                                  summary_tip=deleted_tip.summary_tip, 
+                                  sync=deleted_tip.sync, 
+                                  date=deleted_tip.date, 
+                                  profile_id=deleted_tip.profile_id, 
+                                  llm=deleted_tip.llm)
+    except ValueError as e:
+        logger.error(f"Error deleting DrivingTip: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))

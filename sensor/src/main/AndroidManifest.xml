@@ -3,8 +3,15 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="android.permission.BODY_SENSORS"/>
     <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -15,6 +22,13 @@
         >
         <!-- Declare SensorActivity here if needed -->
 <!--        <activity android:name=".presentation.ui.SensorActivity" />-->
+
+        <service
+            android:name=".services.AppLocationService"
+            android:foregroundServiceType="location"
+            android:exported="false">
+            <!-- Any additional intent filters or elements here -->
+        </service>
 
         <provider
             android:name="androidx.startup.InitializationProvider"

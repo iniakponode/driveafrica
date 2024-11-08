@@ -112,6 +112,7 @@ dependencies {
     implementation(project(":core"))
     implementation(libs.generative.ai)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(project(":dbda"))
     ksp(libs.hilt.compiler)
     ksp(libs.hilt.ext.compiler)
     implementation(libs.hilt.android)

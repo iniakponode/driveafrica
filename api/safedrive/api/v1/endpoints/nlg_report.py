@@ -3,61 +3,53 @@ from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 from safedrive.database.db import get_db
-from safedrive.schemas.nlg_report import NLGReportCreate, NLGReportUpdate, NLGReportBase as NLGReport
+from safedrive.schemas.nlg_report import NLGReportCreate, NLGReportUpdate, NLGReportResponse
 from safedrive.crud.nlg_report import nlg_report_crud
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
-# Endpoint to create a new NLG report
-@router.post("/nlg_reports/", response_model=NLGReport)
-def create_nlg_report(*, db: Session = Depends(get_db), nlg_report_in: NLGReportCreate) -> NLGReport:
+@router.post("/nlg_reports/", response_model=NLGReportResponse)
+def create_nlg_report(*, db: Session = Depends(get_db), report_in: NLGReportCreate) -> NLGReportResponse:
     try:
-        # Validation: Ensure necessary fields are not empty or invalid
-        if not nlg_report_in.userId or not nlg_report_in.reportText:
-            raise HTTPException(status_code=400, detail="User ID and report text are required")
-        return nlg_report_crud.create(db=db, obj_in=nlg_report_in)
+        new_report = nlg_report_crud.create(db=db, obj_in=report_in)
+        logger.info(f"Created NLGReport with ID: {new_report.id}")
+        return NLGReportResponse.model_validate(new_report)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error creating NLG report: {str(e)}")
+        logger.error(f"Error creating NLGReport: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error creating NLG report")
 
-# Endpoint to get an NLG report by ID
-@router.get("/nlg_reports/{report_id}", response_model=NLGReport)
-def get_nlg_report(report_id: int, db: Session = Depends(get_db)) -> NLGReport:
-    try:
-        nlg_report = nlg_report_crud.get(db=db, id=report_id)
-        if not nlg_report:
-            raise HTTPException(status_code=404, detail="NLG report not found")
-        return nlg_report
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving NLG report: {str(e)}")
+@router.get("/nlg_reports/{report_id}", response_model=NLGReportResponse)
+def get_nlg_report(report_id: UUID, db: Session = Depends(get_db)) -> NLGReportResponse:
+    report = nlg_report_crud.get(db=db, id=report_id)
+    if not report:
+        logger.warning(f"NLGReport with ID {report_id} not found.")
+        raise HTTPException(status_code=404, detail="NLG report not found")
+    return NLGReportResponse(id=report.id_uuid, driver_profile_id=report.driver_profile_id, report_text=report.report_text, generated_at=report.generated_at, synced=report.synced)
 
-# Endpoint to get all NLG reports with optional pagination
-@router.get("/nlg_reports/", response_model=List[NLGReport])
-def get_all_nlg_reports(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)) -> List[NLGReport]:
-    try:
-        if limit > 100:
-            raise HTTPException(status_code=400, detail="Limit cannot exceed 100 items")
-        return nlg_report_crud.get_all(db=db, skip=skip, limit=limit)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving NLG reports: {str(e)}")
+@router.get("/nlg_reports/", response_model=List[NLGReportResponse])
+def get_all_nlg_reports(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)) -> List[NLGReportResponse]:
+    reports = nlg_report_crud.get_all(db=db, skip=skip, limit=limit)
+    logger.info(f"Retrieved {len(reports)} NLGReports.")
+    return [NLGReportResponse(id=report.id_uuid, driver_profile_id=report.driver_profile_id, report_text=report.report_text, generated_at=report.generated_at, synced=report.synced) for report in reports]
 
-# Endpoint to update an existing NLG report
-@router.put("/nlg_reports/{report_id}", response_model=NLGReport)
-def update_nlg_report(report_id: int, *, db: Session = Depends(get_db), nlg_report_in: NLGReportUpdate) -> NLGReport:
-    try:
-        nlg_report = nlg_report_crud.get(db=db, id=report_id)
-        if not nlg_report:
-            raise HTTPException(status_code=404, detail="NLG report not found")
-        return nlg_report_crud.update(db=db, db_obj=nlg_report, obj_in=nlg_report_in)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error updating NLG report: {str(e)}")
+@router.put("/nlg_reports/{report_id}", response_model=NLGReportResponse)
+def update_nlg_report(report_id: UUID, *, db: Session = Depends(get_db), report_in: NLGReportUpdate) -> NLGReportResponse:
+    report = nlg_report_crud.get(db=db, id=report_id)
+    if not report:
+        logger.warning(f"NLGReport with ID {report_id} not found for update.")
+        raise HTTPException(status_code=404, detail="NLG report not found")
+    updated_report = nlg_report_crud.update(db=db, db_obj=report, obj_in=report_in)
+    logger.info(f"Updated NLGReport with ID: {report_id}")
+    return NLGReportResponse(id=updated_report.id_uuid, driver_profile_id=updated_report.driver_profile_id, report_text=updated_report.report_text, generated_at=updated_report.generated_at, synced=updated_report.synced)
 
-# Endpoint to delete an NLG report by ID
-@router.delete("/nlg_reports/{report_id}", response_model=NLGReport)
-def delete_nlg_report(report_id: int, db: Session = Depends(get_db)) -> NLGReport:
-    try:
-        nlg_report = nlg_report_crud.get(db=db, id=report_id)
-        if not nlg_report:
-            raise HTTPException(status_code=404, detail="NLG report not found")
-        return nlg_report_crud.delete(db=db, id=report_id)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error deleting NLG report: {str(e)}")
+@router.delete("/nlg_reports/{report_id}", response_model=NLGReportResponse)
+def delete_nlg_report(report_id: UUID, db: Session = Depends(get_db)) -> NLGReportResponse:
+    report = nlg_report_crud.get(db=db, id=report_id)
+    if not report:
+        logger.warning(f"NLGReport with ID {report_id} not found for deletion.")
+        raise HTTPException(status_code=404, detail="NLG report not found")
+    deleted_report = nlg_report_crud.delete(db=db, id=report_id)
+    logger.info(f"Deleted NLGReport with ID: {report_id}")
+    return NLGReportResponse(id=deleted_report.id_uuid, driver_profile_id=deleted_report.driver_profile_id, report_text=deleted_report.report_text, generated_at=deleted_report.generated_at, synced=deleted_report.synced)

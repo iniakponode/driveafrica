@@ -1,48 +1,55 @@
-from sqlalchemy import Column, Float, UUID, DateTime, Boolean, String
+from sqlalchemy import Column, Float, DateTime, Boolean, BINARY, Integer
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime
-import uuid
 from safedrive.database.base import Base
+from uuid import uuid4, UUID
 
-def generate_uuid():
-        return str(uuid.uuid4())  # Generates a UUID string
+def generate_uuid_binary():
+    return uuid4().bytes
 
 class Location(Base):
     """
     Location model representing the geographical information captured during a trip.
 
     Attributes:
-    - id (UUID): Unique identifier for each location.
-    - latitude (float): Latitude of the recorded location.
-    - longitude (float): Longitude of the recorded location.
-    - timestamp (datetime): The exact time when the location was recorded.
-    - date (datetime): The date the location was recorded.
-    - altitude (float): Altitude of the recorded location.
-    - speed (float): Speed of the vehicle at the recorded location.
-    - distance (float): The distance covered from the previous recorded point.
-    - sync (bool): Status to indicate whether the data has been synced to the server.
-    """
-    __tablename__ = 'location'
-    
+    - **id**: Unique identifier for each location.
+    - **latitude**: Latitude of the recorded location.
+    - **longitude**: Longitude of the recorded location.
+    - **timestamp**: The epoch timestamp when the location was recorded (milliseconds).
+    - **date**: The date the location was recorded.
+    - **altitude**: Altitude of the recorded location.
+    - **speed**: Speed at the recorded location.
+    - **distance**: The distance covered from the previous recorded point.
+    - **sync**: Status to indicate whether the data has been synced to the server.
 
-    id = Column(String(36), primary_key=True, default=generate_uuid)
+    Relationships:
+    - **raw_sensor_data**: Relationship with RawSensorData model.
+    - **unsafe_behaviours**: Relationship with UnsafeBehaviour model.
+    """
+
+    __tablename__ = 'location'
+
+    id = Column(BINARY(16), primary_key=True, default=generate_uuid_binary)
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
-    timestamp = Column(DateTime, nullable=False)
+    timestamp = Column(Integer, nullable=False)  # Epoch milliseconds
     date = Column(DateTime, nullable=False)
     altitude = Column(Float, nullable=False)
     speed = Column(Float, nullable=False)
     distance = Column(Float, nullable=False)
-    sync = Column(Boolean, nullable=False)
+    sync = Column(Boolean, default=False, nullable=False)
 
     # Relationships
     raw_sensor_data = relationship("RawSensorData", back_populates="location", cascade="all, delete-orphan")
-    unsafe_behaviour = relationship("UnsafeBehaviour", back_populates="location", cascade="all, delete-orphan")
+    unsafe_behaviours = relationship("UnsafeBehaviour", back_populates="location", cascade="all, delete-orphan")
 
     def __repr__(self):
         return (
-            f"<Location(id={self.id}, latitude={self.latitude}, longitude={self.longitude}, "
+            f"<Location(id={self.id.hex()}, latitude={self.latitude}, longitude={self.longitude}, "
             f"timestamp={self.timestamp}, date={self.date}, altitude={self.altitude}, "
             f"speed={self.speed}, distance={self.distance}, sync={self.sync})>"
         )
+
+    @property
+    def id_uuid(self) -> UUID:
+        """Return the UUID representation of the binary ID."""
+        return UUID(bytes=self.id)

@@ -1,5 +1,6 @@
 package com.uoa.core.database.repository
 
+import com.uoa.core.model.LocationData
 import com.uoa.core.model.Trip
 import java.util.UUID
 
@@ -11,6 +12,8 @@ interface TripDataRepository {
     suspend fun getAllTrips(): List<Trip>
 
     suspend fun getTripById(id: UUID): Trip?
+
+    suspend fun getTripByIds(ids: List<UUID>): List<Trip>
 
     suspend fun updateUploadStatus(id: Int, sync: Boolean)
 

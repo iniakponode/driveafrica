@@ -1,6 +1,7 @@
 package com.uoa.sensor.presentation.viewModel
 
 import android.util.Log
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.Data
@@ -8,6 +9,8 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkQuery
+import androidx.work.await
+import com.uoa.core.mlclassifier.MinMaxValuesLoader
 import com.uoa.sensor.hardware.HardwareModule
 import com.uoa.sensor.worker.SensorWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,9 +28,18 @@ class SensorViewModel @Inject constructor(
     private val _collectionStatus = MutableStateFlow(false)
     val collectionStatus: StateFlow<Boolean> get() = _collectionStatus
 
+    private val _isVehicleMoving=MutableStateFlow(false)
+    val isVehicleMoving: StateFlow<Boolean> get()= _isVehicleMoving
+
+
     fun updateCollectionStatus(status: Boolean) {
         viewModelScope.launch {
             _collectionStatus.emit(status)
+        }
+    }
+    fun updateVehicleMovementStatus(status: Boolean){
+        viewModelScope.launch{
+            _isVehicleMoving.emit(status)
         }
     }
 
@@ -51,6 +63,7 @@ class SensorViewModel @Inject constructor(
             Log.d("SensorViewModel", "Work enqueued successfully")
             if (taskType == "START") {
                 updateCollectionStatus(true)
+                updateVehicleMovementStatus(hardwareModule.isVehicleMoving())
             }
         }, { it.run() })
     }
@@ -68,17 +81,26 @@ class SensorViewModel @Inject constructor(
 
             if (_collectionStatus.value != isWorkRunning) {
                 updateCollectionStatus(isWorkRunning)
+                updateVehicleMovementStatus(hardwareModule.isVehicleMoving())
             }
         }
     }
 
-    private fun cancelSensorWorker() {
+    fun cancelSensorWorker() {
         viewModelScope.launch {
-            workManager.cancelAllWorkByTag("sensorWork").result.addListener({
+            try {
+                // Await the cancellation of all work with the tag "sensorWork"
+                workManager.cancelAllWorkByTag("sensorWork").await()
+
                 Log.d("SensorViewModel", "Work cancelled successfully")
+
+                // Call the suspend function
                 hardwareModule.stopDataCollection()
                 updateCollectionStatus(false)
-            }, { it.run() })
+                updateVehicleMovementStatus(hardwareModule.isVehicleMoving())
+            } catch (e: Exception) {
+                Log.e("SensorViewModel", "Error cancelling work", e)
+            }
         }
     }
 

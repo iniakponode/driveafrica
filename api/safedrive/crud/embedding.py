@@ -1,98 +1,70 @@
 from sqlalchemy.orm import Session
 from uuid import UUID
-from datetime import datetime, timezone
-from safedrive.models.embedding import Embedding
+from typing import List, Optional
+from safedrive.models.embedding import Embedding, generate_uuid_binary
 from safedrive.schemas.embedding import EmbeddingCreate, EmbeddingUpdate
+import logging
 
-class EmbeddingCRUD:
-    def __init__(self, db: Session):
-        self.db = db
+logger = logging.getLogger(__name__)
 
-    def get(self, embedding_id: UUID) -> Embedding:
-        """
-        Retrieve an Embedding entity by its ID.
+class CRUDEmbedding:
+    def __init__(self, model):
+        self.model = model
 
-        :param embedding_id: UUID of the Embedding to retrieve.
-        :return: Embedding entity if found, else None.
-        """
-        return self.db.query(Embedding).filter(Embedding.chunkId == embedding_id).first()
-
-    def create(self, embedding_data: EmbeddingCreate) -> Embedding:
-        """
-        Create a new Embedding entity.
-
-        :param embedding_data: Data required to create a new Embedding.
-        :return: The newly created Embedding entity.
-        """
-        new_embedding = Embedding(
-            chunkId=embedding_data.chunkId,
-            chunkText=embedding_data.chunkText,
-            embedding=embedding_data.embedding,
-            sourceType=embedding_data.sourceType,
-            sourcePage=embedding_data.sourcePage,
-            createdAt=datetime.now(timezone.utc)
-        )
+    def create(self, db: Session, obj_in: EmbeddingCreate) -> Embedding:
+        db_obj = self.model(**obj_in.dict(), chunk_id=generate_uuid_binary())
+        db.add(db_obj)
         try:
-            self.db.add(new_embedding)
-            self.db.commit()
-            self.db.refresh(new_embedding)
+            db.commit()
+            logger.info(f"Created Embedding with ID: {db_obj.chunk_id.hex()}")
         except Exception as e:
-            self.db.rollback()
+            db.rollback()
+            logger.error(f"Error creating Embedding: {str(e)}")
             raise e
-        return new_embedding
+        db.refresh(db_obj)
+        return db_obj
 
-    def update(self, embedding_id: UUID, embedding_data: EmbeddingUpdate) -> Embedding:
-        """
-        Update an existing Embedding entity.
+    def get(self, db: Session, id: UUID) -> Optional[Embedding]:
+        embedding = db.query(self.model).filter(self.model.chunk_id == id.bytes).first()
+        if embedding:
+            logger.info(f"Retrieved Embedding with ID: {id}")
+        else:
+            logger.warning(f"Embedding with ID {id} not found.")
+        return embedding
 
-        :param embedding_id: UUID of the Embedding to update.
-        :param embedding_data: Data to update the Embedding entity.
-        :return: The updated Embedding entity if found, else None.
-        """
-        existing_embedding = self.get(embedding_id)
-        if not existing_embedding:
-            return None
+    def get_all(self, db: Session, skip: int = 0, limit: int = 100) -> List[Embedding]:
+        embeddings = db.query(self.model).offset(skip).limit(limit).all()
+        logger.info(f"Retrieved {len(embeddings)} Embeddings.")
+        return embeddings
 
-        for key, value in embedding_data.dict(exclude_unset=True).items():
-            if hasattr(existing_embedding, key):
-                setattr(existing_embedding, key, value)
-
+    def update(self, db: Session, db_obj: Embedding, obj_in: EmbeddingUpdate) -> Embedding:
+        obj_data = obj_in.dict(exclude_unset=True)
+        for field in obj_data:
+            setattr(db_obj, field, obj_data[field])
+        db.add(db_obj)
         try:
-            self.db.commit()
-            self.db.refresh(existing_embedding)
+            db.commit()
+            logger.info(f"Updated Embedding with ID: {db_obj.chunk_id.hex()}")
         except Exception as e:
-            self.db.rollback()
+            db.rollback()
+            logger.error(f"Error updating Embedding: {str(e)}")
             raise e
-        return existing_embedding
+        db.refresh(db_obj)
+        return db_obj
 
-    def delete(self, embedding_id: UUID) -> bool:
-        """
-        Delete an Embedding entity by its ID.
+    def delete(self, db: Session, id: UUID) -> Optional[Embedding]:
+        obj = db.query(self.model).filter(self.model.chunk_id == id.bytes).first()
+        if obj:
+            db.delete(obj)
+            try:
+                db.commit()
+                logger.info(f"Deleted Embedding with ID: {id}")
+            except Exception as e:
+                db.rollback()
+                logger.error(f"Error deleting Embedding: {str(e)}")
+                raise e
+        else:
+            logger.warning(f"Embedding with ID {id} not found for deletion.")
+        return obj
 
-        :param embedding_id: UUID of the Embedding to delete.
-        :return: True if deletion was successful, else False.
-        """
-        existing_embedding = self.get(embedding_id)
-        if not existing_embedding:
-            return False
-
-        try:
-            self.db.delete(existing_embedding)
-            self.db.commit()
-        except Exception as e:
-            self.db.rollback()
-            raise e
-        return True
-
-    def get_all(self, skip: int = 0, limit: int = 10) -> list[Embedding]:
-        """
-        Retrieve a list of Embedding entities.
-
-        :param skip: Number of entities to skip.
-        :param limit: Maximum number of entities to retrieve.
-        :return: A list of Embedding entities.
-        """
-        return self.db.query(Embedding).order_by(Embedding.createdAt.desc()).offset(skip).limit(limit).all()
-
-# Instantiate the CRUD utility for usage
-embedding_crud = EmbeddingCRUD(db=Session())
+embedding_crud = CRUDEmbedding(Embedding)

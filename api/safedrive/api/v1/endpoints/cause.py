@@ -3,61 +3,53 @@ from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 from safedrive.database.db import get_db
-from safedrive.schemas.cause import CauseCreate, CauseUpdate, CauseBase as Cause
+from safedrive.schemas.cause import CauseCreate, CauseUpdate, CauseResponse
 from safedrive.crud.cause import cause_crud
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
-# Endpoint to create a new cause
-@router.post("/causes/", response_model=Cause)
-def create_cause(*, db: Session = Depends(get_db), cause_in: CauseCreate) -> Cause:
+@router.post("/causes/", response_model=CauseResponse)
+def create_cause(*, db: Session = Depends(get_db), cause_in: CauseCreate) -> CauseResponse:
     try:
-        # Validation: Ensure necessary fields are not empty or invalid
-        if not cause_in.unsafeBehaviourId or not cause_in.name:
-            raise HTTPException(status_code=400, detail="Unsafe Behaviour ID and name are required")
-        return cause_crud.create(db=db, obj_in=cause_in)
+        new_cause = cause_crud.create(db=db, obj_in=cause_in)
+        logger.info(f"Created Cause with ID: {new_cause.id}")
+        return CauseResponse(id=new_cause.id_uuid, **cause_in.dict())
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error creating cause: {str(e)}")
+        logger.error(f"Error creating Cause: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error creating cause")
 
-# Endpoint to get a cause by ID
-@router.get("/causes/{cause_id}", response_model=Cause)
-def get_cause(cause_id: UUID, db: Session = Depends(get_db)) -> Cause:
-    try:
-        cause = cause_crud.get(db=db, id=cause_id)
-        if not cause:
-            raise HTTPException(status_code=404, detail="Cause not found")
-        return cause
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving cause: {str(e)}")
+@router.get("/causes/{cause_id}", response_model=CauseResponse)
+def get_cause(cause_id: UUID, db: Session = Depends(get_db)) -> CauseResponse:
+    cause = cause_crud.get(db=db, id=cause_id)
+    if not cause:
+        logger.warning(f"Cause with ID {cause_id} not found.")
+        raise HTTPException(status_code=404, detail="Cause not found")
+    return CauseResponse.model_validate(cause)
 
-# Endpoint to get all causes with optional pagination
-@router.get("/causes/", response_model=List[Cause])
-def get_all_causes(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)) -> List[Cause]:
-    try:
-        if limit > 100:
-            raise HTTPException(status_code=400, detail="Limit cannot exceed 100 items")
-        return cause_crud.get_all(db=db, skip=skip, limit=limit)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving causes: {str(e)}")
+@router.get("/causes/", response_model=List[CauseResponse])
+def get_all_causes(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)) -> List[CauseResponse]:
+    causes = cause_crud.get_all(db=db, skip=skip, limit=limit)
+    logger.info(f"Retrieved {len(causes)} Causes.")
+    return [CauseResponse.model_validate(cause) for cause in causes]
 
-# Endpoint to update an existing cause
-@router.put("/causes/{cause_id}", response_model=Cause)
-def update_cause(cause_id: UUID, *, db: Session = Depends(get_db), cause_in: CauseUpdate) -> Cause:
-    try:
-        cause = cause_crud.get(db=db, id=cause_id)
-        if not cause:
-            raise HTTPException(status_code=404, detail="Cause not found")
-        return cause_crud.update(db=db, db_obj=cause, obj_in=cause_in)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error updating cause: {str(e)}")
+@router.put("/causes/{cause_id}", response_model=CauseResponse)
+def update_cause(cause_id: UUID, *, db: Session = Depends(get_db), cause_in: CauseUpdate) -> CauseResponse:
+    cause = cause_crud.get(db=db, id=cause_id)
+    if not cause:
+        logger.warning(f"Cause with ID {cause_id} not found for update.")
+        raise HTTPException(status_code=404, detail="Cause not found")
+    updated_cause = cause_crud.update(db=db, db_obj=cause, obj_in=cause_in)
+    logger.info(f"Updated Cause with ID: {cause_id}")
+    return CauseResponse.model_validate(updated_cause)
 
-# Endpoint to delete a cause by ID
-@router.delete("/causes/{cause_id}", response_model=Cause)
-def delete_cause(cause_id: UUID, db: Session = Depends(get_db)) -> Cause:
-    try:
-        cause = cause_crud.get(db=db, id=cause_id)
-        if not cause:
-            raise HTTPException(status_code=404, detail="Cause not found")
-        return cause_crud.delete(db=db, id=cause_id)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error deleting cause: {str(e)}")
+@router.delete("/causes/{cause_id}", response_model=CauseResponse)
+def delete_cause(cause_id: UUID, db: Session = Depends(get_db)) -> CauseResponse:
+    cause = cause_crud.get(db=db, id=cause_id)
+    if not cause:
+        logger.warning(f"Cause with ID {cause_id} not found for deletion.")
+        raise HTTPException(status_code=404, detail="Cause not found")
+    deleted_cause = cause_crud.delete(db=db, id=cause_id)
+    logger.info(f"Deleted Cause with ID: {cause_id}")
+    return CauseResponse.model_validate(deleted_cause)

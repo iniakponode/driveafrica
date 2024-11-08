@@ -41,7 +41,7 @@ import com.uoa.core.model.DriverProfile
                         DrivingTipEntity::class,
                         CauseEntity::class,
                      EmbeddingEntity::class],
-                        version = 19)
+                        version = 24)
 @TypeConverters(Converters::class)
 abstract class Sdaddb : RoomDatabase() {
     abstract fun sensorDataDao(): SensorDataDao

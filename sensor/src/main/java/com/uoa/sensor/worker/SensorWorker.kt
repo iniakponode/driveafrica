@@ -1,6 +1,7 @@
 package com.uoa.sensor.worker
 
 import android.content.Context
+import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.hilt.work.HiltWorker
@@ -30,10 +31,11 @@ class SensorWorker @AssistedInject constructor(
     // Define a notification ID for this foreground service
     private val notificationId = 1
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override suspend fun doWork(): Result {
         // Start the worker as a foreground service
-        setForeground(getForegroundInfo())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            setForeground(getForegroundInfo())
+        }
 
         val taskType = inputData.getString("TASK_TYPE")
         val tripId = inputData.getString("TRIP_ID")
@@ -71,15 +73,16 @@ class SensorWorker @AssistedInject constructor(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     override suspend fun getForegroundInfo(): ForegroundInfo {
         // Build a notification to represent the ongoing sensor collection
         val notification = notificationManager.buildForegroundNotification(
             title = "Sensors in Background",
             message = "Sensors are running\nto collect data in the background...."
         )
-
+        val serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
         // Return a ForegroundInfo object with the notification
-        return ForegroundInfo(notificationId, notification)
+        return ForegroundInfo(notificationId, notification,serviceType)
     }
 
     private suspend fun monitorVehicleMovementState() {

@@ -18,10 +18,10 @@ import com.uoa.core.model.DrivingTip
 import com.uoa.core.model.UnsafeBehaviourModel
 import com.uoa.core.network.model.chatGPT.Message
 import com.uoa.core.network.model.chatGPT.RequestBody
-import com.uoa.core.nlg.JsonContentBasedRAGEngine
-import com.uoa.core.nlg.repository.EmbeddingUtilsRepository
+//import com.uoa.core.nlg.JsonContentBasedRAGEngine
+//import com.uoa.core.nlg.repository.EmbeddingUtilsRepository
 import com.uoa.core.nlg.repository.NLGEngineRepository
-import com.uoa.core.nlg.RAGEngine
+//import com.uoa.core.nlg.RAGEngine
 import com.uoa.core.nlg.compressAndEncodeJson
 import com.uoa.core.nlg.getRelevantDataFromJson
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
@@ -50,8 +50,8 @@ class DrivingTipsViewModel @Inject constructor(
     private val nlgEngineRepository: NLGEngineRepository,
     private val getUnsafeBehavioursForTipsUseCase: GetUnsafeBehavioursForTipsUseCase,
     private val geminiCaller: GenerativeModel,
-    private val embeddingUtilsRepository: EmbeddingUtilsRepository,
-    private val ragEngine: JsonContentBasedRAGEngine,
+//    private val embeddingUtilsRepository: EmbeddingUtilsRepository,
+//    private val ragEngine: JsonContentBasedRAGEngine,
     private val tripRepository: TripDataRepository,
     application: Application
 ) : ViewModel() {
@@ -73,7 +73,7 @@ class DrivingTipsViewModel @Inject constructor(
             val profileId = UUID.fromString(profileIdString)
             Log.d("DrivingTipsViewModel", "Profile ID found: $profileId")
             // Initialize RAGEngine
-            ragEngine.initialize(application.applicationContext)
+//            ragEngine.initialize(application.applicationContext)
 //            generateAndStoreEmbeddingsIfNone(appContext)
             fetchDrivingTips(appContext,profileId)
         } else {
@@ -81,15 +81,15 @@ class DrivingTipsViewModel @Inject constructor(
         }
     }
 
-    private fun generateAndStoreEmbeddingsIfNone(context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val embeddings = embeddingUtilsRepository.getAllEmbeddings()
-            if (embeddings.isEmpty()) {
-                // Generate and store new embeddings
-                ragEngine.embedOffencesJson(context)
-                 }
-            }
-        }
+//    private fun generateAndStoreEmbeddingsIfNone(context: Context) {
+//        viewModelScope.launch(Dispatchers.IO) {
+//            val embeddings = embeddingUtilsRepository.getAllEmbeddings()
+//            if (embeddings.isEmpty()) {
+//                // Generate and store new embeddings
+//                ragEngine.embedOffencesJson(context)
+//                 }
+//            }
+//        }
 
     private fun fetchDrivingTips(context: Context,profileId: UUID) {
         Log.d("DrivingTipsViewModel", "Starting fetchDrivingTips")

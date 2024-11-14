@@ -48,12 +48,8 @@ class HardwareModule @Inject constructor(
     @LinearAccelerationM private val linearAccelerationSensor: LinearAccelerationSensor,
     private val locationManager: LocationManager,
     private val manageSensorDataSizeAndSave: ManageSensorDataSizeAndSave,
+    private val updateTripUseCase: UpdateTripUseCase,
     private val runClassificationUseCase: RunClassificationUseCase,
-    private val upDateUnsafeBehaviourCauseUseCase: UpDateUnsafeBehaviourCauseUseCase,
-    private val saveInfluenceToCause: SaveInfluenceToCause,
-    private val batchInsertCauseUseCase: BatchInsertCauseUseCase,
-    private val batchUpDateUnsafeBehaviourCauseUseCase: BatchUpDateUnsafeBehaviourCauseUseCase,
-    private val updateTripUseCase: UpdateTripUseCase
 ) {
 
     private var isCollecting: Boolean = false
@@ -342,7 +338,7 @@ class HardwareModule @Inject constructor(
     suspend fun stopDataCollection() {
         if (isCollecting || isVehicleMoving) {
             try {
-                locationManager.stopLocationUpdates()
+               locationManager.stopLocationUpdates()
                 manageSensorDataSizeAndSave.processSensorData()
                 stopSensorListeners()
 
@@ -353,19 +349,28 @@ class HardwareModule @Inject constructor(
                 fallbackHandler = null
                 fallbackRunnable = null
 
-                // Run classification
-                val alcInfluence = runClassificationUseCase.invoke(currentTripId!!)
-                if (alcInfluence)
-                    updateTripUseCase.invoke(currentTripId!!, "alcohol")
-                else
-                    updateTripUseCase.invoke(currentTripId!!, "No influence")
+//                Log.i("Trip", "I am called to End Trip")
+//                // Run classification
+//                val alcInfluence = runClassificationUseCase.invoke(currentTripId!!)
+//                Log.i("Trip", "I am called to End Trip Alcohol is: $alcInfluence")
+//                if (alcInfluence) {
+//                    updateTripUseCase.invoke(currentTripId!!, "alcohol")
+//                    Log.i("HardwareModule", "Update Successful")
+//                }
+//                else{
+//                    updateTripUseCase.invoke(currentTripId!!, "No influence")
+//                    Log.d("HardwareModule", "Update not successful")
+//                }
+//
+//                Log.i("AlcoholIn", "Influence: $alcInfluence")
+//                // batchUpDateUnsafeBehaviourCauseUseCase.invoke(currentTripId!!, alcInfluence)
+//                Log.i("AlcoholIn", "Influence updated to Unsafe Behaviour table")
 
-                Log.d("AlcoholIn", "Influence: $alcInfluence")
-                // batchUpDateUnsafeBehaviourCauseUseCase.invoke(currentTripId!!, alcInfluence)
-                Log.d("AlcoholIn", "Influence updated to Unsafe Behaviour table")
+
 
                 currentTripId = null
                 currentLocationId = null
+
             } catch (e: Exception) {
                 Log.e("HardwareModule", "Error during classification", e)
             }

@@ -83,6 +83,7 @@ class LocalUnsafeBehavioursViewModel @Inject constructor(private val unsafeBehav
                         unsafeBehaviour.map { insertUnsafeBehaviourUseCase.execute(it) }
                     }
                     _unsafeBehaviours.value=unsafeBehaviour
+
                 } catch (e: Exception) {
                     Log.e("AnalysisViewModel", "Error fetching analysis results by date", e)
                 }

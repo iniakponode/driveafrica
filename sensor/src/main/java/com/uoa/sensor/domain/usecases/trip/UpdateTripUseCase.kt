@@ -1,6 +1,7 @@
 package com.uoa.sensor.domain.usecases.trip
 
 import android.util.Log
+import com.uoa.core.database.repository.TripDataRepository
 import com.uoa.core.model.Trip
 import com.uoa.sensor.repository.TripDataRepositoryImpl
 import kotlinx.coroutines.CoroutineScope
@@ -20,21 +21,29 @@ class UpdateTripUseCaseOld @Inject constructor(private val tripRepository: TripD
     }
 }
 
-class UpdateTripUseCase @Inject constructor(private val tripRepository: TripDataRepositoryImpl) {
-    operator fun invoke(
+class UpdateTripUseCase @Inject constructor(private val tripRepository: TripDataRepository) {
+    suspend operator fun invoke(
                         tripId: UUID,
                         influence:String
     ) {
-        CoroutineScope(Dispatchers.IO).launch {
+        Log.i("Checked", "I am called to Update Trip, TripId: $tripId")
+//        CoroutineScope(Dispatchers.IO).launch {
             val tripToFromdb = tripRepository.getTripById(tripId)
-            val tripToUpdate = tripToFromdb!!.copy(
-                endTime = System.currentTimeMillis(),
-                endDate = Date(),
-                influence=influence
-            )
-            tripRepository.updateTrip(tripToUpdate)
-        }
-        Log.d("TripID", "Trip ended with id: $tripId")
+            if (tripToFromdb!=null){
+                val tripToUpdate = tripToFromdb.copy(
+                    endTime = System.currentTimeMillis(),
+                    endDate = Date(),
+                    influence=influence
+                )
+                tripRepository.updateTrip(tripToUpdate)
+                Log.i("Trip", "Update successful")
+            }
+            else{
+                Log.i("Trip", "No Trip to update")
+            }
+
+//        }
+        Log.i("TripID", "Trip ended with id: $tripId")
     }
 }
 

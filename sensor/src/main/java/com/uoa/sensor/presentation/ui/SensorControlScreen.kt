@@ -24,6 +24,8 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +38,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.uoa.core.mlclassifier.MinMaxValuesLoader
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.core.utils.Constants.Companion.TRIP_ID
 import com.uoa.ml.presentation.viewmodel.AlcoholInfluenceViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -51,14 +54,21 @@ fun SensorControlScreen(
     tripViewModel: TripViewModel = viewModel(),
     alcoholInfluenceViewModel: AlcoholInfluenceViewModel = hiltViewModel()
 ) {
+    // At the top of your composable
     val collectionStatus by sensorViewModel.collectionStatus.collectAsState()
     val isVehicleMoving by sensorViewModel.isVehicleMoving.collectAsState()
     val alcoholInfluence by alcoholInfluenceViewModel.alcoholInfluence.observeAsState()
+    val tripIdUpdate by tripViewModel.currentTripId.collectAsState()
     val context = LocalContext.current
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
     val profileIdString = prefs.getString(DRIVER_PROFILE_ID, null)
     val driverProfileId = UUID.fromString(profileIdString)
 
+
+//    var tripID by rememberSaveable(stateSaver = uuidSaver) { mutableStateOf<UUID?>(null) }
+
+    var tripID by remember { mutableStateOf<UUID?>(null) }
 
 
     // Check and request POST_NOTIFICATIONS permission for Android 13+ devices
@@ -111,24 +121,37 @@ fun SensorControlScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(onClick = {
-            val tripID = tripViewModel.updateTripId(UUID.randomUUID())
-
-            // Request foreground permissions first
+            // Request permissions if necessary
             if (!foregroundPermissionState.allPermissionsGranted) {
                 foregroundPermissionState.launchMultiplePermissionRequest()
-            } else if (foregroundPermissionState.allPermissionsGranted && !backgroundPermissionState.hasPermission) {
-                // If foreground permissions are granted, request background permission next
+            } else if (!backgroundPermissionState.hasPermission) {
                 backgroundPermissionState.launchPermissionRequest()
-            } else if (foregroundPermissionState.allPermissionsGranted && backgroundPermissionState.hasPermission && !collectionStatus) {
-                // Start trip if all permissions are granted
-                tripViewModel.startTrip(driverProfileId, tripID)
-                sensorViewModel.startSensorCollection("START", true, tripID)
+            } else if (!collectionStatus) {
+                // Start trip
+                tripID = UUID.randomUUID()
+                prefs.edit().putString(TRIP_ID, tripID.toString()).apply()
+                tripViewModel.updateTripId(tripID!!)
+                tripViewModel.startTrip(driverProfileId, tripID!!)
+                sensorViewModel.startSensorCollection("START", true, tripID!!)
                 sensorViewModel.updateCollectionStatus(true)
                 sensorViewModel.checkWorkManagerStatus()
             } else {
                 // End trip
-                sensorViewModel.stopSensorCollection()
-                sensorViewModel.updateCollectionStatus(false)
+                val tripIdString = prefs.getString(TRIP_ID, null)
+                tripID = tripIdString?.let { UUID.fromString(it) }
+                if (tripID != null) {
+                    tripViewModel.endTrip(tripID!!)
+                    // Clear the saved tripID
+                    prefs.edit().remove("TRIP_ID").apply()
+                    tripViewModel.clearTripID()
+                    sensorViewModel.stopSensorCollection()
+                    sensorViewModel.updateCollectionStatus(false)
+                    // Reset tripID after ending the trip
+                    tripID = null
+                } else {
+                    Log.e("SensorControlScreen", "tripID is null when attempting to end trip")
+                    Toast.makeText(context, "Error: Trip ID is missing.", Toast.LENGTH_LONG).show()
+                }
             }
         }) {
             Text(

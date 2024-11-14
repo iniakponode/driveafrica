@@ -4,6 +4,7 @@ import com.uoa.core.mlclassifier.MinMaxValuesLoader
 import android.hardware.GeomagneticField
 import android.hardware.Sensor
 import android.hardware.SensorManager
+import android.util.Log
 import com.uoa.core.database.entities.RawSensorDataEntity
 import java.sql.Timestamp
 import java.util.Calendar
@@ -15,101 +16,131 @@ import kotlin.math.sqrt
 class UtilsNew @Inject constructor(private val minMaxValuesLoader: MinMaxValuesLoader) {
 
     fun extractNormalizedHourOfDayMean(timestamps: List<Timestamp>, timeZone: TimeZone): Float {
-        if (timestamps.isEmpty()) return 0.0f
+        if (timestamps.isEmpty()) {
+            Log.w("Utils", "No timestamps provided for hour of day mean extraction.")
+            return 0.0f
+        }
 
         val calendar = Calendar.getInstance(timeZone)
-        val hoursOfDay = mutableListOf<Float>()
-
-        for (timestamp in timestamps) {
+        val hoursOfDay = timestamps.map { timestamp ->
             calendar.timeInMillis = timestamp.time
             val hour = calendar.get(Calendar.HOUR_OF_DAY).toFloat()
-            hoursOfDay.add(hour)
+            Log.d("Utils", "Timestamp: ${timestamp.time} -> Hour: $hour")
+            hour
         }
 
         val meanHour = hoursOfDay.average().toFloat()
+        Log.d("Utils", "Mean Hour of Day: $meanHour")
 
         val minValue = minMaxValuesLoader.getMin("hour_of_day_mean") ?: 0f
         val maxValue = minMaxValuesLoader.getMax("hour_of_day_mean") ?: 23f
-
         val range = maxValue - minValue
+
         val normalizedHourMean = if (range != 0f) {
             (meanHour - minValue) / range
         } else {
+            Log.w("Utils", "Range for hour_of_day_mean is zero. Defaulting normalized value to 0.0f")
             0.0f
         }
+
+        Log.d("Utils", "Normalized Hour of Day Mean: $normalizedHourMean")
         return normalizedHourMean.coerceIn(0.0f, 1.0f)
     }
 
     fun extractNormalizedDayOfWeekMean(timestamps: List<Timestamp>, timeZone: TimeZone): Float {
-        if (timestamps.isEmpty()) return 0.0f
+        if (timestamps.isEmpty()) {
+            Log.w("Utils", "No timestamps provided for day of week mean extraction.")
+            return 0.0f
+        }
 
         val calendar = Calendar.getInstance(timeZone)
-        val daysOfWeek = mutableListOf<Float>()
-
-        for (timestamp in timestamps) {
+        val daysOfWeek = timestamps.map { timestamp ->
             calendar.timeInMillis = timestamp.time
-            // Calendar.DAY_OF_WEEK ranges from 1 (Sunday) to 7 (Saturday)
             val day = (calendar.get(Calendar.DAY_OF_WEEK) - 1).toFloat() // Adjust to 0-6
-            daysOfWeek.add(day)
+            Log.d("Utils", "Timestamp: ${timestamp.time} -> Day of Week: $day")
+            day
         }
 
         val meanDay = daysOfWeek.average().toFloat()
+        Log.d("Utils", "Mean Day of Week: $meanDay")
 
         val minValue = minMaxValuesLoader.getMin("day_of_week_mean") ?: 0f
         val maxValue = minMaxValuesLoader.getMax("day_of_week_mean") ?: 6f
-
         val range = maxValue - minValue
+
         val normalizedDayMean = if (range != 0f) {
             (meanDay - minValue) / range
         } else {
+            Log.w("Utils", "Range for day_of_week_mean is zero. Defaulting normalized value to 0.0f")
             0.0f
         }
+
+        Log.d("Utils", "Normalized Day of Week Mean: $normalizedDayMean")
         return normalizedDayMean.coerceIn(0.0f, 1.0f)
     }
 
     fun extractNormalizedSpeedStd(speeds: List<Float>): Float {
-        if (speeds.isEmpty()) return 0.0f
+        if (speeds.isEmpty()) {
+            Log.w("Utils", "No speed data provided for speed standard deviation extraction.")
+            return 0.0f
+        }
 
         val meanSpeed = speeds.average().toFloat()
         val variance = speeds.map { (it - meanSpeed).pow(2) }.average().toFloat()
         val speedStd = sqrt(variance)
 
+        Log.d("Utils", "Mean Speed: $meanSpeed, Speed Std: $speedStd")
+
         val minValue = minMaxValuesLoader.getMin("speed_std") ?: 0f
         val maxValue = minMaxValuesLoader.getMax("speed_std") ?: 100f
-
         val range = maxValue - minValue
+
         val normalizedSpeedStd = if (range != 0f) {
             (speedStd - minValue) / range
         } else {
+            Log.w("Utils", "Range for speed_std is zero. Defaulting normalized value to 0.0f")
             0.0f
         }
+
+        Log.d("Utils", "Normalized Speed Std: $normalizedSpeedStd")
         return normalizedSpeedStd.coerceIn(0.0f, 1.0f)
     }
 
     fun extractNormalizedAccelerationYOriginalMean(accelerationYValues: List<Float>): Float {
-        if (accelerationYValues.isEmpty()) return 0.0f
+        if (accelerationYValues.isEmpty()) {
+            Log.w("Utils", "No acceleration Y data provided for mean extraction.")
+            return 0.0f
+        }
 
         val meanAccelY = accelerationYValues.average().toFloat()
+        Log.d("Utils", "Mean Acceleration Y: $meanAccelY")
 
         val minValue = minMaxValuesLoader.getMin("accelerationYOriginal_mean") ?: -10f
         val maxValue = minMaxValuesLoader.getMax("accelerationYOriginal_mean") ?: 10f
-
         val range = maxValue - minValue
+
         val normalizedMeanAccelY = if (range != 0f) {
             (meanAccelY - minValue) / range
         } else {
+            Log.w("Utils", "Range for accelerationYOriginal_mean is zero. Defaulting normalized value to 0.0f")
             0.0f
         }
+
+        Log.d("Utils", "Normalized Acceleration Y Original Mean: $normalizedMeanAccelY")
         return normalizedMeanAccelY.coerceIn(0.0f, 1.0f)
     }
 
-    // Function to compute the normalized standard deviation of the courses
     fun computeNormalizedStandardDeviationOfCourses(
         sensorDataList: List<RawSensorDataEntity>,
         latitude: Double,
         longitude: Double,
         altitude: Double
     ): Float {
+        if (sensorDataList.isEmpty()) {
+            Log.w("Utils", "No sensor data provided for course standard deviation computation.")
+            return 0.0f
+        }
+
         // Step 1: Compute the course for each sensor data item
         val courses = mutableListOf<Float>()
 
@@ -130,29 +161,41 @@ class UtilsNew @Inject constructor(private val minMaxValuesLoader: MinMaxValuesL
                 courses.add(course)
                 previousHeading = course
                 previousTimestamp = timestamp
+                Log.d("Utils", "Computed Course: $course at Timestamp: $timestamp")
+            } else {
+                Log.w("Utils", "Computed NaN course for sensorData: $sensorData")
             }
         }
 
-        if (courses.isEmpty()) return 0.0f
+        if (courses.isEmpty()) {
+            Log.w("Utils", "No valid course data computed.")
+            return 0.0f
+        }
 
         // Step 2: Compute the mean of the courses
         val meanCourse = courses.average().toFloat()
+        Log.d("Utils", "Mean Course: $meanCourse")
 
         // Step 3: Compute the standard deviation
         val variance = courses.map { (it - meanCourse).pow(2) }.average().toFloat()
         val standardDeviation = sqrt(variance)
+        Log.d("Utils", "Standard Deviation of Courses: $standardDeviation")
 
         val minValue = minMaxValuesLoader.getMin("course_std") ?: 0f
         val maxValue = minMaxValuesLoader.getMax("course_std") ?: 180f
-
         val range = maxValue - minValue
+
         val normalizedCourseStd = if (range != 0f) {
             (standardDeviation - minValue) / range
         } else {
+            Log.w("Utils", "Range for course_std is zero. Defaulting normalized value to 0.0f")
             0.0f
         }
+
+        Log.d("Utils", "Normalized Course Standard Deviation: $normalizedCourseStd")
         return normalizedCourseStd.coerceIn(0.0f, 1.0f)
     }
+
 
     // Helper function to compute the course for a single sensor data item
     private fun computeCourse(

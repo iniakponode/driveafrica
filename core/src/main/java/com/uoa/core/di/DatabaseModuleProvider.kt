@@ -24,9 +24,19 @@ object DatabaseModuleProvider {
             .fallbackToDestructiveMigration()
             .build()
     }
+
     @Provides
     @Singleton
     fun provideSensorDataDao(db: Sdaddb) = db.sensorDataDao()
+
+    @Provides
+    @Singleton
+    fun provideAIModelInputDao(db: Sdaddb) = db.aiModelInputsDao()
+
+
+    @Provides
+    @Singleton
+    fun provideRoadDao(db: Sdaddb) = db.roadDao()
 
     @Provides
     @Singleton

@@ -6,6 +6,7 @@ androidTools = "31.6.0"
 androidxActivity = "1.9.2"
 androidxAppCompat = "1.7.0"
 fsensor= "1.0.1"
+osmdroid="6.1.10"
 generativeai = "0.9.0"
 androidxBrowser = "1.8.0"
 androidxComposeUI = "1.7.0"
@@ -113,6 +114,7 @@ pdfBox = { group = "com.tom-roush", name = "pdfbox-android", version.ref = "pdfB
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidxActivity" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidxAppCompat" }
 microsoft-onnx-runtime = { group = "com.microsoft.onnxruntime", name = "onnxruntime-android", version.ref = "onnx-runtime" }
+map-osmdroid={group="org.osmdroid", name="osmdroid-android", version.ref="osmdroid"}
 ai-onnxruntime = { group = "ai.onnxruntime", name = "onnxruntime", version.ref = "onnx-runtime" }
 #anychart = { group = "com.github.AnyChart", name = "AnyChart-Android", version.ref = "chart" }
 #androidx-compose-compiler = { group = "androidx.compose.compiler", name = "compiler", version.ref = "androidxComposeCompiler" }

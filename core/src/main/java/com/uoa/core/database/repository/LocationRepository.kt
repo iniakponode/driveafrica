@@ -21,5 +21,5 @@ interface LocationRepository {
     suspend fun updateLocation(location: LocationEntity)
 
     suspend fun deleteAllLocations()
-    suspend fun getLocationDataByTripId(tripId: UUID): List<Double>
+    suspend fun getLocationDataByTripId(tripId: UUID): List<LocationData>
 }

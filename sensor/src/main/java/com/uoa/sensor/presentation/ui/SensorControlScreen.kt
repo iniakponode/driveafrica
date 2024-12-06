@@ -2,11 +2,14 @@ package com.uoa.sensor.presentation.ui
 
 import com.uoa.sensor.presentation.viewModel.TripViewModel
 import android.Manifest
+import android.R.attr.data
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
 import android.util.Log
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import com.uoa.sensor.presentation.viewModel.SensorViewModel
@@ -20,28 +23,22 @@ import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.Saver
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontVariation.Settings
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import com.google.accompanist.permissions.rememberPermissionState
-import com.uoa.core.mlclassifier.MinMaxValuesLoader
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.Constants.Companion.TRIP_ID
-import com.uoa.ml.presentation.viewmodel.AlcoholInfluenceViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
+import com.uoa.sensor.services.LocationService
+import com.uoa.sensor.services.DataCollectionService
 //import com.uoa.dbda.presentation.viewModel.UnsafeBehaviourViewModel
 import java.util.UUID
 
@@ -52,61 +49,79 @@ import java.util.UUID
 fun SensorControlScreen(
     sensorViewModel: SensorViewModel = viewModel(),
     tripViewModel: TripViewModel = viewModel(),
-    alcoholInfluenceViewModel: AlcoholInfluenceViewModel = hiltViewModel()
 ) {
-    // At the top of your composable
+    // Observing collection status and vehicle movement state
     val collectionStatus by sensorViewModel.collectionStatus.collectAsState()
     val isVehicleMoving by sensorViewModel.isVehicleMoving.collectAsState()
-    val alcoholInfluence by alcoholInfluenceViewModel.alcoholInfluence.observeAsState()
-    val tripIdUpdate by tripViewModel.currentTripId.collectAsState()
+    val tripStartStatus by sensorViewModel.tripEndStatus.collectAsState() // Correct StateFlow
+
     val context = LocalContext.current
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     val profileIdString = prefs.getString(DRIVER_PROFILE_ID, null)
     val driverProfileId = UUID.fromString(profileIdString)
 
-
-//    var tripID by rememberSaveable(stateSaver = uuidSaver) { mutableStateOf<UUID?>(null) }
+    // State to manage dialog visibility
+    var showSettingsDialog by remember { mutableStateOf(false) }
 
     var tripID by remember { mutableStateOf<UUID?>(null) }
 
-
     // Check and request POST_NOTIFICATIONS permission for Android 13+ devices
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        val permissionState = rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
-        val context = LocalContext.current.applicationContext
-        LaunchedEffect(Unit) {
-            // Initialize MinMaxValuesLoader with the application context
-            // Get the application context using LocalContext.current
+//    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+//        val permissionState = rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
+//        LaunchedEffect(Unit) {
+//            if (!permissionState.hasPermission) {
+//                permissionState.launchPermissionRequest()
+//            }
+//        }
+//    }
 
-            if (!permissionState.hasPermission) {
-                permissionState.launchPermissionRequest()
-            }
-        }
+    // Request POST_NOTIFICATIONS permission for Android 13+ devices
+    val notificationPermissionState = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
+    } else {
+        null
     }
 
-    // Step 1: Request foreground location permissions
-    val foregroundPermissionState = rememberMultiplePermissionsState(
-        permissions = listOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.ACTIVITY_RECOGNITION,
-            Manifest.permission.POST_NOTIFICATIONS,
-            Manifest.permission.FOREGROUND_SERVICE
-        )
-    )
 
-    val coroutineScope = rememberCoroutineScope()
+    // Step 1: Request foreground location permissions
+    val requiredPermissions = listOf(
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_COARSE_LOCATION,
+        Manifest.permission.ACTIVITY_RECOGNITION,
+        Manifest.permission.FOREGROUND_SERVICE
+    )
+    val foregroundPermissionState = rememberMultiplePermissionsState(requiredPermissions)
 
     // Step 2: Request background location permission separately
     val backgroundPermissionState = rememberPermissionState(
         permission = Manifest.permission.ACCESS_BACKGROUND_LOCATION
     )
 
-    // Check WorkManager status on screen entry
-    LaunchedEffect(Unit) {
-        sensorViewModel.checkWorkManagerStatus()
-    }
+    // State for whether background permission has been requested
+    var hasRequestedBackgroundPermission by remember { mutableStateOf(false) }
+
+    // Display the PermissionSettingsDialog
+    PermissionSettingsDialog(
+        showDialog = showSettingsDialog,
+        onDismiss = {
+            showSettingsDialog = false
+        },
+        onConfirm = {
+            showSettingsDialog = false
+            // Open app settings
+            val intent = Intent(ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", context.packageName, null)
+            }
+            context.startActivity(intent)
+        }
+    )
+
+    // Check if permissions are granted and update accordingly
+    val permissionsGranted =
+        foregroundPermissionState.allPermissionsGranted &&
+                backgroundPermissionState.hasPermission &&
+                (notificationPermissionState == null || notificationPermissionState.hasPermission)
 
     Column(
         modifier = Modifier
@@ -115,96 +130,101 @@ fun SensorControlScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Step 1: Display foreground location permissions
+        // Display permission status for foreground location
         LocationPermissions(foregroundPermissionState)
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // Add a spacer to separate the permission section from the button
+        Spacer(modifier = Modifier.height(24.dp))
 
-        Button(onClick = {
-            // Request permissions if necessary
-            if (!foregroundPermissionState.allPermissionsGranted) {
-                foregroundPermissionState.launchMultiplePermissionRequest()
-            } else if (!backgroundPermissionState.hasPermission) {
-                backgroundPermissionState.launchPermissionRequest()
-            } else if (!collectionStatus) {
-                // Start trip
-                tripID = UUID.randomUUID()
-                prefs.edit().putString(TRIP_ID, tripID.toString()).apply()
-                tripViewModel.updateTripId(tripID!!)
-                tripViewModel.startTrip(driverProfileId, tripID!!)
-                sensorViewModel.startSensorCollection("START", true, tripID!!)
-                sensorViewModel.updateCollectionStatus(true)
-                sensorViewModel.checkWorkManagerStatus()
-            } else {
-                // End trip
-                val tripIdString = prefs.getString(TRIP_ID, null)
-                tripID = tripIdString?.let { UUID.fromString(it) }
-                if (tripID != null) {
-                    tripViewModel.endTrip(tripID!!)
-                    // Clear the saved tripID
-                    prefs.edit().remove("TRIP_ID").apply()
-                    tripViewModel.clearTripID()
-                    sensorViewModel.stopSensorCollection()
-                    sensorViewModel.updateCollectionStatus(false)
-                    // Reset tripID after ending the trip
-                    tripID = null
-                } else {
-                    Log.e("SensorControlScreen", "tripID is null when attempting to end trip")
-                    Toast.makeText(context, "Error: Trip ID is missing.", Toast.LENGTH_LONG).show()
+        Button(
+            onClick = {
+                when {
+                    !foregroundPermissionState.allPermissionsGranted -> {
+                        if (foregroundPermissionState.permissions.any { !it.shouldShowRationale }) {
+                            // Permission was denied with "don't ask again"
+                            showSettingsDialog = true
+                        } else {
+                            foregroundPermissionState.launchMultiplePermissionRequest()
+                        }
+                    }
+
+                    !backgroundPermissionState.hasPermission && !hasRequestedBackgroundPermission -> {
+                        if (!backgroundPermissionState.shouldShowRationale) {
+                            // Background permission was denied with "don't ask again"
+                            showSettingsDialog = true
+                        } else {
+                            hasRequestedBackgroundPermission = true
+                            backgroundPermissionState.launchPermissionRequest()
+                        }
+                    }
+
+                    notificationPermissionState != null && !notificationPermissionState.hasPermission -> {
+                        notificationPermissionState.launchPermissionRequest()
+                    }
+
+                    else -> {
+                        if (!tripStartStatus) {
+                            // Start trip logic after all permissions are granted
+                            tripID = UUID.randomUUID()
+                            prefs.edit().putString(TRIP_ID, tripID.toString()).apply()
+                            tripViewModel.updateTripId(tripID!!)
+                            tripViewModel.startTrip(driverProfileId, tripID!!)
+
+                            // Start DataCollectionService
+                            val sensorIntent = Intent(context, DataCollectionService::class.java).apply {
+                                putExtra("TRIP_ID", tripID.toString())
+                            }
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                context.startForegroundService(sensorIntent)
+                            } else {
+                                context.startService(sensorIntent)
+                            }
+                            Toast.makeText(context, "Trip Started Successfully.", Toast.LENGTH_LONG).show()
+                        } else {
+                            // End trip and data collection
+                            val tripIdString = prefs.getString(TRIP_ID, null)
+                            tripID = tripIdString?.let { UUID.fromString(it) }
+                            if (tripID != null) {
+                                tripViewModel.endTrip(tripID!!)
+                                prefs.edit().remove("TRIP_ID").apply()
+                                tripViewModel.clearTripID()
+
+                                // Stop DataCollectionService
+                                val sensorDataCollectionIntent = Intent(context, DataCollectionService::class.java)
+                                context.stopService(sensorDataCollectionIntent)
+                                Toast.makeText(context, "Trip Ended Successfully.", Toast.LENGTH_LONG).show()
+
+                                tripID = null
+                            } else {
+                                Toast.makeText(context, "Error: Trip ID is missing.", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
                 }
-            }
-        }) {
+            },
+            modifier = Modifier.padding(vertical = 8.dp)
+        ) {
             Text(
                 text = when {
-                    !foregroundPermissionState.allPermissionsGranted -> "Grant Location Permissions"
+                    !foregroundPermissionState.allPermissionsGranted -> "Grant Permissions"
                     foregroundPermissionState.allPermissionsGranted && !backgroundPermissionState.hasPermission -> "Grant Background Location Permission"
-                    else -> if (!collectionStatus) "Start Trip" else "End Trip"
+                    notificationPermissionState != null && !notificationPermissionState.hasPermission -> "Grant Notification Permission"
+                    else -> if (tripStartStatus) "End Trip" else "Start Trip"
                 }
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-    }
-}
 
+        // Add a spacer to separate the button from the text displaying vehicle movement status
+        Spacer(modifier = Modifier.height(24.dp))
 
-
-
-
-@Composable
-fun SensorControlScreenRoute(
-    sensorViewModel: SensorViewModel = viewModel(),
-    tripViewModel: TripViewModel = viewModel()
-) {
-    SensorControlScreen(sensorViewModel, tripViewModel)
-}
-
-@OptIn(ExperimentalPermissionsApi::class)
-@Composable
-private fun getButtonText(
-    multiplePermissionState: MultiplePermissionsState,
-    collectionStatus: Boolean
-): String {
-    return when {
-        !multiplePermissionState.allPermissionsGranted && !collectionStatus -> "Grant Location Permissions"
-        multiplePermissionState.allPermissionsGranted && !collectionStatus -> "Start Trip"
-        else -> "End Trip"
-    }
-}
-
-@OptIn(ExperimentalPermissionsApi::class)
-@Composable
-fun LocationPermissions(foregroundPermissionState: MultiplePermissionsState) {
-    val allPermissionsGranted = foregroundPermissionState.allPermissionsGranted
-    val shouldShowRationale = foregroundPermissionState.shouldShowRationale
-
-    if (!allPermissionsGranted) {
+        // Display vehicle movement status
         Text(
-            text = if (shouldShowRationale) {
-                "Location permissions are needed to collect data."
-            } else {
-                "Please grant location permissions."
-            }
+            text = "Vehicle is ${if (isVehicleMoving) "Moving" else "Stationary"}\n" +
+                    " Data Collection is ${if (collectionStatus) "Ongoing" else "Has Stopped"}",
+            modifier = Modifier.padding(vertical = 8.dp)
         )
+        // Add a spacer to separate the button from the text displaying vehicle movement status
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }

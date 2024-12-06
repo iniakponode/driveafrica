@@ -5,7 +5,10 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
 import com.uoa.core.database.entities.LocationEntity
+import com.uoa.core.database.entities.RawSensorDataEntity
 import com.uoa.core.database.entities.TripEntity
+import kotlinx.coroutines.flow.Flow
+import java.time.LocalDate
 import java.util.UUID
 
 @Dao
@@ -32,6 +35,10 @@ interface TripDao {
 
     @Query("SELECT * FROM trip_data WHERE driverPId = :driverProfileId")
     suspend fun getTripsByDriverProfileId(driverProfileId: UUID): List<TripEntity>
+
+    @Query("SELECT * FROM trip_data WHERE endDate BETWEEN :startDate AND :endDate")
+    suspend fun getTripDataBetween(startDate: LocalDate, endDate: LocalDate): List<TripEntity>
+
 
     @Query("SELECT * FROM trip_data WHERE synced = :synced")
     suspend fun getTripsBySyncStatus(synced: Boolean): List<TripEntity>

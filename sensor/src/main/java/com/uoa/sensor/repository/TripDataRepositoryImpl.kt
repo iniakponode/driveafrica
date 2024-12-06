@@ -6,6 +6,8 @@ import com.uoa.core.database.repository.TripDataRepository
 import com.uoa.core.model.Trip
 import com.uoa.core.utils.toDomainModel
 import com.uoa.core.utils.toEntity
+import kotlinx.coroutines.flow.map
+import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
 
@@ -14,6 +16,30 @@ class TripDataRepositoryImpl @Inject constructor(private val tripDataDao: TripDa
 
     override suspend fun insertTrip(trip: Trip){
         return tripDataDao.insertTrip(trip.toEntity())
+    }
+
+    override suspend fun getTripsBetweenDates(startDate: LocalDate, endDate: LocalDate): List<Trip>
+    {
+        try {
+            val tripEntities=tripDataDao.getTripDataBetween(startDate, endDate)
+            val tripDataList = tripEntities.map {
+                val domainModel = it.toDomainModel()
+                Log.d("TripRepository", "Converted to domain model: $domainModel")
+                domainModel
+        }
+            Log.d(
+                "TripRepository",
+                "Returning tripsDataList with size: ${tripDataList.size}"
+            )
+            return tripDataList
+        }
+        catch (e: Exception) {
+            Log.e("TripRepository", "Error getting trips between dates: Start: $startDate and End: $endDate", e)
+
+            return emptyList()
+
+        }
+
     }
 
     override suspend fun getTripByIds(ids: List<UUID>): List<Trip>{

@@ -1,131 +1,83 @@
 package com.uoa.ml.domain
 
-import android.hardware.Sensor
 import android.util.Log
 import com.uoa.core.database.entities.CauseEntity
-import com.uoa.core.database.entities.RawSensorDataEntity
 import com.uoa.core.database.entities.UnsafeBehaviourEntity
+import com.uoa.core.database.repository.AIModelInputRepository
 import com.uoa.core.database.repository.CauseRepository
-import com.uoa.core.database.repository.LocationRepository
 import com.uoa.core.database.repository.RawSensorDataRepository
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
 import com.uoa.core.mlclassifier.MinMaxValuesLoader
 import com.uoa.core.mlclassifier.OnnxModelRunner
 import com.uoa.core.utils.toEntity
-import com.uoa.ml.UtilsNew
 import com.uoa.core.mlclassifier.data.InferenceResult
 import com.uoa.core.mlclassifier.data.TripFeatures
-import com.uoa.ml.utils.IncrementalAccelerationYMean
-import com.uoa.ml.utils.IncrementalCourseStd
-import com.uoa.ml.utils.IncrementalDayOfWeekMean
-import com.uoa.ml.utils.IncrementalHourOfDayMean
-import com.uoa.ml.utils.IncrementalSpeedStd
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.withContext
-import java.util.TimeZone
 
 // RunClassificationUseCase.kt
 import kotlinx.coroutines.Dispatchers
-import java.sql.Timestamp
-import java.util.*
 
 class RunClassificationUseCase @Inject constructor(
-//    private val utils: UtilsNew,
-    private val rawSensorDataRepository: RawSensorDataRepository,
     private val onnxModelRunner: OnnxModelRunner,
-    private val incrementalCourseStdProvider: IncrementalCourseStd,
-    private val incrementalSpeedStdProvider: IncrementalSpeedStd,
-    private val incrementalAccelerationYMeanProvider: IncrementalAccelerationYMean,
-    private val incrementalHourOfDayMeanProvider: IncrementalHourOfDayMean,
-    private val minMaxValuesLoader: MinMaxValuesLoader,
-    private val incrementalDayOfWeekMeanProvider: IncrementalDayOfWeekMean
+    private val aiModelInputRepository: AIModelInputRepository
 ) {
 
     suspend fun invoke(tripId: UUID): InferenceResult {
         Log.i("Trip", "Classifier invoked for tripId: $tripId")
 
         return withContext(Dispatchers.IO) {
-            // Initialize incremental calculators
-            val hourOfDayMeanCalc = incrementalHourOfDayMeanProvider
-            val dayOfWeekMeanCalc = incrementalDayOfWeekMeanProvider
-            val speedStdCalc = incrementalSpeedStdProvider
-            val accelerationYMeanCalc = incrementalAccelerationYMeanProvider
-            val courseStdCalc = incrementalCourseStdProvider
 
+            val intermediateStats = aiModelInputRepository.getAiModelInputInputByTripId(tripId)
+
+            val totalDuration = intermediateStats.sumOf { it.endTimestamp - it.startTimestamp }
+            val weightedHourOfDayMean =
+                intermediateStats.sumOf { it.hourOfDayMean * (it.endTimestamp - it.startTimestamp) } / totalDuration
+            val weightedDayOfWeekMean =
+                intermediateStats.sumOf { (it.dayOfWeekMean * (it.endTimestamp - it.startTimestamp)).toDouble() } / totalDuration
+            val weightedSpeedStd =
+                intermediateStats.sumOf { (it.speedStd * (it.endTimestamp - it.startTimestamp)).toDouble() } / totalDuration
+            val weightedAccelerationYMean =
+                intermediateStats.sumOf { it.accelerationYOriginalMean * (it.endTimestamp - it.startTimestamp).toDouble() } / totalDuration
+            val weightedCourseStd =
+                intermediateStats.sumOf { it.courseStd * (it.endTimestamp - it.startTimestamp).toDouble() } / totalDuration
+
+// Compute normalized features
+            val tripFeatures = TripFeatures(
+                hourOfDayMean = weightedHourOfDayMean.toFloat(),
+                dayOfWeekMean = weightedHourOfDayMean.toFloat(),
+                speedStd = weightedSpeedStd.toFloat(),
+                courseStd = weightedCourseStd.toFloat(),
+                accelerationYOriginalMean = weightedAccelerationYMean.toFloat()
+            )
             try {
-                // Fetch raw sensor data in chunks and process incrementally
-                val rawSensorDataFlow = rawSensorDataRepository.getAllRawSensorDataInChunks(tripId)
-                    .onStart { Log.i("Trip", "Starting to collect raw sensor data for tripId: $tripId") }
-                    .catch { e ->
-                        Log.e("Trip", "Error fetching raw sensor data: ${e.message}", e)
-                        throw e
-                    }
 
-                rawSensorDataFlow.collect { rawSensorDataChunk ->
-                    try {
-                        for (data in rawSensorDataChunk) {
-                            if (data.locationId != null) {
-                                // Update hour of day and day of week means
-                                hourOfDayMeanCalc.addTimestamp(data.timestamp)
-                                dayOfWeekMeanCalc.addTimestamp(data.timestamp)
-
-                                // Update speed standard deviation
-                                val speed = data.values.getOrNull(0) ?: continue
-                                speedStdCalc.addSpeed(speed)
-
-                                // Update acceleration Y mean
-                                if (data.sensorType == Sensor.TYPE_ACCELEROMETER) {
-                                    val accelerationY = data.values.getOrNull(1) ?: continue
-                                    accelerationYMeanCalc.addAccelerationY(accelerationY)
-                                }
-
-                                // Update course standard deviation
-                                courseStdCalc.addSensorData(data)
-                            } else {
-                                Log.w("Trip", "Data with null locationId encountered: $data")
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.e("Trip", "Error processing data chunk: ${e.message}", e)
-                        throw e
-                    }
-                }
-
-                // Compute normalized features
-                val tripFeatures = TripFeatures(
-                    hourOfDayMean = hourOfDayMeanCalc.getNormalizedMean(minMaxValuesLoader),
-                    dayOfWeekMean = dayOfWeekMeanCalc.getNormalizedMean(minMaxValuesLoader),
-                    speedStd = speedStdCalc.getNormalizedStd(),
-                    courseStd = courseStdCalc.getNormalizedStd(),
-                    accelerationYOriginalMean = accelerationYMeanCalc.getNormalizedMean()
-                )
 
                 Log.d("Trip", "Extracted Features: $tripFeatures")
 
                 // Run inference
-                try {
-                    val inferenceResult = onnxModelRunner.runInference(tripFeatures)
-                    Log.i("Trip", "Inference result: $inferenceResult")
-                    InferenceResult.Success(inferenceResult)
-                } catch (e: Exception) {
-                    Log.e("Trip", "Error during model inference: ${e.message}", e)
-                    InferenceResult.Failure(e)
-                }
+
+                val inferenceResult = onnxModelRunner.runInference(tripFeatures)
+                Log.i("Trip", "Inference result: $inferenceResult")
+                InferenceResult.Success(inferenceResult)
+            } catch (e: Exception) {
+                Log.e("Trip", "Error during model inference: ${e.message}", e)
+                InferenceResult.Failure(e)
             } catch (e: Exception) {
                 Log.e("Trip", "Exception in invoke function: ${e.message}", e)
                 InferenceResult.Failure(e)
             }
+
         }
     }
+
 }
+
 
 
 class UpDateUnsafeBehaviourCauseUseCase @Inject constructor(

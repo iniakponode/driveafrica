@@ -15,7 +15,7 @@ import javax.inject.Singleton
 object ManageSensorDataSizeAndSaveModule {
      @Provides
      @Singleton
-     fun provideManageSensorDataSizeAndSave(rawSensorDataRepository: RawSensorDataRepository, unsafeBehaviourRepository: UnsafeBehaviourRepository): ManageSensorDataSizeAndSave {
-         return ManageSensorDataSizeAndSave(rawSensorDataRepository,unsafeBehaviourRepository)
+     fun provideManageSensorDataSizeAndSave(rawSensorDataRepository: RawSensorDataRepository): ManageSensorDataSizeAndSave {
+         return ManageSensorDataSizeAndSave(rawSensorDataRepository)
      }
 }

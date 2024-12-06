@@ -72,12 +72,12 @@ class LocationRepositoryImpl(private val locationDao: LocationDao, val rawSensor
         locationDao.deleteAllLocations()
     }
 
-    override suspend fun getLocationDataByTripId(tripId: UUID): List<Double> {
+    override suspend fun getLocationDataByTripId(tripId: UUID): List<LocationData> {
         val rawSensorDataList=rawSensorDataDao.getSensorDataByTripId(tripId)
 
         val locationIdList= mutableListOf(UUID.randomUUID())
 
-        val locationsList= mutableListOf(0.0,0.0,0.0)
+        val locationsList= mutableListOf<LocationData>()
 
         rawSensorDataList.collect{ rawSensorData ->
             rawSensorData.forEach() {
@@ -87,9 +87,7 @@ class LocationRepositoryImpl(private val locationDao: LocationDao, val rawSensor
 
         locationIdList.forEach() {
             val location=locationDao.getLocationById(it)
-            locationsList.add(location!!.latitude)
-            locationsList.add(location.longitude)
-            locationsList.add(location.altitude)
+            locationsList.add(location?.toDomainModel()!!)
         }
 
         return locationsList.toList()

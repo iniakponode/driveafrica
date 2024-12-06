@@ -36,7 +36,7 @@ fun NavGraphBuilder.reportScreen(navController: NavController) {
                 // Provide ViewModels specific to ReportScreen
                 chatGPTViewModel = hiltViewModel(backStackEntry),
                 unsafeBehavioursViewModel = hiltViewModel(backStackEntry),
-                locationAddressViewModel = hiltViewModel(backStackEntry)
+                nlgEngineViewModel = hiltViewModel(backStackEntry)
             )
         }
         else if (startDate == 0L && endDate == 0L && periodType == PeriodType.LAST_TRIP) {
@@ -48,7 +48,7 @@ fun NavGraphBuilder.reportScreen(navController: NavController) {
                 periodType = periodType,
                 chatGPTViewModel = hiltViewModel(),
                 unsafeBehavioursViewModel = hiltViewModel(),
-                locationAddressViewModel = hiltViewModel()
+                nlgEngineViewModel = hiltViewModel()
             )
         }
         else{
@@ -60,7 +60,7 @@ fun NavGraphBuilder.reportScreen(navController: NavController) {
                 periodType = periodType,
                 chatGPTViewModel = hiltViewModel(),
                 unsafeBehavioursViewModel = hiltViewModel(),
-                locationAddressViewModel = hiltViewModel()
+                nlgEngineViewModel = hiltViewModel()
             )
         }
         }

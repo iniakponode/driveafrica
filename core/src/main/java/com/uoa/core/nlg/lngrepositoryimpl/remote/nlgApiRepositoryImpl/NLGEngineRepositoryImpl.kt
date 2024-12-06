@@ -49,20 +49,20 @@ class NLGEngineRepositoryImpl @Inject constructor(
         val (latitude, longitude) = getLocationCoordinates(locationID)
         return osmApiService.getReverseGeocoding(
             format = "json",
-            lat = latitude,
-            lon = longitude,
+            lat = latitude.toDouble(),
+            lon = longitude.toDouble(),
             zoom = 18,
             addressdetails = 1
         )
     }
 
     // Helper function to retrieve coordinates from locationID
-    private suspend fun getLocationCoordinates(locationID: UUID): Pair<Long, Long> {
+    private suspend fun getLocationCoordinates(locationID: UUID): Pair<Double, Double> {
         // Implement logic to retrieve latitude and longitude from locationID
         // For example, query a local database or a remote API
         // Placeholder implementation:
-        val latitude = 0L // Replace with actual value
-        val longitude = 0L // Replace with actual value
+        val latitude = 0.00 // Replace with actual value
+        val longitude = 0.00 // Replace with actual value
         return Pair(latitude, longitude)
     }
 }

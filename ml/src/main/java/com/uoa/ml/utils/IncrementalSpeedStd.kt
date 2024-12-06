@@ -11,26 +11,35 @@ class IncrementalSpeedStd @Inject constructor(
 ) {
     private var count = 0
     private var mean = 0.0
+    private var sumSpeed = 0.0
     private var m2 = 0.0
 
     fun addSpeed(speed: Float) {
         count++
+        sumSpeed += speed
         val delta = speed - mean
         mean += delta / count
         val delta2 = speed - mean
         m2 += delta * delta2
+
     }
 
     fun getNormalizedStd(): Float {
         if (count < 2) {
             return 0.0f
         }
-
+//        val meanSpeed = mean / count
         val variance = m2 / (count - 1)
+//        val squaredSumOfDeviations = count * sumSpeed * sumSpeed - sumSpeed * sumSpeed
+//        val variance = squaredSumOfDeviations / (count - 1)
+//        return sqrt(variance).toFloat()
+
         val speedStd = sqrt(variance).toFloat()
         val minValue = minMaxValuesLoader.getMin("speed_std") ?: 0f
         val maxValue = minMaxValuesLoader.getMax("speed_std") ?: 100f
         val range = maxValue - minValue
+
+
 
         val normalizedSpeedStd = if (range != 0f) {
             (speedStd - minValue) / range
@@ -39,5 +48,10 @@ class IncrementalSpeedStd @Inject constructor(
         }
 
         return normalizedSpeedStd.coerceIn(0.0f, 1.0f)
+    }
+
+    fun reset() {
+        count = 0
+        sumSpeed = 0.0
     }
 }

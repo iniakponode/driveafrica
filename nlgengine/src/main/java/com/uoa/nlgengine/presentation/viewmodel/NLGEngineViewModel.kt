@@ -14,7 +14,9 @@ import com.uoa.core.utils.toDomainModel
 import com.uoa.nlgengine.data.model.DateHourKey
 import com.uoa.nlgengine.data.model.HourlySummary
 import com.uoa.nlgengine.data.model.LocationDateHourKey
+import com.uoa.nlgengine.data.model.ReportStatistics
 import com.uoa.nlgengine.data.model.UnsafeBehaviorChartEntry
+import com.uoa.nlgengine.domain.usecases.local.GetLastInsertedUnsafeBehaviourUseCase
 import com.uoa.nlgengine.util.PeriodType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.LocalDate
 import retrofit2.HttpException
 import java.time.Instant
 import java.time.LocalTime
@@ -34,13 +37,16 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 import javax.inject.Inject
 import kotlin.math.log
+import com.uoa.nlgengine.util.computeReportStatistics
+import kotlin.time.toJavaDuration
 
 
 @HiltViewModel
 class NLGEngineViewModel @Inject constructor(
     private val locationRepository: LocationRepository,
     private val tripRepository: TripDataRepository,
-    private val osmApiService: OSMApiService
+    private val osmApiService: OSMApiService,
+    private val lastInsertedUnsafeBehaviourUseCase: GetLastInsertedUnsafeBehaviourUseCase
 ) : ViewModel() {
 
     private val _isLoading = MutableStateFlow(false)
@@ -52,184 +58,44 @@ class NLGEngineViewModel @Inject constructor(
     private val _summaryDataByDateHour = MutableStateFlow<Map<DateHourKey, HourlySummary>>(emptyMap())
     val summaryDataByDateHour: StateFlow<Map<DateHourKey, HourlySummary>> get() = _summaryDataByDateHour
 
-    private suspend fun generatePrompt(context: Context,unsafeBehaviours: List<UnsafeBehaviourModel>, periodType: PeriodType,): String {
+    private suspend fun generatePrompt(context: Context,unsafeBehaviours: List<UnsafeBehaviourModel>, periodType: PeriodType): String {
         _isLoading.value = true
+
         return withContext(Dispatchers.IO) {
             try {
-                Log.d(
-                    "LocationRoadViewModel",
-                    "Starting generatePrompt with ${unsafeBehaviours.size} unsafe behaviours"
+                val reportStatistics = computeReportStatistics(
+                    context,
+                    osmApiService,
+                    periodType,
+                    unsafeBehaviours,
+                    tripRepository,
+                    locationRepository,
+                    lastInsertedUnsafeBehaviourUseCase
                 )
 
-                // Step 1: Extract unique location IDs
-                val uniqueLocationIds = unsafeBehaviours.mapNotNull { it.locationId }.distinct()
-                Log.d("NLGEngineViewModel", "Unique location IDs: $uniqueLocationIds")
-                val uniqueTripIds=unsafeBehaviours.map { it.tripId }.distinct()
-                Log.d("LocationRoadViewModel", "Unique location IDs: $uniqueTripIds")
-
-                // Step 2: Get locations from repository
-                val locationMap = locationRepository.getLocationsByIds(uniqueLocationIds)
-                    .associateBy { it.id }
-                Log.d("LocationRoadViewModel", "Created location map")
-
-                val trips=tripRepository.getTripByIds(uniqueTripIds)
-
-//                Count number of alcohol influenced trips
-                var alInfCount: Int=0
-                trips.forEach{
-                    if (it.influence=="alcohol"){
-                        alInfCount+=1
-                    }
-                }
-                Log.d("NLGEngine","Count of Alcohol influenced Trips $alInfCount")
-
-
-                // Step 3: Extract unique coordinates and reverse geocode with concurrency
-                val roadNameCache = mutableMapOf<Pair<Double, Double>, String?>()
-                val semaphore = Semaphore(1) // To comply with OSM rate limits
-                val uniqueCoordinates =
-                    locationMap.values.map { Pair(it.latitude.toDouble(), it.longitude.toDouble()) }
-
-                uniqueCoordinates.map { coordinate ->
-                    async {
-                        semaphore.withPermit {
-                            val roadName = getRoadNameFromOSM(coordinate.first, coordinate.second)
-                            roadNameCache[coordinate] = roadName
-                            Log.d(
-                                "LocationRoadViewModel",
-                                "Reverse geocoded: $coordinate -> $roadName"
-                            )
-                        }
-                    }
-                }.awaitAll()
-
-                // Step 4: Map locationId to road name
-                val locationIdToRoadName = locationMap.mapValues { (_, location) ->
-                    val coordinate =
-                        Pair(location.latitude.toDouble(), location.longitude.toDouble())
-                    roadNameCache[coordinate]
-                }
-                Log.d("LocationRoadViewModel", "Mapped locationId to road names")
-
-                // Step 5: Aggregate unsafe behaviors by location, date, and hour
-                val aggregatedData = unsafeBehaviours.groupBy { behavior ->
-                    val locationName =
-                        behavior.locationId?.let { locationIdToRoadName[it] } ?: "Road Name unknown"
-                    val instant =
-                        Instant.ofEpochMilli(behavior.timestamp).atZone(ZoneId.systemDefault())
-                    val date = instant.toLocalDate()
-                    val hour = instant.hour
-                    LocationDateHourKey(locationName, date, hour)
-                }
-
-                // Create BehaviorSummary instances
-
-                val summaryData = aggregatedData.mapValues { entry ->
-                    val behaviors = entry.value
-                    val behaviorCounts = behaviors.groupingBy { it.behaviorType }.eachCount()
-                    val mostFrequentBehavior = behaviorCounts.maxByOrNull { it.value }?.key ?: "N/A"
-                    val alcoholInfluenceCount = alInfCount
-
-                    BehaviourSummary(
-                        date = entry.key.date,
-                        location = entry.key.locationName,
-                        hour = entry.key.hour,
-                        totalBehaviors = behaviors.size,
-                        behaviorCounts = behaviorCounts,
-                        mostFrequentBehavior = mostFrequentBehavior,
-                        alcoholInfluenceCount = alcoholInfluenceCount
-                    )
-                }
-
-                // Step 6: Generate prompt with context-specific data
-                val prompt = buildPrompt(context,unsafeBehaviours, summaryData, periodType)
-                Log.d("LocationRoadViewModel", "Generated prompt: $prompt")
-
+                // Generate prompt with statistics
+                val prompt = buildPrompt(context, unsafeBehaviours,periodType,reportStatistics!!)
                 prompt
+
             } catch (e: Exception) {
-                Log.e("LocationRoadViewModel", "Error generating prompt", e)
+                Log.e("NLGEngineViewModel", "Error generating prompt", e)
                 ""
-            } finally {
-                _isLoading.value = false
-                Log.d("LocationRoadViewModel", "generatePrompt finished")
+            }
+            finally {
+                _isLoading.value=false
             }
         }
     }
-
-//        private suspend fun buildPrompt(
-//            context: Context,
-//            unsafeBehaviours: List<UnsafeBehaviourModel>,
-//            summaryData: Map<LocationDateHourKey, BehaviourSummary>,
-//            periodType: PeriodType
-//        ): String {
-//            val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-//
-//            // Include the period the report covers
-//            val startDate = unsafeBehaviours.minOfOrNull { it.timestamp }?.let {
-//                Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
-//                    .format(dateFormatter)
-//            }
-//            val endDate = unsafeBehaviours.maxOfOrNull { it.timestamp }?.let {
-//                Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
-//                    .format(dateFormatter)
-//            }
-//
-//            val periodText = when (periodType) {
-//                PeriodType.TODAY -> "Report for Today"
-//                PeriodType.THIS_WEEK -> "Report for This Week"
-//                PeriodType.LAST_WEEK -> "Report for Last Week"
-//                PeriodType.CUSTOM_PERIOD -> {
-//                    if (startDate != null && endDate != null && startDate == endDate) {
-//                        "Report for $startDate"
-//                    } else if (startDate != null && endDate != null) {
-//                        "Report Period: $startDate to $endDate"
-//                    } else {
-//                        "Report for Selected Period"
-//                    }
-//                }
-//
-//                PeriodType.LAST_TRIP -> "Report for the Last Trip"
-//                else -> "Report"
-//            }
-//
-//            val promptBuilder = StringBuilder()
-//                .append("$periodText\n\n")
-//                .append("You are a driving safety specialist in Nigeria. Based on the following data, generate a friendly and encouraging driving behavior report for the driver on their selected report filter ($periodType). The report should:\n")
-//                .append("- Must have only between 150-300 words.\n\n")
-//                .append("- Acknowledge the driver's efforts and positive aspects.\n")
-//                .append("- Gently highlight areas for improvement without direct criticism.\n")
-//                .append("- Offer practical, actionable tips to enhance safety.\n")
-//                .append("- Use an uplifting and motivational tone.\n")
-//                .append("- The senders name in the a complimentary closing section to be 'Your Driving Safety Specialist Agent'.\n\n")
-//                .append("- Must include the numbers given in this prompt in the response without hallucination.\n\n")
-//                .append("- You will need to decode the Base64 encoded JSON data to get the driving offences, penalties, fines, and laws.\n")
-//                .append("- Reference the specific dates, incidents, and locations provided.\n")
-//                .append("- Ensure to use only the given data for fines, laws, and sections without hallucination.\n")
-//                .append("- Summary of Unsafe Behaviors Per Date and Hour:\n")
-//
-//            summaryData.forEach { (key, summary) ->
-//                val formattedDate = key.date.format(dateFormatter)
-//                val formattedHour = formatHour(key.hour)
-//                promptBuilder
-//                    .append("Location: ${summary.location}, Date: $formattedDate, Hour: $formattedHour\n")
-//                    .append("Total Behaviors: ${summary.totalBehaviors}\n")
-//                    .append("Alcohol Influence Count: ${summary.alcoholInfluenceCount}\n")
-//                    .append("Behavior Counts: ${summary.behaviorCounts.entries.joinToString { "${it.key}: ${it.value}" }}\n")
-//                    .append("Most Frequent Behavior: ${summary.mostFrequentBehavior}\n\n")
-//                    .append("Base64Encoded Json Driving Offences, Penalties, Fines, and Laws: ${compressAndEncodeJson(context)}\n")
-//            }
-//
-//            return promptBuilder.toString()
-//        }
 
 
     private suspend fun buildPrompt(
         context: Context,
         unsafeBehaviours: List<UnsafeBehaviourModel>,
-        summaryData: Map<LocationDateHourKey, BehaviourSummary>,
-        periodType: PeriodType
+        periodType: PeriodType,
+        reportStatistics: ReportStatistics
     ): String {
         val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
         // Include the period the report covers
         val startDate = unsafeBehaviours.minOfOrNull { it.timestamp }?.let {
@@ -284,18 +150,84 @@ class NLGEngineViewModel @Inject constructor(
             .append("- Has a statement about the alcohol influence based on the given data.\n")
             .append("- Strictly adheres to the data provided in this prompt without adding any information not directly traceable to the prompt.\n\n")
             .append("- If any of the above components are missing, please identify and include them before finalizing the response.\n\n")
-            .append("Summary of Unsafe Behaviors Per Date and Hour:\n")
+            .append("Report Statistics are given below:\n")
 
-        summaryData.forEach { (key, summary) ->
-            val formattedDate = key.date.format(dateFormatter)
-            val formattedHour = formatHour(key.hour)
-            promptBuilder
-                .append("Location: ${summary.location}, Date: $formattedDate, Hour: $formattedHour\n")
-                .append("Total Behaviors: ${summary.totalBehaviors}\n")
-                .append("Alcohol Influence Count: ${summary.alcoholInfluenceCount}\n")
-                .append("Behavior Counts: ${summary.behaviorCounts.entries.joinToString { "${it.key}: ${it.value}" }}\n")
-                .append("Most Frequent Behavior: ${summary.mostFrequentBehavior}\n\n")
-//                .append("Base64Encoded Json Driving Offences, Penalties, Fines, and Laws: ${compressAndEncodeJson(context)}\n")
+        if (true) {
+            // Common statistics
+            promptBuilder.append("Total Unsafe Behaviors: ${reportStatistics.totalIncidences}\n")
+            if (reportStatistics.mostFrequentUnsafeBehaviour != null) {
+                promptBuilder.append("Most Frequent Unsafe Behaviour: ${reportStatistics.mostFrequentUnsafeBehaviour}\n")
+                promptBuilder.append("Occurrences: ${reportStatistics.mostFrequentBehaviourCount}\n")
+
+                // Include occurrences
+                promptBuilder.append("Occurrences Details:\n")
+                reportStatistics.mostFrequentBehaviourOccurrences.forEach { occurrence ->
+                    val dateStr = occurrence.date.format(dateFormatter)
+                    val timeStr = occurrence.time.format(timeFormatter)
+                    promptBuilder.append("- Date: $dateStr, Time: $timeStr, Road: ${occurrence.roadName}\n")
+                }
+            }
+
+
+            // Period-specific statistics
+            when (periodType) {
+                PeriodType.LAST_TRIP -> {
+                    // Include last trip specific statistics
+                    promptBuilder.append("Trip Duration: ${reportStatistics.lastTripDuration?.toJavaDuration()} minutes\n")
+                    promptBuilder.append("Distance Covered: ${"%.2f".format(reportStatistics.lastTripDistance)} km\n")
+                    promptBuilder.append("Average Speed: ${"%.2f".format(reportStatistics.lastTripAverageSpeed)} km/h\n")
+                    promptBuilder.append("Start Location: ${reportStatistics.lastTripStartLocation}\n")
+                    promptBuilder.append("End Location: ${reportStatistics.lastTripEndLocation}\n")
+                    promptBuilder.append("Most Frequent Unsafe Behaviour: ${reportStatistics.mostFrequentUnsafeBehaviour}\n")
+                    promptBuilder.append("Most Frequent Unsafe Behaviour Count: ${reportStatistics.mostFrequentBehaviourCount}\n")
+                    promptBuilder.append("Most Frequent Unsafe Behaviour Occurrences: ${reportStatistics.mostFrequentBehaviourOccurrences}\n")
+                    promptBuilder.append("Alcohol Influence: ${reportStatistics.lastTripInfluence}\n")
+                }
+
+                else -> {
+                    // Include statistics for other periods
+                    promptBuilder.append("Number of Trips: ${reportStatistics.numberOfTrips}\n")
+                    promptBuilder.append("Number of Trips with Incidences: ${reportStatistics.numberOfTripsWithIncidences}\n")
+                    promptBuilder.append("Incidences Per trip: ${reportStatistics.incidencesPerTrip}\n")
+                    promptBuilder.append("Number of Trips with Alcohol Influence: ${reportStatistics.numberOfTripsWithAlcoholInfluence}\n")
+
+                    // Include most frequent Unsafe Behaviour
+                    if (reportStatistics.mostFrequentUnsafeBehaviour != null) {
+                        promptBuilder.append("Most Frequent Unsafe Behviour: ${reportStatistics.mostFrequentUnsafeBehaviour}\n")
+                    }
+
+                    // Include most frequent Unsafe Behaviour count
+                    if (true) {
+                        promptBuilder.append("Count of Most Frequent Unsafe Behviour: ${reportStatistics.mostFrequentBehaviourCount}\n")
+                    }
+
+                    // Include most frequent Unsafe Behaviour occurrence instance
+                    if (true) {
+                        promptBuilder.append("Occurrence instances (dates, times and road names) of Most Frequent Unsafe Behaviour; get all occurrences out of the variable using a loop: ${reportStatistics.mostFrequentBehaviourOccurrences}\n")
+                    }
+
+                    // Include trip with most incidences
+                    if (reportStatistics.tripWithMostIncidences != null) {
+                        val tripStartTime =
+                            Instant.ofEpochMilli(reportStatistics.tripWithMostIncidences.startTime)
+                                .atZone(ZoneId.systemDefault()).toLocalDateTime()
+                        promptBuilder.append(
+                            "Trip with Most Incidences Start Time: ${
+                                tripStartTime.format(
+                                    dateFormatter
+                                )
+                            }\n"
+                        )
+                    }
+
+                    // Include aggregation unit with most incidences
+                    if (reportStatistics.aggregationUnitWithMostIncidences != null) {
+                        promptBuilder.append("Period with Most Incidences: ${reportStatistics.aggregationUnitWithMostIncidences}\n")
+                    }
+                }
+            }
+        }else {
+            promptBuilder.append("No unsafe behaviors recorded during this period.\n")
         }
 
         return promptBuilder.toString()
@@ -316,7 +248,10 @@ class NLGEngineViewModel @Inject constructor(
     }
 
 
-    fun generatePromptForBehaviours(context: Context, unsafeBehaviours: List<UnsafeBehaviourModel>, periodType: PeriodType) {
+    fun generatePromptForBehaviours(context: Context,
+                                    unsafeBehaviours: List<UnsafeBehaviourModel>,
+                                    periodType: PeriodType) {
+
         _isLoading.value = true
         viewModelScope.launch {
             try {
@@ -349,23 +284,4 @@ class NLGEngineViewModel @Inject constructor(
     }
 
 
-
-    private suspend fun getRoadNameFromOSM(latitude: Double, longitude: Double): String? {
-        return try {
-            val response = osmApiService.getReverseGeocoding(
-                format = "json",
-                lat = latitude.toLong(),
-                lon = longitude.toLong(),
-                zoom = 18,
-                addressdetails = 1
-            )
-            response.address.getAddressLine(0)
-        } catch (e: HttpException) {
-            Log.e("LocationRoadViewModel", "HTTP error: ${e.code()} - ${e.message()}")
-            null
-        } catch (e: Exception) {
-            Log.e("LocationRoadViewModel", "Error fetching road name from OSM", e)
-            null
-        }
-    }
 }

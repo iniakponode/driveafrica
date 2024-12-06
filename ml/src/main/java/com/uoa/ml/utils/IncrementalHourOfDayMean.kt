@@ -20,17 +20,17 @@ class IncrementalHourOfDayMean @Inject constructor(
         val hour = calendar.get(Calendar.HOUR_OF_DAY).toDouble()
         sumHours += hour
         count++
-        Log.d("Utils", "Timestamp: $timestamp -> Hour: $hour")
+//        Log.d("Utils", "Timestamp: $timestamp -> Hour: $hour")
     }
 
     fun getNormalizedMean(minMaxValuesLoader: MinMaxValuesLoader): Float {
         if (count == 0) {
-            Log.w("Utils", "No timestamps provided for hour of day mean extraction.")
+//            Log.w("Utils", "No timestamps provided for hour of day mean extraction.")
             return 0.0f
         }
 
         val meanHour = (sumHours / count).toFloat()
-        Log.d("Utils", "Mean Hour of Day: $meanHour")
+//        Log.d("Utils", "Mean Hour of Day: $meanHour")
 
         val minValue = minMaxValuesLoader.getMin("hour_of_day_mean") ?: 0f
         val maxValue = minMaxValuesLoader.getMax("hour_of_day_mean") ?: 23f
@@ -39,11 +39,16 @@ class IncrementalHourOfDayMean @Inject constructor(
         val normalizedHourMean = if (range != 0f) {
             (meanHour - minValue) / range
         } else {
-            Log.w("Utils", "Range for hour_of_day_mean is zero. Defaulting normalized value to 0.0f")
+//            Log.w("Utils", "Range for hour_of_day_mean is zero. Defaulting normalized value to 0.0f")
             0.0f
         }
 
-        Log.d("Utils", "Normalized Hour of Day Mean: $normalizedHourMean")
+//        Log.d("Utils", "Normalized Hour of Day Mean: $normalizedHourMean")
         return normalizedHourMean.coerceIn(0.0f, 1.0f)
+    }
+
+    fun reset() {
+        sumHours = 0.0
+        count = 0
     }
 }

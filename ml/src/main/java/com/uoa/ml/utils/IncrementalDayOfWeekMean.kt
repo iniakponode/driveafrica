@@ -17,17 +17,17 @@ class IncrementalDayOfWeekMean(@Named("TrainingTimeZone") private val trainingTi
         val day = (calendar.get(Calendar.DAY_OF_WEEK) - 1).toDouble() // Adjust to 0-6
         sumDays += day
         count++
-        Log.d("Utils", "Timestamp: $timestamp -> Day of Week: $day")
+//        Log.d("Utils", "Timestamp: $timestamp -> Day of Week: $day")
     }
 
     fun getNormalizedMean(minMaxValuesLoader: MinMaxValuesLoader): Float {
         if (count == 0) {
-            Log.w("Utils", "No timestamps provided for day of week mean extraction.")
+//            Log.w("Utils", "No timestamps provided for day of week mean extraction.")
             return 0.0f
         }
 
         val meanDay = (sumDays / count).toFloat()
-        Log.d("Utils", "Mean Day of Week: $meanDay")
+//        Log.d("Utils", "Mean Day of Week: $meanDay")
 
         val minValue = minMaxValuesLoader.getMin("day_of_week_mean") ?: 0f
         val maxValue = minMaxValuesLoader.getMax("day_of_week_mean") ?: 6f
@@ -36,11 +36,16 @@ class IncrementalDayOfWeekMean(@Named("TrainingTimeZone") private val trainingTi
         val normalizedDayMean = if (range != 0f) {
             (meanDay - minValue) / range
         } else {
-            Log.w("Utils", "Range for day_of_week_mean is zero. Defaulting normalized value to 0.0f")
+//            Log.w("Utils", "Range for day_of_week_mean is zero. Defaulting normalized value to 0.0f")
             0.0f
         }
 
-        Log.d("Utils", "Normalized Day of Week Mean: $normalizedDayMean")
+//        Log.d("Utils", "Normalized Day of Week Mean: $normalizedDayMean")
         return normalizedDayMean.coerceIn(0.0f, 1.0f)
+    }
+
+    fun reset() {
+        sumDays = 0.0
+        count = 0
     }
 }

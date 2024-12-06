@@ -7,6 +7,7 @@ import com.uoa.core.database.entities.DrivingTipEntity
 import com.uoa.core.database.entities.LocationEntity
 import com.uoa.core.database.entities.NLGReportEntity
 import com.uoa.core.database.entities.RawSensorDataEntity
+import com.uoa.core.database.entities.RoadEntity
 import com.uoa.core.database.entities.TripEntity
 import com.uoa.core.database.entities.UnsafeBehaviourEntity
 import com.uoa.core.model.AIModelInputs
@@ -16,11 +17,10 @@ import com.uoa.core.model.DrivingTip
 import com.uoa.core.model.LocationData
 import com.uoa.core.model.NLGReport
 import com.uoa.core.model.RawSensorData
+import com.uoa.core.model.Road
 import com.uoa.core.model.Trip
 import com.uoa.core.model.UnsafeBehaviourModel
-import com.uoa.core.network.model.CauseData
 import java.util.Date
-import java.util.UUID
 
 // RawSensorData to RawSensorDataEntity
 fun RawSensorData.toEntity(): RawSensorDataEntity {
@@ -195,8 +195,8 @@ fun NLGReportEntity.toDomainModel(): NLGReport {
 fun LocationEntity.toDomainModel(): LocationData {
     return LocationData(
         id = this.id,
-        latitude = this.latitude.toLong(),
-        longitude = this.longitude.toLong(),
+        latitude = this.latitude,
+        longitude = this.longitude,
         timestamp = this.timestamp,
         date = this.date,
         speed = this.speed.toDouble(),
@@ -209,8 +209,8 @@ fun LocationEntity.toDomainModel(): LocationData {
 fun LocationData.toEntity(): LocationEntity {
     return LocationEntity(
         id = this.id,
-        latitude = this.latitude.toDouble(),
-        longitude = this.longitude.toDouble(),
+        latitude = this.latitude,
+        longitude = this.longitude,
         altitude = this.altitude!!.toDouble(),
         timestamp = this.timestamp,
         date = this.date!!,
@@ -218,6 +218,26 @@ fun LocationData.toEntity(): LocationEntity {
         distance = this.distance!!.toFloat(),
         sync = this.sync
     )
+
+}
+fun Road.toEntity(): RoadEntity{
+    return RoadEntity(
+    id=this.id,
+    name=this.name,
+    roadType=this.roadType,
+    speedLimit=this.speedLimit,
+    latitude=this.latitude,
+    longitude=this.latitude)
+
+}
+
+fun RoadEntity.toDomainModel(): Road{
+    return Road(id=this.id,
+    name=this.name,
+    roadType=this.roadType,
+    speedLimit=this.speedLimit,
+    latitude=this.latitude,
+    longitude=this.latitude)
 
 }
 
@@ -288,6 +308,8 @@ fun AIModelInputsEntity.toDomainModel(): AIModelInputs {
         id = this.id,
         tripId = this.tripId,
         timestamp = this.timestamp,
+        startTimestamp =this.startTimestamp,
+        endTimestamp =this.endTimestamp,
         date = this.date,
         hourOfDayMean = this.hourOfDayMean,
         dayOfWeekMean = this.dayOfWeekMean,
@@ -301,6 +323,8 @@ fun AIModelInputs.toEntity(): AIModelInputsEntity {
         id = this.id,
         tripId = this.tripId,
         timestamp = this.timestamp,
+        startTimestamp=this.startTimestamp,
+        endTimestamp=this.endTimestamp,
         date = this.date,
         hourOfDayMean = this.hourOfDayMean,
         dayOfWeekMean = this.dayOfWeekMean,

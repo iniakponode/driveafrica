@@ -34,4 +34,9 @@ class IncrementalAccelerationYMean @Inject constructor(
 
         return normalizedMeanAccelY.coerceIn(0.0f, 1.0f)
     }
+
+    fun reset() {
+        sumAccelerationY = 0.0
+        count = 0
+    }
 }

@@ -10,6 +10,7 @@ import androidx.core.app.NotificationManagerCompat
 class VehicleNotificationManager(private val context: Context) {
 
     private val CHANNEL_ID = "vehicle_state_channel"
+    private val LOCATION_SERVICE_CHANNEL_ID = "location_service_channel"
     private val NOTIFICATION_ID = 1001
 
     init {

@@ -98,9 +98,6 @@ object SensorsModule {
 
 @Qualifier
 annotation class RotationVectorSensorM
-
-
-
 @Qualifier
 annotation class MagnetometerSensorM
 @Qualifier

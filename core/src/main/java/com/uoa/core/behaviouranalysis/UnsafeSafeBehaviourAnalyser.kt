@@ -109,7 +109,7 @@ class UnsafeBehaviorAnalyser {
 
     private fun isHarshBraking(data: RawSensorDataEntity): Boolean {
         val accelerationMagnitude = calculateAccelerationMagnitude(data.values)
-        return accelerationMagnitude < BRAKING_THRESHOLD
+        return accelerationMagnitude > BRAKING_THRESHOLD
     }
 
     private fun isSpeeding(data: RawSensorDataEntity): Boolean {

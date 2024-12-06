@@ -20,4 +20,6 @@ fun getUnsyncedRawSensorData(): Flow<List<RawSensorDataEntity>>
 suspend fun getSensorDataBySyncStatus(synced: Boolean): List<RawSensorData>
 suspend fun updateRawSensorData(rawSensorData: RawSensorDataEntity)
 suspend fun deleteAllRawSensorData()
+    suspend fun getAllRawSensorDataInChunks(tripId: UUID,
+                                            chunkSize: Int = 1000): Flow<List<RawSensorDataEntity>>
 }

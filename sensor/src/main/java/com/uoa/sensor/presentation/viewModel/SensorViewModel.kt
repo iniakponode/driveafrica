@@ -95,6 +95,7 @@ class SensorViewModel @Inject constructor(
                 Log.d("SensorViewModel", "Work cancelled successfully")
 
                 // Call the suspend function
+
                 hardwareModule.stopDataCollection()
                 updateCollectionStatus(false)
                 updateVehicleMovementStatus(hardwareModule.isVehicleMoving())

@@ -20,8 +20,27 @@ interface RawSensorDataDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRawSensorDataBatch(rawSensorDataList: List<RawSensorDataEntity>)
 
-    @Query("SELECT * FROM raw_sensor_data WHERE tripId = :tripId")
+    @Query("""
+        SELECT * FROM raw_sensor_data 
+        WHERE tripId = :tripId 
+        AND locationId IS NOT NULL
+        ORDER BY timestamp ASC
+    """)
     fun getRawSensorDataByTripId(tripId: UUID): Flow<List<RawSensorDataEntity>>
+
+    @Query("""
+        SELECT * FROM raw_sensor_data
+        WHERE tripId = :tripId
+        AND locationId IS NOT NULL
+        AND (:lastId IS NULL OR id > :lastId)
+        ORDER BY id ASC
+        LIMIT :limit
+    """)
+    suspend fun getRawSensorDataChunkAfterId(
+        tripId: UUID,
+        limit: Int,
+        lastId: UUID?
+    ): List<RawSensorDataEntity>
 
     @Query("SELECT * FROM raw_sensor_data WHERE locationId = :locationId")
     fun getRawSensorDataByLocationId(locationId: UUID): Flow<List<RawSensorDataEntity>>

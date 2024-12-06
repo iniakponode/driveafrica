@@ -9,6 +9,7 @@ import com.uoa.core.utils.toDomainModel
 import com.uoa.core.utils.toEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -35,6 +36,21 @@ class RawSensorDataRepositoryImpl(private val rawSensorDataDao: RawSensorDataDao
     override suspend fun insertRawSensorData(rawSensorData: RawSensorData) {
         withContext(Dispatchers.IO) {
             rawSensorDataDao.insertRawSensorData(rawSensorData.toEntity())
+        }
+    }
+
+    override suspend fun getAllRawSensorDataInChunks(
+        tripId: UUID,
+        chunkSize: Int
+    ): Flow<List<RawSensorDataEntity>> = flow {
+        var lastId: UUID? = null
+        while (true) {
+            val chunk = rawSensorDataDao.getRawSensorDataChunkAfterId(tripId, chunkSize, lastId)
+            if (chunk.isEmpty()) {
+                break // No more data to fetch
+            }
+            emit(chunk)
+            lastId = chunk.last().id
         }
     }
 

@@ -1,5 +1,4 @@
 import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.jetbrains.kotlin.android)
@@ -36,11 +35,15 @@ android {
 
     buildTypes {
         release {
+//            buildConfigField("String", "DRIVE_AFRICA_BASE_URL", "\"https://api.yourproductionurl.com/\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            buildConfigField("String", "DRIVE_AFRICA_BASE_URL", "\"http://localhost:8000/\"")
         }
     }
     compileOptions {
@@ -81,6 +84,7 @@ dependencies {
     implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.androidx.navigation.runtime.ktx)
     implementation(libs.androidx.metrics)
+//    implementation(libs.androidx.pagination)
 //    implementation(libs.androidx.ui.desktop)
     implementation(libs.navigation.compose)
     implementation(libs.firebase.dataconnect)

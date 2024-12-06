@@ -3,7 +3,6 @@ package com.uoa.core.di
 import android.content.Context
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.gson.GsonBuilder
-import com.uoa.core.BuildConfig
 import com.uoa.core.network.NetworkMonitorImpl
 import com.uoa.core.network.apiservices.OSMApiService
 import com.uoa.core.network.apiservices.ChatGPTApiService
@@ -19,6 +18,7 @@ import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
+import com.uoa.core.BuildConfig
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
@@ -32,6 +32,10 @@ object NetworkModule {
     private const val GEMINI_BASE_URL="https://generativelanguage.googleapis.com/"
     private const val ROAD_ADDRESS_BASE_URL = "https://nominatim.openstreetmap.org/"
     private const val DEFAULT_BASE_URL = "https://afternoon-sands-09358-f3e117e55365.herokuapp.com/"
+//    private const val DRIVE_AFRICA_BASE_URL="http://localhost:8000/"
+
+//    private const val DRIVE_AFRICA_BASE_URL = BuildConfig.DRIVE_AFRICA_BASE_URL
+
 
     private val gson by lazy {
         GsonBuilder().create()
@@ -47,6 +51,7 @@ object NetworkModule {
                 level = HttpLoggingInterceptor.Level.BODY
             })
     }
+
 
 
     // Function to get Retrofit instance with optional headers
@@ -74,6 +79,7 @@ object NetworkModule {
             .client(client)
             .build()
     }
+
 
     // Provide ChatGPTApiService
     @Provides

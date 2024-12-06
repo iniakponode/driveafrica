@@ -142,12 +142,14 @@ object HardwareModuleProvider{
             linearAccelerationSensor,
             locationManager,
             manageSensorDataSizeAndSave,
+            updateTripUseCase,
             runClassificationUseCase,
-            upDateUnsafeBehaviourCauseUseCase,
-            saveInfluenceToCause,
-            batchInsertCauseUseCase,
-            batchUpDateUnsafeBehaviourCauseUseCase,
-            updateTripUseCase
+
+//            upDateUnsafeBehaviourCauseUseCase,
+//            saveInfluenceToCause,
+//            batchInsertCauseUseCase,
+//            batchUpDateUnsafeBehaviourCauseUseCase,
+
         )
     }
 }

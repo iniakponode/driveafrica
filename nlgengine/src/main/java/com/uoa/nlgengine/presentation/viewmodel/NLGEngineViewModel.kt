@@ -325,7 +325,7 @@ class NLGEngineViewModel @Inject constructor(
                 prompt.chunked(100).forEach { chunk ->
                     Log.d("LocationRoadViewModel", "Generated Prompt in ViewModel: $chunk")
                 }
-//                Log.d("LocationRoadViewModel", "Generated Prompt in ViewModel: $prompt")
+                Log.d("LocationRoadViewModel", "Generated Prompt in ViewModel: $prompt")
 
             } catch (e: Exception) {
                 Log.e("LocationRoadViewModel", "Error generating prompt", e)

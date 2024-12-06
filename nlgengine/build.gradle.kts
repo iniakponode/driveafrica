@@ -88,6 +88,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtimeCompose)
     implementation(libs.androidx.lifecycle.viewModelCompose)
     implementation(libs.androidx.lifecycle.licycle.viewmodel.ktx)
+    implementation(libs.map.osmdroid)
 
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.kotlin.serialization)

@@ -74,6 +74,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.licycle.viewmodel.ktx)
     implementation(libs.androidx.work.ktx)
 
+    implementation(libs.map.osmdroid)
+
     implementation(libs.guava)
 
     implementation(libs.request.permisions)

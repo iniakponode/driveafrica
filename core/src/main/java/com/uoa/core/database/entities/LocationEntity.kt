@@ -19,7 +19,7 @@ data class LocationEntity(
     val latitude: Double,
     val longitude: Double,
     val timestamp: Long,
-    val date: Date,
+    val date: Date?,
     val altitude: Double,
     val speed: Float,
     val distance: Float,

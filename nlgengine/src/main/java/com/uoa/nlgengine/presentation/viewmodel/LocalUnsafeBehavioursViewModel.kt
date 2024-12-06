@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import com.uoa.nlgengine.domain.usecases.local.UnsafeBehavioursBtwnDatesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import androidx.lifecycle.viewModelScope
-import com.uoa.core.behaviouranalysis.UnsafeBehaviorAnalyser
+//import com.uoa.core.behaviouranalysis.UnsafeBehaviorAnalyser
 import com.uoa.core.model.UnsafeBehaviourModel
 import com.uoa.core.utils.toDomainModel
 import com.uoa.core.utils.toEntity
@@ -24,12 +24,9 @@ import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
-class LocalUnsafeBehavioursViewModel @Inject constructor(private val unsafeBehavioursBtwnDatesUseCase: UnsafeBehavioursBtwnDatesUseCase,
-                                                         private val unsafeBehaviourByTripId: UnsafeBehaviourByTripIdUseCase,
-                                                         private val fetchRawSensorDataByDateUsecase: FetchRawSensorDataByDateUseCase,
-                                                         private val fetchRawSensorDataByTripIdUseCase: FetchRawSensorDataByTripIdUseCase,
-                                                         private val unsafeBehaviourAnalyser: UnsafeBehaviorAnalyser,
-                                                         private val insertUnsafeBehaviourUseCase: InsertUnsafeBehaviourUseCase,
+class LocalUnsafeBehavioursViewModel @Inject constructor(
+    private val unsafeBehavioursBtwnDatesUseCase: UnsafeBehavioursBtwnDatesUseCase,
+    private val unsafeBehaviourByTripId: UnsafeBehaviourByTripIdUseCase,
     private val getLastInsertedUnsafeBehaviourUseCase: GetLastInsertedUnsafeBehaviourUseCase): ViewModel() {
     // Add implementation here
     private val _unsafeBehaviours: MutableStateFlow<List<UnsafeBehaviourModel>> = MutableStateFlow(emptyList())
@@ -54,89 +51,77 @@ class LocalUnsafeBehavioursViewModel @Inject constructor(private val unsafeBehav
 //    }
 
     fun getUnsafeBehavioursBetweenDates(startDate: LocalDate, endDate: LocalDate) {
-        resetState() // Reset state before loading new data
-        _reportPeriod.value = Pair(startDate, endDate)
+        resetState()
         viewModelScope.launch {
-            // Reset the state before fetching new data
-            _unsafeBehaviours.value = emptyList()
-            val unsafeBehavioursModelList = unsafeBehavioursBtwnDatesUseCase.execute(startDate, endDate)
-//            Log.d("LocalUnsafeBehavioursVM", "Fetched unsafe behaviours: $unsafeBehavioursModelList")
-            if (unsafeBehavioursModelList.isNotEmpty()){
-
-                unsafeBehavioursModelList.chunked(100).forEach { chunk ->
-//                    Log.d("LocalUnsafeBehavioursVM", "Unsafe Behaviours between $startDate and $endDate: $chunk")
+            try {
+                val unsafeBehavioursModelList =
+                    unsafeBehavioursBtwnDatesUseCase.execute(startDate, endDate)
+                if (unsafeBehavioursModelList.isNotEmpty()) {
+                    _unsafeBehaviours.value = unsafeBehavioursModelList
+                } else {
+                    Log.i("LocalUnsafeBehavioursVM", "No unsafe behaviors found.")
                 }
-                _unsafeBehaviours.value = unsafeBehavioursModelList
+            } catch (e: Exception) {
+                Log.e("LocalUnsafeBehavioursVM", "Error fetching behaviors", e)
+            } finally {
+                _isLoading.value = false
             }
-            else{
-                try {
-
-                    val rawSensorDataList = fetchRawSensorDataByDateUsecase.execute(startDate, endDate).first()
-                    val res = rawSensorDataList.map { it.toEntity() }
-                    Log.d("AnalysisViewModel", "Number of sensor data by Date: ${res.size}, $startDate, $endDate")
-                    val unsafeBehaviour = unsafeBehaviourAnalyser.analyse(res)
-                    if (unsafeBehaviour.isEmpty()) {
-                        Log.d("AnalysisViewModel", "Number of unsafe behaviours by Date is empty.")
-                    }
-                    else {
-                        Log.d("AnalysisViewModel", "Number of unsafe behaviours by Date: ${unsafeBehaviour.size}")
-                        unsafeBehaviour.map { insertUnsafeBehaviourUseCase.execute(it) }
-                    }
-                    _unsafeBehaviours.value=unsafeBehaviour
-
-                } catch (e: Exception) {
-                    Log.e("AnalysisViewModel", "Error fetching analysis results by date", e)
-                }
-            }
-
-            _isLoading.value = false
         }
     }
 
 
-    fun getUnsafeBehaviourByTripId() {
+//    fun getUnsafeBehaviourByTripId(tripId: UUID) {
+//        resetState() // Reset state before loading new data
+//        viewModelScope.launch {
+//            if (true) {
+//
+//                try {
+//                    val unsafeBehavioursListByTripId = unsafeBehaviourByTripId.execute(tripId)
+//                    _unsafeBehaviours.value = unsafeBehavioursListByTripId
+//                    _isLoading.value = false
+//                } catch (e: Exception) {
+//                    Log.e(
+//                        "UnsafeBehavioursViewModel",
+//                        "Error fetching analysis results by TripId",
+//                        e
+//                    )
+//                    _isLoading.value = false
+//                }
+//            }
+//            else{
+//                _unsafeBehaviours.value = emptyList()
+//                _isLoading.value = false
+//
+//
+//                }
+//        }
+//    }
+
+    fun getUnsafeBehavioursForLastTrip() {
         resetState() // Reset state before loading new data
         viewModelScope.launch {
-            val trip = getLastInsertedUnsafeBehaviourUseCase.execute()
-            val tripId = trip?.tripId
-            if (tripId != null) {
-                val unsafeBehavioursListByTripId = unsafeBehaviourByTripId.execute(tripId)
+            if (true) {
 
-                if (unsafeBehavioursListByTripId.isNotEmpty()) {
+                try {
+                    val lastInsertedUnsafeBehavioursTripId = getLastInsertedUnsafeBehaviourUseCase.execute()?.tripId
 
-
-                    unsafeBehavioursListByTripId.take(5).forEach { chunk ->
-//                        Log.d(
-//                            "LocalUnsafeBehavioursVM",
-//                            "Unsafe Behaviours for trip $tripId: $chunk"
-//                        )
-                    }
-//                Log.d("LocalUnsafeBehavioursVM", "Fetched unsafe behaviours by trip ID: $unsafeBehavioursListByTripId")
-                    _unsafeBehaviours.value = unsafeBehavioursListByTripId
+                    val lastInsertedUnsafeBehaviours=unsafeBehaviourByTripId.execute(lastInsertedUnsafeBehavioursTripId!!)
+                    _unsafeBehaviours.value = lastInsertedUnsafeBehaviours
+                    _isLoading.value = false
+                } catch (e: Exception) {
+                    Log.e(
+                        "UnsafeBehavioursViewModel",
+                        "Error fetching analysis results by TripId",
+                        e
+                    )
                     _isLoading.value = false
                 }
-                else{
-                    try {
-
-                        val rawSensorDataList = fetchRawSensorDataByTripIdUseCase.execute(tripId).first()
-                        val res = rawSensorDataList.map { it.toEntity() }
-                        Log.d("AnalysisViewModel", "Number of sensor data by ID: ${res.size}, $tripId")
-                        val unsafeBehaviour = unsafeBehaviourAnalyser.analyse(res)
-                        if (unsafeBehaviour.isEmpty()) {
-                            Log.d("AnalysisViewModel", "Number of unsafe behaviours by Trip ID is empty.")
-                        }
-                        else {
-                            Log.d("AnalysisViewModel", "Number of unsafe behaviours by Trip ID: ${unsafeBehaviour.size}")
-                            unsafeBehaviour.map { insertUnsafeBehaviourUseCase.execute(it) }
-                        }
-                        _unsafeBehaviours.value=unsafeBehaviour
-                    } catch (e: Exception) {
-                        Log.e("AnalysisViewModel", "Error fetching analysis results by Trip ID", e)
-                    }
-                }
-            } else {
-                Log.d("LocalUnsafeBehavioursVM", "No tripId found")
+            }
+            else{
+                _unsafeBehaviours.value = emptyList()
                 _isLoading.value = false
+
+
             }
         }
     }
@@ -147,11 +132,12 @@ class LocalUnsafeBehavioursViewModel @Inject constructor(private val unsafeBehav
         _isLoading.value = true
     }
 
-//    fun fetchLastInsertedUnsafeBehaviour() {
-//        viewModelScope.launch {
-//            val tripId = getLastInsertedUnsafeBehaviourUseCase.execute()?.tripId
-//            _lastTripId.postValue(tripId)
-//        }
-//
-//}
+
+    fun fetchLastInsertedUnsafeBehaviour() {
+        viewModelScope.launch {
+            val tripId = getLastInsertedUnsafeBehaviourUseCase.execute()?.tripId
+            _lastTripId.postValue(tripId)
+        }
+
+}
     }

@@ -1,4 +1,8 @@
 package com.uoa.core.apiServices.services.aiModellInputApiService
 
-class AIModelInputApiRepository {
+import com.uoa.core.database.entities.AIModelInputsEntity
+
+
+interface AIModelInputApiRepository {
+    fun insertAiModelInput(aiModelInput: AIModelInputsEntity)
 }

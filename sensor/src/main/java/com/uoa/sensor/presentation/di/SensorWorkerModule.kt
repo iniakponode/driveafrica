@@ -1,7 +1,7 @@
 package com.uoa.sensor.presentation.di
 
 import com.uoa.sensor.hardware.HardwareModule
-import com.uoa.sensor.worker.SensorWorker
+//import com.uoa.sensor.worker.SensorWorker
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

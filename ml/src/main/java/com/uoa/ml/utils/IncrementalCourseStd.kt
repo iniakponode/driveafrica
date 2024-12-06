@@ -66,9 +66,9 @@ class IncrementalCourseStd @Inject constructor(
             count++
             previousHeading = course
             previousTimestamp = timestamp
-            Log.d("IncrementalCourseStd", "Computed Course: $course at Timestamp: $timestamp")
+//            Log.d("IncrementalCourseStd", "Computed Course: $course at Timestamp: $timestamp")
         } else {
-            Log.w("IncrementalCourseStd", "Computed NaN course for sensorData: $sensorData")
+//            Log.w("IncrementalCourseStd", "Computed NaN course for sensorData: $sensorData")
         }
     }
 
@@ -79,7 +79,7 @@ class IncrementalCourseStd @Inject constructor(
      */
     fun getNormalizedStd(): Float {
         if (count == 0) {
-            Log.w("IncrementalCourseStd", "No course data provided for standard deviation computation.")
+//            Log.w("IncrementalCourseStd", "No course data provided for standard deviation computation.")
             return 0.0f
         }
 
@@ -88,7 +88,7 @@ class IncrementalCourseStd @Inject constructor(
         val adjustedR = r.coerceIn(0.0001, 1.0)
         val circularStdDev = sqrt(-2 * ln(adjustedR)).toFloat()
 
-        Log.d("IncrementalCourseStd", "Circular Standard Deviation: $circularStdDev")
+//        Log.d("IncrementalCourseStd", "Circular Standard Deviation: $circularStdDev")
 
         val minValue = minMaxValuesLoader.getMin("course_std") ?: 0f
         val maxValue = minMaxValuesLoader.getMax("course_std") ?: PI.toFloat()
@@ -97,12 +97,20 @@ class IncrementalCourseStd @Inject constructor(
         val normalizedCourseStd = if (range != 0f) {
             (circularStdDev - minValue) / range
         } else {
-            Log.w("IncrementalCourseStd", "Range for course_std is zero. Defaulting normalized value to 0.0f")
+//            Log.w("IncrementalCourseStd", "Range for course_std is zero. Defaulting normalized value to 0.0f")
             0.0f
         }
 
-        Log.d("IncrementalCourseStd", "Normalized Course Standard Deviation: $normalizedCourseStd")
+//        Log.d("IncrementalCourseStd", "Normalized Course Standard Deviation: $normalizedCourseStd")
         return normalizedCourseStd.coerceIn(0.0f, 1.0f)
+    }
+
+    fun reset() {
+        sumSin = 0.0
+        sumCos = 0.0
+        count = 0
+        previousHeading = null
+        previousTimestamp = null
     }
 
     // Helper function to compute the course for a single sensor data item

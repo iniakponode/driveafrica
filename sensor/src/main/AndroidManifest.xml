@@ -8,7 +8,11 @@
     <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
 
 
@@ -23,15 +27,15 @@
         <!-- Declare SensorActivity here if needed -->
 <!--        <activity android:name=".presentation.ui.SensorActivity" />-->
 
-        <service
-            android:name=".services.AppLocationService"
-            android:foregroundServiceType="location"
-            android:exported="false">
-            <!-- Any additional intent filters or elements here -->
-        </service>
+<!--        <service-->
+<!--            android:name=".services.LocationService"-->
+<!--            android:foregroundServiceType="location"-->
+<!--            android:exported="false">-->
+<!--            &lt;!&ndash; Any additional intent filters or elements here &ndash;&gt;-->
+<!--        </service>-->
 
         <service
-            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:name=".services.DataCollectionService"
             android:foregroundServiceType="dataSync|location"
             android:exported="false" />
 

@@ -1,5 +1,7 @@
 package com.uoa.ml.presentation.di
 
+import com.uoa.core.apiServices.services.aiModellInputApiService.AIModelInputApiRepository
+import com.uoa.core.database.repository.AIModelInputRepository
 import com.uoa.core.database.repository.CauseRepository
 import com.uoa.core.database.repository.LocationRepository
 import com.uoa.core.database.repository.RawSensorDataRepository
@@ -30,23 +32,14 @@ object UsecaseClassModules {
     @Provides
     @Singleton
     fun provideRunClassificationUseCase(
-        rawSensorDataRepository: RawSensorDataRepository,
         onnxModelRunner: OnnxModelRunner,
-        incrementalCourseStdProvider: IncrementalCourseStd,
-        incrementalSpeedStdProvider: IncrementalSpeedStd,
-        incrementalAccelerationYMeanProvider: IncrementalAccelerationYMean,
-        incrementalHourOfDayMeanProvider: IncrementalHourOfDayMean,
-        minMaxValuesLoader: MinMaxValuesLoader,
-        incrementalDayOfWeekMeanProvider: IncrementalDayOfWeekMean
+        aiModelInputRepository: AIModelInputRepository
     ): RunClassificationUseCase {
-        return RunClassificationUseCase(rawSensorDataRepository,
+        return RunClassificationUseCase(
             onnxModelRunner,
-            incrementalCourseStdProvider,
-            incrementalSpeedStdProvider,
-            incrementalAccelerationYMeanProvider,
-            incrementalHourOfDayMeanProvider,
-            minMaxValuesLoader,
-            incrementalDayOfWeekMeanProvider)
+            aiModelInputRepository
+
+            )
     }
 
     @Provides

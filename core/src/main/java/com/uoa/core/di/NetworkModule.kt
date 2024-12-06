@@ -30,7 +30,7 @@ object NetworkModule {
     private const val CHATGPT_BASE_URL = "https://api.openai.com/v1/"
     private const val GEMINI_BASE_UR = "https://api.gemini.com/v1/"
     private const val GEMINI_BASE_URL="https://generativelanguage.googleapis.com/"
-    private const val ROAD_ADDRESS_BASE_URL = "https://nominatim.openstreetmap.org/"
+    private const val ROAD_ADDRESS_BASE_URL = "http://nominatim.openstreetmap.org/"
     private const val DEFAULT_BASE_URL = "https://afternoon-sands-09358-f3e117e55365.herokuapp.com/"
 //    private const val DRIVE_AFRICA_BASE_URL="http://localhost:8000/"
 

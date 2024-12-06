@@ -9,8 +9,8 @@ interface OSMApiService {
     @GET("reverse")
     suspend fun getReverseGeocoding(
         @Query("format") format: String,
-        @Query("lat") lat: Long,
-        @Query("lon") lon: Long,
+        @Query("lat") lat: Double,
+        @Query("lon") lon: Double,
         @Query("zoom") zoom: Int,
         @Query("addressdetails") addressdetails: Int
     ): OSMResponse

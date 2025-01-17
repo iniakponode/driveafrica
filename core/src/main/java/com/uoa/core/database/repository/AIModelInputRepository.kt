@@ -1,6 +1,7 @@
 package com.uoa.core.database.repository
 
 import com.uoa.core.database.entities.AIModelInputsEntity
+import com.uoa.core.database.entities.UnsafeBehaviourEntity
 import com.uoa.core.model.AIModelInputs
 import com.uoa.core.model.LocationData
 import com.uoa.core.model.RawSensorData
@@ -13,9 +14,12 @@ interface AIModelInputRepository {
         suspend fun deleteAiModelInput()
         suspend fun getAiModelInputs(): List<AIModelInputsEntity>
         suspend fun getAiModelInputById(id: Int): AIModelInputsEntity?
+        suspend fun getAiModelInputsBySyncStatus(status: Boolean): List<AIModelInputsEntity>
+        suspend fun getAiModelInputsBySyncAndProcessedStatus(synced: Boolean, processed: Boolean): List<AIModelInputsEntity>
         suspend fun getAiModelInputInputByTripId(tripId:UUID): List<AIModelInputs>
         suspend fun updateAiModelInput(aiModelInput: AIModelInputsEntity)
         suspend fun deleteAiModelInputById(id: Int)
+        suspend fun deleteAIModelInputsByIds(ids: List<UUID>)
         suspend fun processDataForAIModelInputs(sensorData: RawSensorData, location: LocationData, tripId:UUID)
 
 }

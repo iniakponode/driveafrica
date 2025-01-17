@@ -1,5 +1,6 @@
 package com.uoa.sensor.presentation.di
 
+import android.app.Application
 import com.uoa.core.database.daos.RawSensorDataDao
 import android.content.Context
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -44,6 +45,10 @@ object HardwareModuleProvider{
         // Provide an instance of RawSensorDataRepositoryImpl
         return RawSensorDataRepositoryImpl(rawSensorDataDao)
     }
+
+    @Provides
+    @Singleton
+    fun provideContext(@ApplicationContext context: Context): Context = context
 
     @Provides
     @Singleton
@@ -123,9 +128,10 @@ object HardwareModuleProvider{
     @Singleton
     fun provideBufferManager(
         rawSensorDataRepository: RawSensorDataRepository,
-        unsafeBehaviourRepository: UnsafeBehaviourRepository
+        unsafeBehaviourRepository: UnsafeBehaviourRepository,
+        @ApplicationContext context: Context
     ): SensorDataBufferManager {
-        return SensorDataBufferManager(rawSensorDataRepository,unsafeBehaviourRepository)
+        return SensorDataBufferManager(rawSensorDataRepository,unsafeBehaviourRepository, context)
     }
 
     @Provides
@@ -144,8 +150,9 @@ object HardwareModuleProvider{
         sensorDataColStateRepository: SensorDataColStateRepository,
         aiModelInputRepository: AIModelInputRepository,
         locationRepository: LocationRepository,
-
-        updateTripUseCase: UpdateTripUseCase
+        @ApplicationContext context: Context,
+        updateTripUseCase: UpdateTripUseCase,
+        rawSensorDataRepository: RawSensorDataRepository
 
         ): HardwareModule {
         return HardwareModule(
@@ -161,7 +168,10 @@ object HardwareModuleProvider{
             motionDetector,
             aiModelInputRepository,
             locationRepository,
-            sensorDataColStateRepository
+            context,
+            sensorDataColStateRepository,
+            rawSensorDataRepository
+
 
 
         )

@@ -1,7 +1,9 @@
 package com.uoa.core.behaviouranalysis
 
+import android.content.Context
 import com.uoa.core.database.entities.RawSensorDataEntity
 import com.uoa.core.model.UnsafeBehaviourModel
+import com.uoa.core.utils.PreferenceUtils
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import java.util.UUID
@@ -15,57 +17,57 @@ class NewUnsafeDrivingBehaviourAnalyser {
     private val speedWindow = ArrayDeque<RawSensorDataEntity>()
     private val windowSize = 100  // Adjust based on desired sensitivity and resource constraints
 
-    fun analyze(sensorDataFlow: Flow<RawSensorDataEntity>): Flow<UnsafeBehaviourModel> = flow {
+    fun analyze(sensorDataFlow: Flow<RawSensorDataEntity>, context: Context): Flow<UnsafeBehaviourModel> = flow {
         sensorDataFlow.collect { data ->
             when (data.sensorType) {
                 ACCELEROMETER_TYPE -> {
                     accelerometerWindow.addLast(data)
                     if (accelerometerWindow.size > windowSize) accelerometerWindow.removeFirst()
-                    val behavior = analyzeAccelerometerData()
+                    val behavior = analyzeAccelerometerData(context)
                     if (behavior != null) emit(behavior)
                 }
                 ROTATION_VECTOR_TYPE -> {
                     rotationWindow.addLast(data)
                     if (rotationWindow.size > windowSize) rotationWindow.removeFirst()
-                    val behavior = analyzeRotationData()
+                    val behavior = analyzeRotationData(context)
                     if (behavior != null) emit(behavior)
                 }
                 SPEED_TYPE -> {
                     speedWindow.addLast(data)
                     if (speedWindow.size > windowSize) speedWindow.removeFirst()
-                    val behavior = analyzeSpeedData()
+                    val behavior = analyzeSpeedData(context)
                     if (behavior != null) emit(behavior)
                 }
             }
         }
     }
 
-    private fun analyzeAccelerometerData(): UnsafeBehaviourModel? {
+    private fun analyzeAccelerometerData(context: Context): UnsafeBehaviourModel? {
         val rms = sqrt(accelerometerWindow.map { calculateAccelerationMagnitude(it.values).pow(2) }.average())
         return when {
             rms > ACCELERATION_THRESHOLD -> {
-                createUnsafeBehavior("Harsh Acceleration", accelerometerWindow.last(), rms.toFloat())
+                createUnsafeBehavior("Harsh Acceleration", accelerometerWindow.last(), rms.toFloat(),context)
             }
             rms < BRAKING_THRESHOLD -> {
-                createUnsafeBehavior("Harsh Braking", accelerometerWindow.last(), rms.toFloat())
+                createUnsafeBehavior("Harsh Braking", accelerometerWindow.last(), rms.toFloat(),context)
             }
             else -> null
         }
     }
 
-    private fun analyzeRotationData(): UnsafeBehaviourModel? {
+    private fun analyzeRotationData(context: Context): UnsafeBehaviourModel? {
         val rms = sqrt(rotationWindow.map { calculateRotationMagnitude(it.values).pow(2) }.average())
         return if (rms > SWERVING_THRESHOLD) {
-            createUnsafeBehavior("Swerving", rotationWindow.last(), rms.toFloat())
+            createUnsafeBehavior("Swerving", rotationWindow.last(), rms.toFloat(),context)
         } else {
             null
         }
     }
 
-    private fun analyzeSpeedData(): UnsafeBehaviourModel? {
+    private fun analyzeSpeedData(context: Context): UnsafeBehaviourModel? {
         val averageSpeed = speedWindow.map { it.values[0] }.average()
         return if (averageSpeed > SPEED_LIMIT) {
-            createUnsafeBehavior("Speeding", speedWindow.last(), averageSpeed.toFloat())
+            createUnsafeBehavior("Speeding", speedWindow.last(), averageSpeed.toFloat(),context)
         } else {
             null
         }
@@ -74,12 +76,14 @@ class NewUnsafeDrivingBehaviourAnalyser {
     private fun createUnsafeBehavior(
         behaviorType: String,
         data: RawSensorDataEntity,
-        measuredValue: Float
+        measuredValue: Float,
+        context: Context
     ): UnsafeBehaviourModel {
         val severity = calculateSeverity(behaviorType, measuredValue)
         return UnsafeBehaviourModel(
             id = UUID.randomUUID(),
             tripId = data.tripId!!,
+            driverProfileId = PreferenceUtils.getDriverProfileId(context)!!,
             behaviorType = behaviorType,
             timestamp = data.timestamp,
             date = data.date!!,

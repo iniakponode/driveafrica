@@ -1,21 +1,5 @@
 package com.uoa.sensor.worker
 
-import android.content.Context
-import android.content.pm.ServiceInfo
-import android.os.Build
-import androidx.annotation.RequiresApi
-import androidx.hilt.work.HiltWorker
-import androidx.work.CoroutineWorker
-import androidx.work.ForegroundInfo
-import androidx.work.WorkerParameters
-import com.uoa.sensor.hardware.HardwareModule
-import com.uoa.sensor.repository.SensorDataColStateRepository
-import com.uoa.sensor.notifications.VehicleNotificationManager
-import dagger.assisted.Assisted
-import dagger.assisted.AssistedInject
-import kotlinx.coroutines.delay
-import java.util.UUID
-
 //@HiltWorker
 //class SensorWorker @AssistedInject constructor(
 //    @Assisted context: Context,

@@ -18,10 +18,17 @@ import java.util.UUID
 @Entity(
     tableName = "raw_sensor_data",
     foreignKeys = [
-        ForeignKey(entity = LocationEntity::class, parentColumns = ["id"], childColumns = ["locationId"]),
-        ForeignKey(entity = TripEntity::class, parentColumns = ["id"], childColumns = ["tripId"])
+        ForeignKey(entity = LocationEntity::class, parentColumns = ["id"], childColumns = ["locationId"],onDelete = ForeignKey.CASCADE),
+        ForeignKey(entity = TripEntity::class, parentColumns = ["id"], childColumns = ["tripId"], onDelete = ForeignKey.CASCADE),
+        ForeignKey(entity = DriverProfileEntity::class, parentColumns = ["driverProfileId"], childColumns = ["driverProfileId"], onDelete = ForeignKey.CASCADE)
     ],
-    indices = [Index(value = ["locationId"]), Index(value = ["tripId"]), Index(value = ["sync"]), Index(value = ["date"])]
+    indices = [
+        Index(value = ["locationId"]),
+        Index(value = ["tripId"]),
+        Index(value = ["sync"]),
+        Index(value = ["date"]),
+        Index(value = ["driverProfileId"]),
+        Index(value = ["id"], unique = true)]
     )
 data class RawSensorDataEntity(
     @PrimaryKey (autoGenerate = false) var id: UUID,
@@ -33,6 +40,8 @@ data class RawSensorDataEntity(
     val accuracy: Int,
     val locationId: UUID?,  // Foreign key to LocationEntity
     val tripId: UUID?,  // Foreign key to TripEntity
+    val driverProfileId: UUID?,
+    val processed: Boolean=false,
     var sync: Boolean=false
 )
 

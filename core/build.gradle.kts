@@ -43,15 +43,15 @@ android {
             )
         }
         debug {
-            buildConfigField("String", "DRIVE_AFRICA_BASE_URL", "\"http://localhost:8000/\"")
+            buildConfigField("String", "DRIVE_AFRICA_BASE_URL", "\"https://safe-drive-africa-9fd1c750b777.herokuapp.com/\"")
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "11"
     }
     buildFeatures { // Enables Jetpack Compose for this module
         compose = true

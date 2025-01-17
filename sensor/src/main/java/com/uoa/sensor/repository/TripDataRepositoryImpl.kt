@@ -2,6 +2,7 @@ package com.uoa.sensor.repository
 
 import android.util.Log
 import com.uoa.core.database.daos.TripDao
+import com.uoa.core.database.entities.TripEntity
 import com.uoa.core.database.repository.TripDataRepository
 import com.uoa.core.model.Trip
 import com.uoa.core.utils.toDomainModel
@@ -88,6 +89,10 @@ class TripDataRepositoryImpl @Inject constructor(private val tripDataDao: TripDa
 
     override suspend fun getTripsBySyncStatus(synced: Boolean): List<Trip> {
         return tripDataDao.getTripsBySyncStatus(synced).map { it.toDomainModel() }
+    }
+
+    override suspend fun getLastInsertedTrip(): TripEntity? {
+        return tripDataDao.getLastInsertedTrip()
     }
 
     override suspend fun deleteTripById(id: UUID) {

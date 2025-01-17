@@ -1,7 +1,10 @@
-package com.uoa.core.apiServices.apiServiceModels.locationModels
+package com.uoa.core.apiServices.models.locationModels
+
+import java.util.UUID
 
 // LocationCreate.kt
 data class LocationCreate(
+    val id: UUID,
     val latitude: Double,
     val longitude: Double,
     val timestamp: Long,

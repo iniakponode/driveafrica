@@ -64,12 +64,27 @@ class LocationRepositoryImpl(private val locationDao: LocationDao, val rawSensor
         return locationDao.getLocationBySyncStatus(syncStat)
     }
 
+    override suspend fun getSensorDataBySyncAndProcessedStatus(
+        syncstatus: Boolean,
+        procStatus: Boolean
+    ): List<LocationEntity> {
+        return locationDao.getLocationDataBySyncAndProcessedStatus(syncstatus,procStatus)
+    }
+
     override suspend fun updateLocation(location: LocationEntity) {
         locationDao.updateLocation(location)
     }
 
+    override suspend fun updateLocations(locations: List<LocationEntity>) {
+        locationDao.updateLocations(locations)
+    }
+
     override suspend fun deleteAllLocations() {
         locationDao.deleteAllLocations()
+    }
+
+    override suspend fun deleteLocationsByIds(ids: List<UUID>) {
+        locationDao.deleteLocationsByIds(ids)
     }
 
     override suspend fun getLocationDataByTripId(tripId: UUID): List<LocationData> {

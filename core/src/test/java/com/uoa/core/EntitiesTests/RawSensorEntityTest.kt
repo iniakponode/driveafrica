@@ -1,6 +1,9 @@
 package com.uoa.core.EntitiesTests
 
+import android.content.Context
 import com.uoa.core.database.entities.RawSensorDataEntity
+import com.uoa.core.utils.PreferenceUtils
+import dagger.hilt.android.qualifiers.ApplicationContext
 import org.junit.Test
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -22,7 +25,8 @@ class RawSensorDataEntityTest {
         val date = Date(Instant.now().toEpochMilli())
         val accuracy = 3
 
-        val entity = RawSensorDataEntity(id, sensorType, sensorTypeName, values, timestamp, date, accuracy, null, null)
+        val drivingProfileId= UUID.randomUUID()
+        val entity = RawSensorDataEntity(id, sensorType, sensorTypeName, values, timestamp, date, accuracy, drivingProfileId, null, null)
 
         assertEquals(id, entity.id)
         assertEquals(sensorType, entity.sensorType)

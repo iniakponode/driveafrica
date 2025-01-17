@@ -14,12 +14,12 @@ import androidx.navigation.navOptions
 import com.uoa.core.ui.TrackDisposableJank
 import com.uoa.core.utils.internetconnectivity.NetworkMonitor
 //import com.uoa.core.utils.TimeZoneMonitor
-import com.uoa.driverprofile.presentation.ui.navigation.HOME_SCREEN_ROUTE
+import com.uoa.core.utils.HOME_SCREEN_ROUTE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import com.uoa.driveafrica.daappnavigation.TopLevelDestinations
+import com.uoa.driveafrica.presentation.daappnavigation.TopLevelDestinations
 import com.uoa.nlgengine.presentation.ui.reportNavigation.FILTER_SCREEN_ROUTE
 import com.uoa.nlgengine.presentation.ui.reportNavigation.REPORT_SCREEN_ROUTE
 import com.uoa.sensor.presentation.ui.sensornavigation.SENSOR_CONTROL_SCREEN_ROUTE

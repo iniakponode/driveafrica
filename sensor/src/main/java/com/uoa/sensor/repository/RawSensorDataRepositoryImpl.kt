@@ -1,5 +1,6 @@
 package com.uoa.sensor.repository
 
+import android.R
 import com.uoa.core.database.daos.RawSensorDataDao
 import com.uoa.core.database.entities.RawSensorDataEntity
 import com.uoa.core.database.repository.RawSensorDataRepository
@@ -64,8 +65,23 @@ class RawSensorDataRepositoryImpl(private val rawSensorDataDao: RawSensorDataDao
         return rawSensorDataDao.getRawSensorDataById(id)
     }
 
+    override suspend fun getSensorDataByLocationIdAndSyncStatus(
+        locationId: UUID,
+        synced: Boolean,
+        processed: Boolean
+    ): List<RawSensorDataEntity> {
+        return rawSensorDataDao.getSensorDataByLocationIdAndSyncStatus(locationId,synced, processed)
+    }
+
     override fun getUnsyncedRawSensorData(): Flow<List<RawSensorDataEntity>> {
         return rawSensorDataDao.getUnsyncedRawSensorData()
+    }
+
+    override suspend fun getRawSensorDataBySyncAndProcessedStatus(
+        synced: Boolean,
+        processed: Boolean
+    ): List<RawSensorDataEntity> {
+        return rawSensorDataDao.getSensorDataBySyncAndProcessedStatus(synced,processed)
     }
 
     override suspend fun getSensorDataBySyncStatus(synced: Boolean): List<RawSensorData> {
@@ -78,6 +94,10 @@ class RawSensorDataRepositoryImpl(private val rawSensorDataDao: RawSensorDataDao
 
     override suspend fun deleteAllRawSensorData() {
         rawSensorDataDao.deleteAllRawSensorData()
+    }
+
+    override suspend fun deleteRawSensorDataByIds(ids: List<UUID>) {
+        rawSensorDataDao.deleteRawSensorDataByIds(ids)
     }
 
     override suspend fun getSensorDataBetweenDates(startDate: LocalDate, endDate: LocalDate): Flow<List<RawSensorDataEntity>> {

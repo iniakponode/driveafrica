@@ -1,8 +1,10 @@
-package com.uoa.core.apiServices.apiServiceModels.locationModels
+package com.uoa.core.apiServices.models.locationModels
+
+import java.util.UUID
 
 // LocationResponse.kt
 data class LocationResponse(
-    val id: String, // UUID as String
+    val id: UUID, // UUID as String
     val latitude: Double,
     val longitude: Double,
     val timestamp: Long,

@@ -1,5 +1,6 @@
 package com.uoa.sensor.hardware
 
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -19,7 +20,8 @@ import javax.inject.Singleton
 @Singleton
 class SensorDataBufferManager @Inject constructor(
     private val rawSensorDataRepository: RawSensorDataRepository,
-    private val unsafeBehaviourRepository: UnsafeBehaviourRepository
+    private val unsafeBehaviourRepository: UnsafeBehaviourRepository,
+    private val context: Context
 ) {
 
     private val sensorDataBuffer = mutableListOf<RawSensorData>()
@@ -71,7 +73,7 @@ class SensorDataBufferManager @Inject constructor(
                 // Analyze the data
                 val analyzer = NewUnsafeDrivingBehaviourAnalyser()
                 val sensorDataFlow = bufferCopy.asFlow().map { it.toEntity() }
-                analyzer.analyze(sensorDataFlow)
+                analyzer.analyze(sensorDataFlow, context)
                     .collect { unsafeBehaviour ->
                         // Handle the detected unsafe behavior, e.g., store into database
                         unsafeBehaviourRepository.insertUnsafeBehaviour(unsafeBehaviour)

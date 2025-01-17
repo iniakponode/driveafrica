@@ -25,22 +25,28 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontVariation.Settings
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
+import androidx.work.Constraints
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import com.google.accompanist.permissions.rememberPermissionState
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.Constants.Companion.TRIP_ID
 import com.uoa.sensor.services.LocationService
 import com.uoa.sensor.services.DataCollectionService
+import com.uoa.core.apiServices.workManager.UploadRawSensorDataWorker
 //import com.uoa.dbda.presentation.viewModel.UnsafeBehaviourViewModel
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 
 @RequiresApi(Build.VERSION_CODES.Q)
@@ -54,7 +60,7 @@ fun SensorControlScreen(
     val collectionStatus by sensorViewModel.collectionStatus.collectAsState()
     val isVehicleMoving by sensorViewModel.isVehicleMoving.collectAsState()
     val tripStartStatus by sensorViewModel.tripEndStatus.collectAsState() // Correct StateFlow
-
+    val tripUploadSuccess by tripViewModel.tripUploadSuccess.collectAsState()
     val context = LocalContext.current
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
@@ -66,6 +72,11 @@ fun SensorControlScreen(
 
     var tripID by remember { mutableStateOf<UUID?>(null) }
 
+
+        LaunchedEffect(tripUploadSuccess) {
+            Toast.makeText(context, "Trip Upload successful", Toast.LENGTH_LONG).show()
+        }
+
     // Check and request POST_NOTIFICATIONS permission for Android 13+ devices
 //    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
 //        val permissionState = rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
@@ -75,6 +86,19 @@ fun SensorControlScreen(
 //            }
 //        }
 //    }
+
+    LaunchedEffect(Unit) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val uploadRequest = PeriodicWorkRequestBuilder<UploadRawSensorDataWorker>(20, TimeUnit.MINUTES)
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(context)
+            .enqueueUniquePeriodicWork("UploadRawData", ExistingPeriodicWorkPolicy.KEEP, uploadRequest)
+    }
 
     // Request POST_NOTIFICATIONS permission for Android 13+ devices
     val notificationPermissionState = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

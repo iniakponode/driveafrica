@@ -7,7 +7,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.uoa.nlgengine.presentation.ui.ReportScreenRoute
-import com.uoa.nlgengine.util.PeriodType
+import com.uoa.core.utils.PeriodType
 
 const val REPORT_SCREEN_ROUTE = "reportScreen"
 

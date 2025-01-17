@@ -46,6 +46,7 @@ class RawSensorDataRepoTest {
             date = Date(),
             accuracy = 1,
             locationId = UUID.randomUUID(),
+            driverProfileId = UUID.randomUUID(),
             tripId = UUID.randomUUID(),
             sync = false
 
@@ -72,6 +73,7 @@ class RawSensorDataRepoTest {
             timestamp = 1234567890,
             date = Date(),
             accuracy = 1,
+            driverProfileId = UUID.randomUUID(),
             locationId = UUID.randomUUID(),
             tripId = tripId,
             sync = false
@@ -99,6 +101,7 @@ class RawSensorDataRepoTest {
                 timestamp = 1234567890,
                 date = Date(),
                 accuracy = 1,
+                driverProfileId = UUID.randomUUID(),
                 locationId = UUID.randomUUID(),
                 tripId = UUID.randomUUID(),
                 sync = false
@@ -124,6 +127,7 @@ class RawSensorDataRepoTest {
             timestamp = 1234567890,
             date = Date(),
             accuracy = 1,
+            driverProfileId = UUID.randomUUID(),
             locationId = UUID.randomUUID(),
             tripId = UUID.randomUUID(),
             sync = false
@@ -146,6 +150,7 @@ class RawSensorDataRepoTest {
                 timestamp = 1234567890,
                 date = Date(),
                 accuracy = 1,
+                driverProfileId = UUID.randomUUID(),
                 locationId = UUID.randomUUID(),
                 tripId = UUID.randomUUID(),
                 sync = false
@@ -169,6 +174,7 @@ class RawSensorDataRepoTest {
             timestamp = 1234567890,
             date = Date(),
             accuracy = 1,
+            driverProfileId = UUID.randomUUID(),
             locationId = UUID.randomUUID(),
             tripId = UUID.randomUUID(),
             sync = false
@@ -192,6 +198,7 @@ class RawSensorDataRepoTest {
             timestamp = 1234567890,
             date = Date(),
             accuracy = 1,
+            driverProfileId = UUID.randomUUID(),
             locationId = UUID.randomUUID(),
             tripId = UUID.randomUUID(),
             sync = false
@@ -217,6 +224,7 @@ class RawSensorDataRepoTest {
             timestamp = 1234567890,
             date = Date(),
             accuracy = 1,
+            driverProfileId = UUID.randomUUID(),
             locationId = UUID.randomUUID(),
             tripId = UUID.randomUUID(),
             sync = false
@@ -251,6 +259,7 @@ class RawSensorDataRepoTest {
             timestamp = 1234567890,
             date = Date(),
             accuracy = 1,
+            driverProfileId = UUID.randomUUID(),
             locationId = UUID.randomUUID(),
             tripId = UUID.randomUUID(),
             sync = false
@@ -277,6 +286,7 @@ class RawSensorDataRepoTest {
             timestamp = 1234567890,
             date = Date(),
             accuracy = 1,
+            driverProfileId = UUID.randomUUID(),
             locationId = UUID.randomUUID(),
             tripId = tripId,
             sync = false

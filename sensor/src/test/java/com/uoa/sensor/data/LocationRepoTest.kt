@@ -42,7 +42,7 @@ class LocationRepositoryImplTest {
 
     @Test
     fun testInsertLocation() = runTest {
-        val location = LocationEntity(UUID.randomUUID(), 1.0, 2.0, System.currentTimeMillis(), Date(), 3.0, 4.0f, 5.0f, false)
+        val location = LocationEntity(UUID.randomUUID(), 1.0, 2.0, System.currentTimeMillis(), Date(), 3.0, 4.0f, 5.0f, false, false)
         repository.insertLocation(location)
         verify(locationDao).insertLocation(location)
     }
@@ -50,8 +50,8 @@ class LocationRepositoryImplTest {
     @Test
     fun testInsertLocationBatch() = runTest {
         val locations = listOf(
-            LocationEntity(UUID.randomUUID(), 1.0, 2.0, System.currentTimeMillis(), Date(), 3.0, 4.0f, 5.0f, false),
-            LocationEntity(UUID.randomUUID(), 6.0, 7.0, System.currentTimeMillis(), Date(), 8.0, 9.0f, 10.0f, true)
+            LocationEntity(UUID.randomUUID(), 1.0, 2.0, System.currentTimeMillis(), Date(), 3.0, 4.0f, 5.0f,false, false),
+            LocationEntity(UUID.randomUUID(), 6.0, 7.0, System.currentTimeMillis(), Date(), 8.0, 9.0f, 10.0f, true, true)
         )
         repository.insertLocationBatch(locations)
         verify(locationDao).insertLocationBatch(locations)
@@ -60,7 +60,7 @@ class LocationRepositoryImplTest {
     @Test
     fun testGetLocationById(): Unit = runTest {
         val id = UUID.randomUUID()
-        val location = LocationEntity(id, 1.0, 2.0, System.currentTimeMillis(), Date(), 3.0, 4.0f, 5.0f, false)
+        val location = LocationEntity(id, 1.0, 2.0, System.currentTimeMillis(), Date(), 3.0, 4.0f, 5.0f, false, false)
         `when`(locationDao.getLocationById(id)).thenReturn(location)
         val result = repository.getLocationById(id)
         assert(result == location)
@@ -70,8 +70,8 @@ class LocationRepositoryImplTest {
     @Test
     fun testGetLocationBySynced() = runTest{
         val locations = listOf(
-            LocationEntity(UUID.randomUUID(), 1.0, 2.0, System.currentTimeMillis(), Date(), 3.0, 4.0f, 5.0f, false),
-            LocationEntity(UUID.randomUUID(), 6.0, 7.0, System.currentTimeMillis(), Date(), 8.0, 9.0f, 10.0f, true)
+            LocationEntity(UUID.randomUUID(), 1.0, 2.0, System.currentTimeMillis(), Date(), 3.0, 4.0f, 5.0f, false, false),
+            LocationEntity(UUID.randomUUID(), 6.0, 7.0, System.currentTimeMillis(), Date(), 8.0, 9.0f, 10.0f, true, true)
         )
         `when`(locationDao.getLocationBySyncStatus(false)).thenReturn(flowOf(locations))
         val result = repository.getLocationBySynced(false)
@@ -81,7 +81,7 @@ class LocationRepositoryImplTest {
 
     @Test
     fun testUpdateLocation() = runBlocking {
-        val location = LocationEntity(UUID.randomUUID(), 1.0, 2.0, System.currentTimeMillis(), Date(), 3.0, 4.0f, 5.0f, false)
+        val location = LocationEntity(UUID.randomUUID(), 1.0, 2.0, System.currentTimeMillis(), Date(), 3.0, 4.0f, 5.0f, false, false)
         repository.updateLocation(location)
         verify(locationDao).updateLocation(location)
     }

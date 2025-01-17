@@ -30,11 +30,20 @@ interface LocationDao {
     @Query("SELECT * FROM location WHERE sync = :synced")
     fun getLocationBySyncStatus(synced: Boolean): Flow<List<LocationEntity>>
 
+    @Query("SELECT * FROM location WHERE sync= :synced AND processed= :processed")
+    suspend fun getLocationDataBySyncAndProcessedStatus(synced: Boolean, processed: Boolean): List<LocationEntity>
+
     @Update
     suspend fun updateLocation(location: LocationEntity)
 
+    @Update
+    suspend fun updateLocations(locations: List<LocationEntity>)
+
     @Query("DELETE FROM location")
     suspend fun deleteAllLocations()
+
+    @Query("DELETE FROM location WHERE id IN (:ids)")
+    suspend fun deleteLocationsByIds(ids: List<UUID>)
 
 //    @Query("SELECT * FROM location WHERE tripId = :tripId")
 //    fun getLocationsByTripId(tripId: UUID): Flow<List<LocationEntity>>

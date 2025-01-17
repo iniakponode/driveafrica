@@ -6,13 +6,15 @@ import androidx.navigation.NavOptions
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.NavType
+import com.uoa.core.utils.DRIVER_PROFILE_ID
+import com.uoa.core.utils.HOME_SCREEN_ROUTE
 import com.uoa.driverprofile.presentation.ui.screens.HomeScreenRoute
 import java.util.UUID
 
 
 // Constants for routes
-const val DRIVER_PROFILE_ID = "profileId"
-const val HOME_SCREEN_ROUTE = "homeScreen/{$DRIVER_PROFILE_ID}"
+//const val DRIVER_PROFILE_ID = "profileId"
+//const val HOME_SCREEN_ROUTE = "homeScreen/{$DRIVER_PROFILE_ID}"
 
 // Navigation function to home screen
 fun NavController.navigateToHomeScreen(profileId: UUID, navOptions: NavOptions? = null) {

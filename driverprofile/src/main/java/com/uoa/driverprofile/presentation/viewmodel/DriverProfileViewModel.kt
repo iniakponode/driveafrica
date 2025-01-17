@@ -6,7 +6,10 @@ import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uoa.core.apiServices.models.driverProfile.DriverProfileCreate
+import com.uoa.core.apiServices.services.driverProfileApiService.DriverProfileApiRepository
 import com.uoa.core.database.entities.DriverProfileEntity
+import com.uoa.core.utils.Resource
 //import com.uoa.core.database.entities.EmbeddingEntity
 //import com.uoa.core.nlg.repository.EmbeddingUtilsRepository
 //import com.uoa.core.nlg.RAGEngine
@@ -17,6 +20,9 @@ import com.uoa.driverprofile.domain.usecase.GetDriverProfileByEmailUseCase
 import com.uoa.driverprofile.domain.usecase.InsertDriverProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
@@ -27,6 +33,7 @@ class DriverProfileViewModel @Inject constructor(
     private val insertDriverProfileUseCase: InsertDriverProfileUseCase,
     private val getDriverProfileByEmailUseCase: GetDriverProfileByEmailUseCase,
     private val deleteDriverProfileByEmailUseCase: DeleteDriverProfileByEmailUseCase,
+    private val driverProfileApiRepository: DriverProfileApiRepository,
 //    private val embeddingUtilsRepository: EmbeddingUtilsRepository,
 
 //    private val ragEngine: RAGEngine,
@@ -38,6 +45,9 @@ class DriverProfileViewModel @Inject constructor(
 
     private val _profile_id = MutableLiveData<String>()
     val profile_id: MutableLiveData<String> get() = _profile_id
+
+    private val _driverProfileUploadSuccess = MutableStateFlow(false)
+    val driverProfileUploadSuccess: StateFlow<Boolean> get() = _driverProfileUploadSuccess.asStateFlow()
 
 //    init {
 //        Log.d("DriverProfileViewModel", "Initializing DriverProfileViewModel")
@@ -109,17 +119,33 @@ class DriverProfileViewModel @Inject constructor(
 
     fun insertDriverProfile(profileId: UUID, email: String, callback: (Boolean) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
-            Log.d("DriverProfileViewModel", "Inserting driver profile with email: $email")
-            val result = runCatching {
-                val driverProfileEntity = DriverProfileEntity(email = email, driverProfileId = profileId)
-                insertDriverProfileUseCase.execute(driverProfileEntity)
-            }
-            withContext(Dispatchers.Main) {
-                Log.d("DriverProfileViewModel", "Insert driver profile result: ${result.isSuccess}")
-                callback(result.isSuccess)
+            val driverProfileCreate = DriverProfileCreate(
+                driverProfileId = profileId,
+                email = email,
+                sync = true
+            )
+            val remoteResult = driverProfileApiRepository.createDriverProfile(driverProfileCreate)
+
+            if (remoteResult is Resource.Success) {
+                val localResult = runCatching {
+                    val entity = DriverProfileEntity(email = email, driverProfileId = profileId, sync=true)
+                    insertDriverProfileUseCase.execute(entity)
+                }
+                withContext(Dispatchers.Main) {
+                    callback(localResult.isSuccess)
+                    if (localResult.isSuccess) {
+                        _driverProfileUploadSuccess.value = true
+                    }
+                }
+            } else {
+                withContext(Dispatchers.Main) {
+                    callback(false)
+                    _driverProfileUploadSuccess.value = false
+                }
             }
         }
     }
+
 
     fun getDriverProfileByEmail() {
         viewModelScope.launch {

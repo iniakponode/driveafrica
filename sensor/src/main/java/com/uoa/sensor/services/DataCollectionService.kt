@@ -7,13 +7,11 @@ import android.os.IBinder
 import android.util.Log
 import androidx.annotation.RequiresApi
 import com.uoa.sensor.hardware.HardwareModule
-import com.uoa.sensor.notifications.VehicleNotificationManager
+import com.uoa.core.notifications.VehicleNotificationManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 

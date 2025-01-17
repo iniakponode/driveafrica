@@ -43,7 +43,7 @@ interface DrivingTipDao {
     fun deleteAllDrivingTips()
 
     // Get a driving tip by profile id
-    @Query("SELECT * FROM driving_tips WHERE profileId = :profileId")
+    @Query("SELECT * FROM driving_tips WHERE driverProfileId = :profileId")
     fun getDrivingTipByProfileId(profileId: UUID): List<DrivingTipEntity>
 
     // Get a driving tip by sync status

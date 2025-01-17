@@ -35,6 +35,15 @@ class RunClassificationUseCase @Inject constructor(
 
             val intermediateStats = aiModelInputRepository.getAiModelInputInputByTripId(tripId)
 
+            val intermediateStatsCopy=intermediateStats.map{ aiModelInput->
+                aiModelInput.copy(processed = true)
+            }
+
+            intermediateStatsCopy.forEach {
+                aiModelInputRepository.updateAiModelInput(it.toEntity())
+            }
+
+
             val totalDuration = intermediateStats.sumOf { it.endTimestamp - it.startTimestamp }
             val weightedHourOfDayMean =
                 intermediateStats.sumOf { it.hourOfDayMean * (it.endTimestamp - it.startTimestamp) } / totalDuration

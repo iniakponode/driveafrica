@@ -1,6 +1,7 @@
 package com.uoa.core.database.entities
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.google.firebase.crashlytics.buildtools.reloc.com.google.common.base.Objects
 import java.util.Date
@@ -13,7 +14,13 @@ import java.util.UUID
  * @param altitude The altitude of the location (if available).
  * @param speed The speed at the location (if available).
  */
-@Entity(tableName = "location")
+@Entity(tableName = "location",
+    indices = [
+        Index(
+            value=["id"],
+            unique = true
+        )
+    ])
 data class LocationEntity(
     @PrimaryKey val id: UUID,
     val latitude: Double,
@@ -23,5 +30,6 @@ data class LocationEntity(
     val altitude: Double,
     val speed: Float,
     val distance: Float,
+    val processed: Boolean= false,
     var sync: Boolean
 )

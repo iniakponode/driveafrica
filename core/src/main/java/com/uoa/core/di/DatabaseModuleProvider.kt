@@ -33,14 +33,17 @@ object DatabaseModuleProvider {
     @Singleton
     fun provideAIModelInputDao(db: Sdaddb) = db.aiModelInputsDao()
 
+    @Provides
+    @Singleton
+    fun provideQuestionnaireDao(db: Sdaddb) = db.alcoholQuestionnaireDao()
 
     @Provides
     @Singleton
     fun provideRoadDao(db: Sdaddb) = db.roadDao()
 
-    @Provides
-    @Singleton
-    fun provideDbdaResultDao(db: Sdaddb) = db.dbdaResultDao()
+//    @Provides
+//    @Singleton
+//    fun provideDbdaResultDao(db: Sdaddb) = db.dbdaResultDao()
 
     @Provides
     @Singleton
@@ -77,6 +80,10 @@ object DatabaseModuleProvider {
     @Provides
     @Singleton
     fun provideCauseDao(db: Sdaddb) = db.causeDao()
+
+    @Provides
+    @Singleton
+    fun provideReportStatisticsDao(db: Sdaddb) = db.reportStatisticsDao()
 
 }
 

@@ -33,7 +33,8 @@ class UpdateTripUseCase @Inject constructor(private val tripRepository: TripData
                 val tripToUpdate = tripToFromdb.copy(
                     endTime = System.currentTimeMillis(),
                     endDate = Date(),
-                    influence=influence
+                    influence=influence,
+                    synced = true
                 )
                 tripRepository.updateTrip(tripToUpdate)
                 Log.i("Trip", "Update successful")
@@ -44,6 +45,12 @@ class UpdateTripUseCase @Inject constructor(private val tripRepository: TripData
 
 //        }
         Log.i("TripID", "Trip ended with id: $tripId")
+    }
+}
+
+class GetTripByIdUseCase @Inject constructor(private val tripRepository: TripDataRepository){
+    suspend operator fun invoke(tripId: UUID): Trip{
+        return tripRepository.getTripById(tripId)!!
     }
 }
 

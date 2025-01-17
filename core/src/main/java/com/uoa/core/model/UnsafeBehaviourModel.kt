@@ -6,6 +6,7 @@ import java.util.UUID
 data class UnsafeBehaviourModel(
     val id: UUID,
     val tripId: UUID,
+    val driverProfileId: UUID,
     val locationId: UUID?,
     val behaviorType: String,
     val severity: Float,
@@ -13,5 +14,6 @@ data class UnsafeBehaviourModel(
     val date: Date,
     val updatedAt:Date?,
     val updated:Boolean=false,
+    val processed: Boolean= false,
     val synced: Boolean=false,
 )

@@ -1,5 +1,6 @@
 package com.uoa.ml.presentation.di
 
+import android.content.Context
 import com.uoa.core.database.daos.AIModelInputDao
 import com.uoa.core.database.repository.AIModelInputRepository
 import com.uoa.core.mlclassifier.MinMaxValuesLoader
@@ -28,7 +29,8 @@ object MLModuleRepoProvider {
         incrementalSpeedStdProvider: IncrementalSpeedStd,
         incrementalAccelerationYMeanProvider: IncrementalAccelerationYMean,
         incrementalCourseStdProvider: IncrementalCourseStd,
-        minMaxValuesLoader: MinMaxValuesLoader
+        minMaxValuesLoader: MinMaxValuesLoader,
+        context: Context
     ): AIModelInputRepository{
         return AIModelInputRepositoryImpl(
             aiModelInputDao,
@@ -37,7 +39,8 @@ object MLModuleRepoProvider {
             incrementalSpeedStdProvider,
             incrementalAccelerationYMeanProvider,
             incrementalCourseStdProvider,
-            minMaxValuesLoader
+            minMaxValuesLoader,
+            context
         )
     }
 

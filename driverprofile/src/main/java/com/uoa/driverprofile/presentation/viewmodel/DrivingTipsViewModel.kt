@@ -6,11 +6,13 @@ import android.os.Build
 import com.google.ai.client.generativeai.GenerativeModel
 import android.util.Log
 import androidx.annotation.RequiresExtension
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.liveData
 import androidx.lifecycle.viewModelScope
+import com.uoa.core.apiServices.services.drivingTipApiService.DrivingTipApiRepository
 import com.uoa.core.database.entities.EmbeddingEntity
 import com.uoa.core.database.repository.DrivingTipRepository
 import com.uoa.core.database.repository.TripDataRepository
@@ -26,7 +28,9 @@ import com.uoa.core.nlg.compressAndEncodeJson
 import com.uoa.core.nlg.getRelevantDataFromJson
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.core.utils.toDrivingTipCreate
 import com.uoa.core.utils.toEntity
+import com.uoa.core.utils.toTripCreate
 import com.uoa.driverprofile.domain.usecase.GetDrivingTipByIdUseCase
 import com.uoa.driverprofile.domain.usecase.GetDrivingTipByProfileIdUseCase
 import com.uoa.driverprofile.domain.usecase.GetUnsafeBehavioursForTipsUseCase
@@ -47,6 +51,7 @@ class DrivingTipsViewModel @Inject constructor(
     private val getDrivingTipByProfileIdUseCase: GetDrivingTipByProfileIdUseCase,
     private val getDrivingTipByIdUseCase: GetDrivingTipByIdUseCase,
     private val drivingTipRepository: DrivingTipRepository,
+    private val drivingTipApiRepository: DrivingTipApiRepository,
     private val nlgEngineRepository: NLGEngineRepository,
     private val getUnsafeBehavioursForTipsUseCase: GetUnsafeBehavioursForTipsUseCase,
     private val geminiCaller: GenerativeModel,
@@ -63,6 +68,9 @@ class DrivingTipsViewModel @Inject constructor(
     val geminiDrivingTips: LiveData<List<DrivingTip>> get() = _geminiDrivingTips
 
     private val appContext = application.applicationContext
+
+    val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val savedProfileId = prefs.getString(DRIVER_PROFILE_ID, null)
 
     init {
         Log.d("DrivingTipsViewModel", "Initializing DrivingTipsViewModel")
@@ -149,8 +157,8 @@ class DrivingTipsViewModel @Inject constructor(
 
                 // Assign the correct profile ID and set the date to today
                 val today = LocalDate.now()
-                val newGeminiTip = geminiTip.copy(profileId = profileId, date = today)
-                val newGptTip = gptTip.copy(profileId = profileId, date = today)
+                val newGeminiTip = geminiTip.copy(driverProfileId = profileId, date = today)
+                val newGptTip = gptTip.copy(driverProfileId = profileId, date = today)
 
                 // Insert tips into the repository
                 drivingTipRepository.insertDrivingTip(newGeminiTip.toEntity())
@@ -158,6 +166,11 @@ class DrivingTipsViewModel @Inject constructor(
 
                 // Post the tips to LiveData on the main thread
                 withContext(Dispatchers.Main) {
+                    val drivintTipGeminiCopy=newGeminiTip.copy(sync = true)
+                    val drivintTipGptCopy=newGptTip.copy(sync = true)
+                    drivingTipApiRepository.createDrivingTip(drivintTipGeminiCopy.toDrivingTipCreate())
+                    drivingTipApiRepository.createDrivingTip(drivintTipGptCopy.toDrivingTipCreate())
+
                     _geminiDrivingTips.value = listOf(geminiTip)
                     _gptDrivingTips.value = listOf(gptTip)
                     Log.d("DrivingTipsViewModel", "Driving tips generated and posted")
@@ -408,7 +421,6 @@ class DrivingTipsViewModel @Inject constructor(
             Log.e("DrivingTipsViewModel", "No JSON object found in the AI response")
             return null
         }
-
         return try {
             val jsonObject = JSONObject(jsonString)
             DrivingTip(
@@ -421,7 +433,7 @@ class DrivingTipsViewModel @Inject constructor(
                 hostility = "",
                 summaryTip = jsonObject.getString("summaryTip"),
                 date = LocalDate.now(),
-                profileId = profileId, // Will be updated later
+                driverProfileId = profileId, // Will be updated later
                 llm = llm
             )
         } catch (e: JSONException) {
@@ -441,7 +453,7 @@ class DrivingTipsViewModel @Inject constructor(
                         hostility = "",
                         summaryTip = jsonObject.getString("summaryTip"),
                         date = LocalDate.now(),
-                        profileId = profileId, // Will be updated later
+                        driverProfileId = profileId, // Will be updated later
                         llm = llm
                     )
                 } catch (ex: JSONException) {

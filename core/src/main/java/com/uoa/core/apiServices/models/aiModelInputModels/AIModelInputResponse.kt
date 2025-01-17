@@ -1,9 +1,11 @@
-package com.uoa.core.apiServices.models.aiModelInput
+package com.uoa.core.apiServices.models.aiModelInputModels
+
+import java.util.UUID
 
 // AIModelInputResponse.kt
 data class AIModelInputResponse(
-    val id: String,
-    val trip_id: String,
+    val id: UUID,
+    val trip_id: UUID,
     val timestamp: String,
     val date: String,
     val hour_of_day_mean: Double,

@@ -1,4 +1,4 @@
-package com.uoa.driveafrica.ui
+package com.uoa.driveafrica.ui.appentrypoint
 
 import android.content.Context
 import androidx.compose.runtime.Composable
@@ -8,7 +8,6 @@ import androidx.navigation.NavController
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.ENTRYPOINT_ROUTE
-import com.uoa.alcoholquestionnaire.presentation.ui.questionnairenavigation.alcoholQuestionnaireScreen
 import com.uoa.alcoholquestionnaire.presentation.ui.questionnairenavigation.navigateToQuestionnaire
 import com.uoa.driverprofile.presentation.ui.navigation.navigateToOnboardingScreen
 
@@ -36,5 +35,5 @@ fun EntryPointScreenRoute(
     }
 
     // Display the loading UI while the navigation decision is being made.
-    EntryPointScreen()
+//    EntryPointScreen()
 }

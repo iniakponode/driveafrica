@@ -302,6 +302,7 @@ fun AlcoholQuestionnaireResponse.toQuestionnaire(): Questionnaire {
         emptyStomach = this.emptyStomach,
         caffeinatedDrink = this.caffeinatedDrink,
         impairmentLevel = this.impairmentLevel,
+        date= DateConversionUtils.stringToDate(this.date)!!, // ISO 8601 format
         plansToDrive = this.plansToDrive
     )
 }

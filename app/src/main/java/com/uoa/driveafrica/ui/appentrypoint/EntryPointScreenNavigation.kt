@@ -1,4 +1,4 @@
-package com.uoa.driveafrica.ui
+package com.uoa.driveafrica.ui.appentrypoint
 
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder

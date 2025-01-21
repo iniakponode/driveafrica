@@ -10,17 +10,25 @@ import com.uoa.core.apiServices.services.rawSensorApiService.RawSensorDataApiRep
 import androidx.work.CoroutineWorker
 import com.nhaarman.mockitokotlin2.isNull
 import com.uoa.core.apiServices.models.aiModelInputModels.AIModelInputCreate
+import com.uoa.core.apiServices.models.driverProfile.DriverProfileCreate
 import com.uoa.core.apiServices.models.locationModels.LocationCreate
 import com.uoa.core.apiServices.models.rawSensorModels.RawSensorDataCreate
+import com.uoa.core.apiServices.models.tripModels.TripCreate
 import com.uoa.core.apiServices.models.unsafeBehaviourModels.UnsafeBehaviourCreate
 import com.uoa.core.apiServices.services.aiModellInputApiService.AIModelInputApiRepository
+import com.uoa.core.apiServices.services.driverProfileApiService.DriverProfileApiRepository
 import com.uoa.core.apiServices.services.locationApiService.LocationApiRepository
 import com.uoa.core.apiServices.services.reportStatisticsApiService.ReportStatisticsApiRepository
+import com.uoa.core.apiServices.services.roadApiService.RoadApiRepository
+import com.uoa.core.apiServices.services.tripApiService.TripApiRepository
 import com.uoa.core.apiServices.services.unsafeBehaviourApiService.UnsafeBehaviourApiRepository
 import com.uoa.core.database.repository.AIModelInputRepository
+import com.uoa.core.database.repository.DriverProfileRepository
 import com.uoa.core.database.repository.LocationRepository
 import com.uoa.core.database.repository.RawSensorDataRepository
 import com.uoa.core.database.repository.ReportStatisticsRepository
+import com.uoa.core.database.repository.RoadRepository
+import com.uoa.core.database.repository.TripDataRepository
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
 import com.uoa.core.model.LocationData
 import com.uoa.core.notifications.VehicleNotificationManager
@@ -40,6 +48,8 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.time.ZoneId
+import com.uoa.core.apiServices.models.roadModels.RoadCreate
+import com.uoa.core.apiServices.models.roadModels.RoadResponse
 
 @HiltWorker
 class UploadRawSensorDataWorker @AssistedInject constructor(
@@ -54,7 +64,13 @@ class UploadRawSensorDataWorker @AssistedInject constructor(
     private val aiModelInputLocalRepository: AIModelInputRepository,
     private val aiModelInputApiRepository: AIModelInputApiRepository,
     private val reportStatisticsLocalRepository: ReportStatisticsRepository,
-    private val reportStatisticsApiRepository: ReportStatisticsApiRepository
+    private val reportStatisticsApiRepository: ReportStatisticsApiRepository,
+    private val driverProfileLocalRepository: DriverProfileRepository,
+    private val driverProfileApiRepository: DriverProfileApiRepository,
+    private val tripLocalRepository: TripDataRepository,
+    private val tripApiRepository: TripApiRepository,
+    private val roadLocalRepository: RoadRepository,
+    private val roadApiRepository: RoadApiRepository
 ) : CoroutineWorker(appContext, workerParams) {
 
     companion object {
@@ -104,6 +120,7 @@ class UploadRawSensorDataWorker @AssistedInject constructor(
                 date = DateConversionUtils.dateToString(it.date) ?: "",
                 altitude = it.altitude,
                 speed = it.speed.toDouble(),
+                speedLimit = it.speedLimit.toDouble(),
                 distance = it.distance.toDouble(),
                 sync = true
             )
@@ -124,6 +141,62 @@ class UploadRawSensorDataWorker @AssistedInject constructor(
                 }
             )
         ) return@withContext Result.retry()
+
+//
+//        val unsyncedDriverProfile=driverProfileLocalRepository.getDriverProfileBySyncStatus(false)
+//        val unsyncedDriverProfileList=unsyncedDriverProfile.map{
+//            DriverProfileCreate(
+//                driverProfileId = it.driverProfileId,
+//                email = it.email,
+//                sync = true
+//            )
+//        }
+//
+//        if (!attemptUploadInBatches(
+//                notificationTitle = "Data Upload: Driver Profile Upload",
+//                data = unsyncedDriverProfileList,
+//                batchUploadAction = { driverProfileApiRepository.batchCreateDriverProfiles(unsyncedDriverProfileList) },
+//                onSuccessForBatch = { batch ->
+//                    val updated = batch.mapNotNull { udCreate ->
+//                        unsyncedDriverProfile.find { original ->
+//                            original.driverProfileId == udCreate.driverProfileId
+//                        }?.copy(sync = true)
+//                    }
+//                    updated.forEach { driverProfileLocalRepository.updateDriverProfile(it.toEntity()) }
+//                }
+//            )
+//        ) return@withContext Result.retry()
+
+
+//        val unsyncedTrip=tripLocalRepository.getTripsBySyncStatus(false)
+//        val unsyncedTripList=unsyncedTrip.map{
+//            TripCreate(
+//                id=it.id,
+//                driverProfileId=it.driverPId,
+//                start_date= DateConversionUtils.dateToString(it.startDate),
+//                end_date= DateConversionUtils.dateToString(it.endDate),
+//                start_time=it.startTime,
+//                end_time=it.endTime,
+//                synced = true
+//            )
+//        }
+//
+//        if (!attemptUploadInBatches(
+//                notificationTitle = "Data Upload: Trip Data",
+//                data = unsyncedTripList,
+//                batchUploadAction = { tripApiRepository.batchCreateTrips(unsyncedTripList) },
+//                onSuccessForBatch = { batch ->
+//                    val updated = batch.mapNotNull { utCreate ->
+//                        unsyncedTrip.find { original ->
+//                            original.id == utCreate.id &&
+//                            original.driverPId == utCreate.driverProfileId
+//                        }?.copy(synced = true)
+//                    }
+//                    updated.forEach { tripLocalRepository.updateTrip(it) }
+//                }
+//            )
+//        ) return@withContext Result.retry()
+
 
         // Upload Unsafe Behaviours
         val unsyncedUnsafeBehaviours = unsafeBehavioursLocalRepository.getUnsafeBehavioursBySyncStatus(false)
@@ -189,7 +262,7 @@ class UploadRawSensorDataWorker @AssistedInject constructor(
                         }?.copy(sync = true)
                     }
                     updatedData.forEach { localRawDataRepository.updateRawSensorData(it.toEntity()) }
-                    localRawDataRepository.deleteRawSensorDataByIds(updatedData.map { d -> d.id })
+//                    localRawDataRepository.deleteRawSensorDataByIds(updatedData.map { d -> d.id })
                 }
             )
         ) return@withContext Result.retry()
@@ -245,6 +318,36 @@ class UploadRawSensorDataWorker @AssistedInject constructor(
                 }
             )
         ) return@withContext Result.retry()
+
+        // Upload Roads
+        val unsyncedRoads = roadLocalRepository.getRoadsBySyncStatus(false)
+        val unsyncedRoadsList = unsyncedRoads.map { road ->
+            RoadCreate(
+                id = road.id,
+                driverProfileId = road.driverProfileId,
+                name = road.name,
+                roadType = road.roadType,
+                speedLimit = road.speedLimit,
+                latitude = road.latitude,
+                longitude = road.longitude
+            )
+        }
+        if (!attemptUploadInBatches(
+                notificationTitle = "Data Upload: Roads",
+                data = unsyncedRoadsList,
+                batchUploadAction = { roadApiRepository.batchCreateRoads(it) },
+                onSuccessForBatch = { batch ->
+                    val updated = batch.mapNotNull { roadCreate ->
+                        unsyncedRoads.find { original ->
+                            original.id == roadCreate.id
+                            original.driverProfileId == roadCreate.driverProfileId
+                        }?.copy(synced = true)
+                    }
+                    updated.forEach { roadLocalRepository.updateRoad(it) }
+                }
+            )
+        ) return@withContext Result.retry()
+
 
         // If we reached here, all uploads succeeded
         Result.success()

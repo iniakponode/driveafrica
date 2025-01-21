@@ -11,6 +11,7 @@ data class LocationResponse(
     val date: String, // ISO 8601 format
     val altitude: Double,
     val speed: Double,
+    val speedLimit: Double,
     val distance: Double,
     val sync: Boolean
 )

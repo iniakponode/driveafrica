@@ -6,15 +6,18 @@ import com.uoa.core.apiServices.models.tripModels.TripCreate
 import com.uoa.core.apiServices.services.tripApiService.TripApiRepository
 import com.uoa.core.mlclassifier.data.InferenceResult
 import com.uoa.core.model.Trip
+import com.uoa.core.network.Dispatcher
 import com.uoa.core.utils.Resource
 import com.uoa.ml.domain.RunClassificationUseCase
 import com.uoa.sensor.domain.usecases.trip.GetTripByIdUseCase
 import com.uoa.sensor.domain.usecases.trip.InsertTripUseCase
 import com.uoa.sensor.domain.usecases.trip.UpdateTripUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -54,7 +57,8 @@ class TripViewModel @Inject constructor(
             )
 
             val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
-            val isoStartDate = sdf.format(startTime)
+            sdf.timeZone = TimeZone.getTimeZone("UTC")
+            val isoStartDate = sdf.format(Date())
 
             val tripCreate = TripCreate(
                 id = tripId,
@@ -66,15 +70,21 @@ class TripViewModel @Inject constructor(
                 synced = true
             )
 
-            val uploadResult = tripApiRepository.createTrip(tripCreate)
-            if (uploadResult is Resource.Success) {
-                insertTripUseCase(trip)
-                _tripUploadSuccess.value = true
-                _currentTripId.value = tripId
-                _currentTripId.emit(tripId)
-            } else {
-                _tripUploadSuccess.value = false
-            }
+            // 1) Insert the trip locally first
+            insertTripUseCase(trip)
+            _tripUploadSuccess.value = true
+            _currentTripId.value = tripId
+            _currentTripId.emit(tripId)
+
+            // 2) Now attempt remote creation
+//            val uploadResult = tripApiRepository.createTrip(tripCreate)
+//            if (uploadResult is Resource.Success) {
+//                _tripUploadSuccess.value = true
+//                Log.i("TripViewModel", "Remote trip creation succeeded for tripId: $tripId")
+//            } else {
+//                _tripUploadSuccess.value = false
+//                Log.e("TripViewModel", "Remote trip creation failed for tripId: $tripId")
+//            }
         }
     }
 
@@ -96,54 +106,80 @@ class TripViewModel @Inject constructor(
         viewModelScope.launch {
             Log.i("TripViewModel", "endTrip called for tripId: $tripId")
 
-            when (val inferenceResult = runClassificationUseCase.invoke(tripId)) {
-                is InferenceResult.Success -> {
-                    val alcInfluence = inferenceResult.alcoholInfluence
-                    val influenceValue = if (alcInfluence) "alcohol" else "No influence"
+            try {
+                // 1) Run classification in IO
+                val inferenceResult = withContext(Dispatchers.IO) {
+                    runClassificationUseCase.invoke(tripId)
+                }
 
-                    try {
-                        // Get current local trip info
-                        val updatedTrip = getTripByIdUseCase.invoke(tripId)
-                        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
-                        sdf.timeZone = TimeZone.getTimeZone("UTC")
+                when (inferenceResult) {
+                    is InferenceResult.Success -> {
+                        val alcInfluence = inferenceResult.alcoholInfluence
+                        val influenceValue = if (alcInfluence) "alcohol" else "No influence"
 
+                        // 2) Get current local trip info (still on IO)
+                        val updatedTrip = withContext(Dispatchers.IO) {
+                            getTripByIdUseCase.invoke(tripId)
+                        }
+
+                        // Prepare date/time fields (can be done on main or IO)
+                        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault()).apply {
+                            timeZone = TimeZone.getTimeZone("UTC")
+                        }
                         val isoStartDate = updatedTrip.startDate?.let { sdf.format(it) }
-                        val isoEndDate = sdf.format(Date()) // Current date in ISO-8601
+                        val isoEndDate = sdf.format(Date())      // Current date in ISO-8601
                         val endTime = System.currentTimeMillis() // Current time in milliseconds
 
+                        // Create the trip payload
                         val tripCreate = TripCreate(
                             id = updatedTrip.id,
                             driverProfileId = updatedTrip.driverPId,
-                            start_date = isoStartDate,  // Null if updatedTrip.startDate is null
-                            end_date = isoEndDate,      // Always current date
+                            start_date = isoStartDate,
+                            end_date = isoEndDate,
                             start_time = updatedTrip.startTime, // BigInteger on server
-                            end_time = endTime,               // Current time as BigInteger
+                            end_time = endTime,                 // Current time as BigInteger
                             synced = true
                         )
 
-                        // Attempt remote update first
-                        val uploadResult = tripApiRepository.updateTrip(updatedTrip.id, tripCreate)
-                        if (uploadResult is Resource.Success) {
-                            // If successful, update locally
+                        // 3) Update local data first (on IO)
+                        withContext(Dispatchers.IO) {
                             updateTripUseCase.invoke(tripId, influenceValue)
-                            _tripUploadSuccess.value = true
-                            Log.i("TripViewModel", "Trip updated with '$influenceValue' successfully.")
+                        }
+                        _tripUploadSuccess.value = true
+                        Log.i("TripViewModel", "Local trip updated with '$influenceValue' successfully.")
+
+                        // 4) Attempt remote update (on IO) after local update
+                        val uploadResult = withContext(Dispatchers.IO) {
+                            tripApiRepository.createTrip(tripCreate)
+                        }
+
+                        if (uploadResult is Resource.Success) {
+                            Log.i("TripViewModel", "Remote trip update succeeded for tripId: $tripId")
                         } else {
                             _tripUploadSuccess.value = false
                             Log.e("TripViewModel", "Remote update failed for tripId: $tripId")
                         }
 
-                    } catch (updateException: Exception) {
-                        Log.e("TripViewModel", "Failed to update trip with '$influenceValue': ${updateException.message}", updateException)
+                        // Log classification result after the full chain completes
+                        Log.i("TripViewModel", "Alcohol Influence: $alcInfluence")
                     }
 
-                    Log.i("TripViewModel", "Alcohol Influence: $alcInfluence")
-
+                    is InferenceResult.Failure -> {
+                        val error = inferenceResult.error
+                        Log.e(
+                            "TripViewModel",
+                            "Classification failed for tripId: $tripId with error: ${error.message}",
+                            error
+                        )
+                    }
                 }
-                is InferenceResult.Failure -> {
-                    val error = inferenceResult.error
-                    Log.e("TripViewModel", "Classification failed for tripId: $tripId with error: ${error.message}", error)
-                }
+            } catch (updateException: Exception) {
+                // Catch any exception that occurs during the chain
+                Log.e(
+                    "TripViewModel",
+                    "Failed to end trip for $tripId: ${updateException.message}",
+                    updateException
+                )
             }
         }
     }

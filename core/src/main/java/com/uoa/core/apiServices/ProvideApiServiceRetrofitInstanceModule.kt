@@ -20,6 +20,8 @@ import com.uoa.core.apiServices.services.rawSensorApiService.RawSensorDataApiRep
 import com.uoa.core.apiServices.services.rawSensorApiService.RawSensorDataApiService
 import com.uoa.core.apiServices.services.reportStatisticsApiService.ReportStatisticsApiRepository
 import com.uoa.core.apiServices.services.reportStatisticsApiService.ReportStatisticsApiService
+import com.uoa.core.apiServices.services.roadApiService.RoadApiRepository
+import com.uoa.core.apiServices.services.roadApiService.RoadApiService
 import com.uoa.core.apiServices.services.tripApiService.TripApiRepository
 import com.uoa.core.apiServices.services.tripApiService.TripApiService
 import com.uoa.core.apiServices.services.unsafeBehaviourApiService.UnsafeBehaviourApiRepository
@@ -39,6 +41,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object ProvideApiServiceRetrofitInstanceModule {
     const val DRIVE_AFRICA_BASE_URL = BuildConfig.DRIVE_AFRICA_BASE_URL
+//    const val DRIVE_AFRICA_BASE_URL= BuildConfig.EMULATOR_BASE_URL
     private val gson by lazy {
         GsonBuilder().create()
     }
@@ -297,4 +300,25 @@ object ProvideApiServiceRetrofitInstanceModule {
         return ReportStatisticsApiRepository(reportStatisticsApiService)
     }
 
+    // Provide RoadApiRepository
+    @Provides
+    @Singleton
+    fun provideRoadApiRepository(
+        roadApiService: RoadApiService
+    ): RoadApiRepository {
+        return RoadApiRepository(roadApiService)
+    }
+
+    @Provides
+    @Singleton
+    fun provideRoadApiService(): RoadApiService {
+        return getRetrofitInstance(
+            baseUrl = DRIVE_AFRICA_BASE_URL
+            // Add headers if needed, e.g., authentication
+        ).create(RoadApiService::class.java)
+    }
+
+
 }
+
+

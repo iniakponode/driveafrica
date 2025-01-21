@@ -169,30 +169,30 @@ class HardwareModule @Inject constructor(
 //                        Log.d("HardwareModule", "Attempting to save Sensor Data")
                         sensorDataBufferManager.addToSensorBuffer(rawSensorData)
 
-                        hardwareModuleScope.launch(Dispatchers.IO) {
-                            val locationId = locationBufferManager.getCurrentLocationId()
-                            if (locationId != null) {
-                                Log.d("HardwareModule", "Processing sensor data for AIModelInput in coroutine")
-                                val location = locationRepository.getLocationById(locationId)
-                                if (location != null) {
-                                    Log.d("HardwareModule", "Processing sensor data for AIModelInput in coroutine")
-                                     aiModelInputRepository.processDataForAIModelInputs(rawSensorData, location.toDomainModel(), tripId)
-
-//                                    Update Raw Sensor and Location data after using them
-                                    val rawSensorDataCopy=rawSensorData.copy(processed = true)
-                                    rawSensorDataRepository.updateRawSensorData(rawSensorDataCopy.toEntity())
-
-                                    val locationDataCopy=location.copy(processed = true)
-                                    locationRepository.updateLocation(locationDataCopy)
-
-                                    Log.d("HardwareModule", "Sensor data processing for AIModelInput completed")
-                                } else {
-                                    Log.e("HardwareModule", "Location not found for ID: $locationId")
-                                }
-                            } else {
-                                Log.e("HardwareModule", "Current Location ID is null")
-                            }
-                        }
+//                        hardwareModuleScope.launch(Dispatchers.IO) {
+//                            val locationId = locationBufferManager.getCurrentLocationId()
+//                            if (locationId != null) {
+//                                Log.d("HardwareModule", "Processing sensor data for AIModelInput in coroutine")
+//                                val location = locationRepository.getLocationById(locationId)
+//                                if (location != null) {
+//                                    Log.d("HardwareModule", "Processing sensor data for AIModelInput in coroutine")
+//                                     aiModelInputRepository.processDataForAIModelInputs(rawSensorData, location.toDomainModel(), tripId)
+//
+////                                    Update Raw Sensor and Location data after using them
+//                                    val rawSensorDataCopy=rawSensorData.copy(processed = true)
+//                                    rawSensorDataRepository.updateRawSensorData(rawSensorDataCopy.toEntity())
+//
+//                                    val locationDataCopy=location.copy(processed = true)
+//                                    locationRepository.updateLocation(locationDataCopy)
+//
+//                                    Log.d("HardwareModule", "Sensor data processing for AIModelInput completed")
+//                                } else {
+//                                    Log.e("HardwareModule", "Location not found for ID: $locationId")
+//                                }
+//                            } else {
+//                                Log.e("HardwareModule", "Current Location ID is null")
+//                            }
+//                        }
 
                     }
                     else{

@@ -1,4 +1,4 @@
-package com.uoa.driveafrica.ui
+package com.uoa.driveafrica.ui.appentrypoint
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize

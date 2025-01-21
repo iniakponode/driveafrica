@@ -32,6 +32,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.UUID
+import kotlin.String
 
 // RawSensorData to RawSensorDataEntity
 fun RawSensorData.toEntity(): RawSensorDataEntity {
@@ -82,6 +83,7 @@ fun Questionnaire.toEntity(): QuestionnaireEntity{
         emptyStomach=this.emptyStomach,
         caffeinatedDrink=this.caffeinatedDrink,
         impairmentLevel=this.impairmentLevel,
+        date=this.date, // ISO 8601 format
         plansToDrive=this.plansToDrive
     )
 }
@@ -100,6 +102,7 @@ fun QuestionnaireEntity.toModel(): Questionnaire{
         emptyStomach=this.emptyStomach,
         caffeinatedDrink=this.caffeinatedDrink,
         impairmentLevel=this.impairmentLevel,
+        date=this.date, // ISO 8601 format
         plansToDrive=this.plansToDrive
     )
 }
@@ -256,6 +259,7 @@ fun LocationEntity.toDomainModel(): LocationData {
         date = this.date,
         speed = this.speed.toDouble(),
         distance = this.distance.toDouble(),
+        speedLimit = this.speedLimit,
         processed = this.processed,
         sync = this.sync
     )
@@ -272,6 +276,7 @@ fun LocationData.toEntity(): LocationEntity {
         date = this.date!!,
         speed = this.speed!!.toFloat(),
         distance = this.distance!!.toFloat(),
+        speedLimit = this.speedLimit,
         processed = this.processed,
         sync = this.sync
     )

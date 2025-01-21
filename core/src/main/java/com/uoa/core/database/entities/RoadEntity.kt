@@ -28,5 +28,6 @@ data class RoadEntity (
     val roadType: String,
    val speedLimit: Int,
     val latitude: Double,
-   val longitude: Double
+   val longitude: Double,
+   val synced: Boolean?=false
 )

@@ -1,5 +1,6 @@
 package com.uoa.driveafrica
 
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
@@ -12,6 +13,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navOptions
 import com.uoa.core.ui.TrackDisposableJank
+import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
+import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.internetconnectivity.NetworkMonitor
 //import com.uoa.core.utils.TimeZoneMonitor
 import com.uoa.core.utils.HOME_SCREEN_ROUTE
@@ -23,31 +26,31 @@ import com.uoa.driveafrica.presentation.daappnavigation.TopLevelDestinations
 import com.uoa.nlgengine.presentation.ui.reportNavigation.FILTER_SCREEN_ROUTE
 import com.uoa.nlgengine.presentation.ui.reportNavigation.REPORT_SCREEN_ROUTE
 import com.uoa.sensor.presentation.ui.sensornavigation.SENSOR_CONTROL_SCREEN_ROUTE
+import android.app.Application
+import androidx.compose.ui.platform.LocalContext
+import com.uoa.core.utils.ENTRYPOINT_ROUTE
 
 @Composable
 fun rememberDAAppState(
     networkMonitor: NetworkMonitor,
-//    timeZoneMonitor: TimeZoneMonitor,
-//    tripDataRepo: TripDataRepositoryImpl,
-//    driverProfileRepo: DriverProfileRepository,
-    coroutineScope: CoroutineScope= rememberCoroutineScope(),
-    navController: NavHostController= rememberNavController(),
+    coroutineScope: CoroutineScope = rememberCoroutineScope(),
+    navController: NavHostController = rememberNavController(),
 ): DAAppState {
+    // Get the current context from Composition
+    val context = LocalContext.current.applicationContext
+
     NavigationTrackingSideEffect(navController)
     return remember(
         networkMonitor,
-//        timeZoneMonitor,
-//        tripDataRepo,
-//        driverProfileRepo,
         coroutineScope,
-        navController,) {
+        navController,
+        context,
+    ) {
         DAAppState(
             networkMonitor = networkMonitor,
-//            timeZoneMonitor = timeZoneMonitor,
-//            tripDataRepo=tripDataRepo,
-//            driverProfileRepo=driverProfileRepo,
-            coroutineScope = coroutineScope,
             navController = navController,
+            coroutineScope = coroutineScope,
+            context = context // Pass it here
         )
     }
 }
@@ -59,7 +62,8 @@ class DAAppState(
 //    timeZoneMonitor: TimeZoneMonitor,
 //    tripDataRepo: TripDataRepositoryImpl,
 //    driverProfileRepo: DriverProfileRepository,
-    coroutineScope: CoroutineScope
+    coroutineScope: CoroutineScope,
+    private val context: Context
 ) {
     val currentDestination: NavDestination?
         @Composable get() = navController.currentBackStackEntryAsState().value?.destination
@@ -100,24 +104,40 @@ class DAAppState(
      */
     fun navigateToTopLevelDestination(topLevelDestination: TopLevelDestinations) {
         val topLevelNavOptions = navOptions {
-            // Pop up to the start destination of the graph to
-            // avoid building up a large stack of destinations
-            // on the back stack as users select items
+            // Pop up to the start destination of the graph to avoid building
+            // up a large stack of destinations on the back stack
             popUpTo(navController.graph.findStartDestination().id) {
                 saveState = true
             }
-            // Avoid multiple copies of the same destination when
-            // reselecting the same item
+            // Avoid multiple copies of the same destination when reselecting
             launchSingleTop = true
             // Restore state when reselecting a previously selected item
             restoreState = true
         }
 
+
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val savedProfileId = prefs.getString(DRIVER_PROFILE_ID, null)
+
         when (topLevelDestination) {
-            TopLevelDestinations.REPORTS -> navController.navigate(FILTER_SCREEN_ROUTE, topLevelNavOptions)
-//            TopLevelDestinations.SEARCH -> navController.navigate(SENSOR_CONTROL_SCREEN_ROUTE, topLevelNavOptions)
-            TopLevelDestinations.RECORD_TRIP -> navController.navigate(SENSOR_CONTROL_SCREEN_ROUTE, topLevelNavOptions)
-            TopLevelDestinations.HOME -> navController.navigate(HOME_SCREEN_ROUTE, topLevelNavOptions)
+            TopLevelDestinations.REPORTS -> {
+                navController.navigate(FILTER_SCREEN_ROUTE, topLevelNavOptions)
+            }
+            TopLevelDestinations.RECORD_TRIP -> {
+                navController.navigate(SENSOR_CONTROL_SCREEN_ROUTE, topLevelNavOptions)
+            }
+            TopLevelDestinations.HOME -> {
+                // IMPORTANT: We must supply the actual profileId in the route
+                if (savedProfileId != null) {
+                    // Build the full route: "homeScreen/<profile-id>"
+                    navController.navigate("homeScreen/$savedProfileId", topLevelNavOptions)
+                } else {
+                    // If no profile ID exists, decide how you want to handle it.
+                    // For example, you might navigate to the entry point or show a warning.
+                    navController.navigate(ENTRYPOINT_ROUTE, topLevelNavOptions)
+                    // Or show a Toast/snackbar, etc.
+                }
+            }
         }
     }
 

@@ -25,5 +25,15 @@ suspend fun updateRawSensorData(rawSensorData: RawSensorDataEntity)
 suspend fun deleteAllRawSensorData()
 suspend fun deleteRawSensorDataByIds(ids: List<UUID>)
 suspend fun getAllRawSensorDataInChunks(tripId: UUID,
-                                            chunkSize: Int = 1000): Flow<List<RawSensorDataEntity>>
+                                        chunkSize: Int = 1000): Flow<List<RawSensorDataEntity>>
+    /**
+     * Atomic method that:
+     * 1) Inserts the raw sensor data
+     * 2) Analyzes for unsafe behavior
+     * 3) Runs AI model logic
+     * 4) Marks data (and related location) as processed
+     *
+     * Should run in a single transaction.
+     */
+    suspend fun processAndStoreSensorData(bufferCopy: List<RawSensorData>)
 }

@@ -4,6 +4,8 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.uoa.core.utils.DateUtils
+import java.util.Date
 import java.util.UUID
 
 // Data Model
@@ -32,5 +34,6 @@ data class QuestionnaireEntity(
     val emptyStomach: Boolean,
     val caffeinatedDrink: Boolean,
     val impairmentLevel: Int,
+    val date: Date,
     val plansToDrive: Boolean
 )

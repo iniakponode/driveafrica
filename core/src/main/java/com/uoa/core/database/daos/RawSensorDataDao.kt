@@ -57,8 +57,16 @@ interface RawSensorDataDao {
     @Query("SELECT * FROM raw_sensor_data WHERE sync = :synced")
     suspend fun getSensorDataBySyncStatus(synced: Boolean): List<RawSensorDataEntity>
 
-    @Query("SELECT * FROM raw_sensor_data WHERE sync= :synced AND processed= :processed")
-    suspend fun getSensorDataBySyncAndProcessedStatus(synced: Boolean, processed: Boolean): List<RawSensorDataEntity>
+    @Query("""
+                SELECT * FROM raw_sensor_data 
+                WHERE sync = :synced AND processed = :processed
+                LIMIT 3000
+           """)
+    suspend fun getSensorDataBySyncAndProcessedStatus(
+        synced: Boolean,
+        processed: Boolean
+    ): List<RawSensorDataEntity>
+
 
     @Query("SELECT * FROM raw_sensor_data WHERE id = :id")
     suspend fun getRawSensorDataById(id: UUID): RawSensorDataEntity?

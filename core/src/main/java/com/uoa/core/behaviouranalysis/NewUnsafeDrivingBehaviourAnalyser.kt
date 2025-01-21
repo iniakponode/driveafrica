@@ -2,16 +2,25 @@ package com.uoa.core.behaviouranalysis
 
 import android.content.Context
 import com.uoa.core.database.entities.RawSensorDataEntity
+import com.uoa.core.database.repository.LocationRepository
+import com.uoa.core.model.LocationData
 import com.uoa.core.model.UnsafeBehaviourModel
 import com.uoa.core.utils.PreferenceUtils
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sqrt
 
-class NewUnsafeDrivingBehaviourAnalyser {
+@Singleton
+class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
+    private val locationRepository: LocationRepository // Injected repository
+) {
+
     private val accelerometerWindow = ArrayDeque<RawSensorDataEntity>()
     private val rotationWindow = ArrayDeque<RawSensorDataEntity>()
     private val speedWindow = ArrayDeque<RawSensorDataEntity>()
@@ -46,10 +55,10 @@ class NewUnsafeDrivingBehaviourAnalyser {
         val rms = sqrt(accelerometerWindow.map { calculateAccelerationMagnitude(it.values).pow(2) }.average())
         return when {
             rms > ACCELERATION_THRESHOLD -> {
-                createUnsafeBehavior("Harsh Acceleration", accelerometerWindow.last(), rms.toFloat(),context)
+                createUnsafeBehavior("Harsh Acceleration", accelerometerWindow.last(), rms.toFloat(), context)
             }
             rms < BRAKING_THRESHOLD -> {
-                createUnsafeBehavior("Harsh Braking", accelerometerWindow.last(), rms.toFloat(),context)
+                createUnsafeBehavior("Harsh Braking", accelerometerWindow.last(), rms.toFloat(), context)
             }
             else -> null
         }
@@ -58,18 +67,67 @@ class NewUnsafeDrivingBehaviourAnalyser {
     private fun analyzeRotationData(context: Context): UnsafeBehaviourModel? {
         val rms = sqrt(rotationWindow.map { calculateRotationMagnitude(it.values).pow(2) }.average())
         return if (rms > SWERVING_THRESHOLD) {
-            createUnsafeBehavior("Swerving", rotationWindow.last(), rms.toFloat(),context)
+            createUnsafeBehavior("Swerving", rotationWindow.last(), rms.toFloat(), context)
         } else {
             null
         }
     }
 
-    private fun analyzeSpeedData(context: Context): UnsafeBehaviourModel? {
-        val averageSpeed = speedWindow.map { it.values[0] }.average()
-        return if (averageSpeed > SPEED_LIMIT) {
-            createUnsafeBehavior("Speeding", speedWindow.last(), averageSpeed.toFloat(),context)
-        } else {
-            null
+    private suspend fun analyzeSpeedData(context: Context): UnsafeBehaviourModel? {
+        val speedValues = speedWindow.mapNotNull { data ->
+            data.locationId?.let { locationId ->
+                fetchLocationDataById(locationId)?.speed
+            } ?: run {
+                if (data.sensorType == ACCELEROMETER_TYPE) calculateSpeedFromAccelerometer(data.values) else null
+            }
+        }
+
+// Step 1: Extract a representative locationId from the speedWindow (e.g., the first non-null one)
+        val firstLocationId = speedWindow.firstNotNullOfOrNull { it.locationId }
+
+        if (speedValues.isNotEmpty() && firstLocationId != null) {
+            val averageSpeed = speedValues.average()
+
+            // Step 2: Fetch location data using the representative locationId
+            val locationData = fetchLocationDataById(firstLocationId)
+
+            // Step 3: Determine effective speed limit as Double
+            val effectiveSpeedLimit: Double = if (locationData?.speedLimit != null && locationData.speedLimit.toInt() != 0) {
+                locationData.speedLimit.toDouble()
+            } else {
+                SPEED_LIMIT.toDouble()
+            }
+
+            // Step 4: Compare average speed to the effective speed limit
+            return if (averageSpeed > effectiveSpeedLimit) {
+                createUnsafeBehavior("Speeding", speedWindow.last(), averageSpeed.toFloat(), context)
+            } else {
+                null
+            }
+        }
+
+        return null
+
+
+        return null
+    }
+
+    private suspend fun fetchLocationDataById(locationId: UUID): LocationData? {
+        val locationEntity = locationRepository.getLocationById(locationId)
+        return locationEntity?.let {
+            LocationData(
+                id = it.id,
+                latitude = it.latitude,
+                longitude = it.longitude,
+                altitude = it.altitude,
+                speed = it.speed.toDouble(),
+                distance = it.distance.toDouble(),
+                timestamp = it.timestamp,
+                date = it.date,
+                speedLimit = it.speedLimit,
+                processed = it.processed,
+                sync = it.sync
+            )
         }
     }
 
@@ -124,21 +182,26 @@ class NewUnsafeDrivingBehaviourAnalyser {
         return sqrt(values[0].pow(2) + values[1].pow(2) + values[2].pow(2))
     }
 
+    private fun calculateSpeedFromAccelerometer(values: List<Float>): Double? {
+        if (values.size < 3) return null
+        val magnitude = calculateAccelerationMagnitude(values)
+        val timeInterval = 0.1 // Approximate interval (seconds) between accelerometer readings
+        return magnitude * timeInterval
+    }
+
     companion object {
         const val ACCELEROMETER_TYPE = 1
-        const val SPEED_TYPE = 2
+        const val SPEED_TYPE = 2 // Magnetometer or fallback logic
         const val ROTATION_VECTOR_TYPE = 11
 
-        // Thresholds
         const val ACCELERATION_THRESHOLD = 3.5f  // m/s²
         const val BRAKING_THRESHOLD = -3.5f      // m/s²
         const val SWERVING_THRESHOLD = 0.1f      // rad/s
-        const val SPEED_LIMIT = 30.0f            // m/s (~108 km/h)
+        const val SPEED_LIMIT = 27.78f // m/s (~100 km/h)
 
-        // Maximum expected excesses (for normalization)
-        const val MAX_ACCELERATION_EXCESS = 6.5f   // m/s² (e.g., up to 10 m/s²)
-        const val MAX_BRAKING_EXCESS = 6.5f        // m/s² (e.g., down to -10 m/s²)
-        const val MAX_SWERVING_EXCESS = 0.9f       // rad/s (e.g., up to 1 rad/s)
-        const val MAX_SPEED_EXCESS = 20.0f         // m/s (e.g., up to 50 m/s total speed)
+        const val MAX_ACCELERATION_EXCESS = 6.5f
+        const val MAX_BRAKING_EXCESS = 6.5f
+        const val MAX_SWERVING_EXCESS = 0.9f
+        const val MAX_SPEED_EXCESS = 2.778f
     }
 }

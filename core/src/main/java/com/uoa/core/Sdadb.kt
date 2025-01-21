@@ -1,9 +1,9 @@
 package com.uoa.core
 
 import com.uoa.core.database.daos.RawSensorDataDao
-import androidx.room.Database
-import androidx.room.RoomDatabase
-import androidx.room.TypeConverters
+import androidx.room.*
+//import androidx.room.RoomDatabase
+//import androidx.room.TypeConverters
 import com.uoa.core.database.daos.AIModelInputDao
 import com.uoa.core.database.daos.CauseDao
 //import com.uoa.core.database.daos.DbdaResultDao
@@ -52,7 +52,7 @@ import com.uoa.core.database.entities.UnsafeBehaviourEntity
                         QuestionnaireEntity::class],
                         version = 37)
 @TypeConverters(Converters::class)
-abstract class Sdaddb : RoomDatabase() {
+abstract class Sdadb : RoomDatabase() {
     abstract fun sensorDataDao(): SensorDataDao
 //    abstract fun dbdaResultDao(): DbdaResultDao
     abstract fun nlgReportDao(): NLGReportDao

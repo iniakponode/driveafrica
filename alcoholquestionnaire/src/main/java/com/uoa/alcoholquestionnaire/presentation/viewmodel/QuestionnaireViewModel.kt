@@ -15,6 +15,7 @@ import com.uoa.core.database.repository.QuestionnaireRepository
 import com.uoa.core.model.Questionnaire
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.core.utils.DateConversionUtils
 import kotlinx.coroutines.launch
 import com.uoa.core.utils.Resource
 import com.uoa.core.utils.toQuestionnaire
@@ -74,6 +75,7 @@ class QuestionnaireViewModel @javax.inject.Inject constructor(
                     emptyStomach = response.emptyStomach,
                     caffeinatedDrink = response.caffeinatedDrink,
                     impairmentLevel = response.impairmentLevel,
+                    date = DateConversionUtils.stringToDate(response.date)!!,
                     plansToDrive = response.plansToDrive
                 )
 

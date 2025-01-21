@@ -1,7 +1,6 @@
 package com.uoa.driveafrica
 
 import android.app.Application
-import android.content.Context
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import androidx.work.Constraints
@@ -10,6 +9,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.uoa.core.apiServices.workManager.DeleteLocalDataWorker
+import com.uoa.core.apiServices.workManager.UnsafeDrivingAnalysisWorker
 import com.uoa.core.apiServices.workManager.UploadRawSensorDataWorker
 //import androidx.work.Constraints
 //import androidx.work.ExistingPeriodicWorkPolicy
@@ -17,7 +17,7 @@ import com.uoa.core.apiServices.workManager.UploadRawSensorDataWorker
 //import androidx.work.PeriodicWorkRequestBuilder
 //import androidx.work.WorkManager
 //import com.uoa.core.apiServices.workManager.DeleteLocalDataWorker
-import com.uoa.core.apiServices.workManager.scheduleDataUploadWork
+//import com.uoa.core.apiServices.workManager.UnsafeDrivingAnalysisWorker
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -68,6 +68,20 @@ class App : Application(), Configuration.Provider {
                 ExistingPeriodicWorkPolicy.KEEP,
                 deleteWorkRequest
             )
+
+
+        val analysisWorkRequest = PeriodicWorkRequestBuilder<UnsafeDrivingAnalysisWorker>(
+            3, // repeat interval
+            TimeUnit.MINUTES
+        ).build()
+
+        WorkManager.getInstance(this)
+            .enqueueUniquePeriodicWork(
+                "UnsafeDrivingAnalysisWork",
+                ExistingPeriodicWorkPolicy.KEEP, // or REPLACE, depending on your needs
+                analysisWorkRequest
+            )
+
 
 
     }

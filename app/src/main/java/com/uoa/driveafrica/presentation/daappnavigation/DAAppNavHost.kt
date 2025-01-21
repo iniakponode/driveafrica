@@ -6,7 +6,10 @@ import androidx.navigation.compose.NavHost
 import com.uoa.alcoholquestionnaire.presentation.ui.questionnairenavigation.alcoholQuestionnaireScreen
 import com.uoa.core.utils.ENTRYPOINT_ROUTE
 import com.uoa.core.utils.ONBOARDING_SCREEN_ROUTE
+import com.uoa.core.utils.WELCOME_ROUTE
 import com.uoa.driveafrica.DAAppState
+import com.uoa.driveafrica.ui.splashscreens.disclaimerScreen
+import com.uoa.driveafrica.ui.splashscreens.welcomeScreen
 import com.uoa.driverprofile.presentation.ui.navigation.drivingTipDetailsScreen
 import com.uoa.driverprofile.presentation.ui.navigation.homeScreen
 
@@ -21,7 +24,7 @@ fun DAAppNavHost(
     appState: DAAppState,
     onShowSnackbar: suspend (String, String?) -> Boolean,
     modifier: Modifier = Modifier,
-    startDestination: String = ENTRYPOINT_ROUTE
+    startDestination: String = WELCOME_ROUTE
 ) {
     val navController = appState.navController
     NavHost(
@@ -31,6 +34,8 @@ fun DAAppNavHost(
     ) {
 
         // Include the entry point screen
+        welcomeScreen(navController)
+        disclaimerScreen(navController)
         entryPointScreen(navController)
 
         onboardingScreen(

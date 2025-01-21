@@ -5,6 +5,7 @@ import com.uoa.core.database.daos.RawSensorDataDao
 import android.content.Context
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.uoa.core.behaviouranalysis.NewUnsafeDrivingBehaviourAnalyser
 import com.uoa.core.database.daos.LocationDao
 import com.uoa.core.database.repository.AIModelInputRepository
 import com.uoa.core.database.repository.LocationRepository
@@ -39,12 +40,12 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object HardwareModuleProvider{
 
-    @Provides
-    @Singleton
-    fun provideRawSensorDataRepository(rawSensorDataDao: RawSensorDataDao): RawSensorDataRepositoryImpl {
-        // Provide an instance of RawSensorDataRepositoryImpl
-        return RawSensorDataRepositoryImpl(rawSensorDataDao)
-    }
+//    @Provides
+//    @Singleton
+//    fun provideRawSensorDataRepository(rawSensorDataDao: RawSensorDataDao): RawSensorDataRepositoryImpl {
+//        // Provide an instance of RawSensorDataRepositoryImpl
+//        return RawSensorDataRepositoryImpl(rawSensorDataDao)
+//    }
 
     @Provides
     @Singleton
@@ -128,10 +129,13 @@ object HardwareModuleProvider{
     @Singleton
     fun provideBufferManager(
         rawSensorDataRepository: RawSensorDataRepository,
-        unsafeBehaviourRepository: UnsafeBehaviourRepository,
-        @ApplicationContext context: Context
+//        unsafeBehaviourRepository: UnsafeBehaviourRepository,
+//        newUnsafeDrivingBehaviourAnalyser: NewUnsafeDrivingBehaviourAnalyser,
+//        @ApplicationContext context: Context
     ): SensorDataBufferManager {
-        return SensorDataBufferManager(rawSensorDataRepository,unsafeBehaviourRepository, context)
+        return SensorDataBufferManager(rawSensorDataRepository
+//            ,unsafeBehaviourRepository, context, newUnsafeDrivingBehaviourAnalyser
+        )
     }
 
     @Provides

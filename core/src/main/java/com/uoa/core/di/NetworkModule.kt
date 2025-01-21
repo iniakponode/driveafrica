@@ -4,7 +4,7 @@ import android.content.Context
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.gson.GsonBuilder
 import com.uoa.core.network.NetworkMonitorImpl
-import com.uoa.core.network.apiservices.OSMApiService
+import com.uoa.core.network.apiservices.OSMRoadApiService
 import com.uoa.core.network.apiservices.ChatGPTApiService
 import com.uoa.core.network.apiservices.GeminiApiService
 import com.uoa.core.nlg.repository.NLGEngineRepository
@@ -19,42 +19,53 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import com.uoa.core.BuildConfig
+import com.uoa.core.network.apiservices.OSMSpeedLimitApiService
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
-
+/**
+ * NetworkModule: Provides Retrofit instances and API services.
+ *
+ * This code integrates with OpenStreetMap's Nominatim service for reverse geocoding.
+ * Please note:
+ *  - You must include appropriate attribution for OpenStreetMap data:
+ *    "Data © OpenStreetMap contributors"
+ *  - Review the usage policy and rate limits:
+ *    https://operations.osmfoundation.org/policies/nominatim/
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
     private const val CHATGPT_BASE_URL = "https://api.openai.com/v1/"
-    private const val GEMINI_BASE_UR = "https://api.gemini.com/v1/"
-    private const val GEMINI_BASE_URL="https://generativelanguage.googleapis.com/"
-    private const val ROAD_ADDRESS_BASE_URL = "http://nominatim.openstreetmap.org/"
+
+    // Removed GEMINI_BASE_UR and left only GEMINI_BASE_URL below
+    private const val GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/"
+
+    // Renamed to clarify it’s for Nominatim
+    private const val NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/"
+
     private const val DEFAULT_BASE_URL = "https://safe-drive-africa-9fd1c750b777.herokuapp.com/"
-//    private const val DRIVE_AFRICA_BASE_URL="http://localhost:8000/"
 
-//    private const val DRIVE_AFRICA_BASE_URL = BuildConfig.DRIVE_AFRICA_BASE_URL
-
+    //    private const val DRIVE_AFRICA_BASE_URL="http://localhost:8000/"
+    //    private const val DRIVE_AFRICA_BASE_URL = BuildConfig.DRIVE_AFRICA_BASE_URL
 
     private val gson by lazy {
         GsonBuilder().create()
     }
 
-    // Function to create a new OkHttpClient.Builder with logging interceptor
+    // Create a new OkHttpClient.Builder with logging interceptor
     private fun getHttpClientBuilder(): OkHttpClient.Builder {
         return OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS) // Increase connection timeout
-            .writeTimeout(30, TimeUnit.SECONDS)   // Increase write timeout
-            .readTimeout(30, TimeUnit.SECONDS)    // Increase read timeout
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
             .addInterceptor(HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BODY
             })
     }
 
-
-
-    // Function to get Retrofit instance with optional headers
+    // Get Retrofit instance with optional headers
     private fun getRetrofitInstance(
         baseUrl: String,
         headers: Map<String, String>? = null
@@ -80,16 +91,16 @@ object NetworkModule {
             .build()
     }
 
-
     // Provide ChatGPTApiService
     @Provides
     @Singleton
     fun provideChatGPTApiService(@ApplicationContext context: Context): ChatGPTApiService {
-//        val apiKey = getApiKeyFromSecureStorage(context) // Implement this method securely
-
         val apiKey = BuildConfig.CHAT_GPT_API_KEY
         if (apiKey.isEmpty()) {
-            throw IllegalStateException("ChatGPT API key not found. Please set the API key in local.properties.")
+            throw IllegalStateException(
+                "ChatGPT API key not found. " +
+                        "Please set the API key in local.properties."
+            )
         }
 
         return getRetrofitInstance(
@@ -98,16 +109,16 @@ object NetworkModule {
         ).create(ChatGPTApiService::class.java)
     }
 
-    // Provide GeminiApiService
+    // Provide GeminiApiService (for generative language API)
     @Provides
     @Singleton
     fun provideGeminiApiService(@ApplicationContext context: Context): GeminiApiService {
-//        val apiKey = getGeminiApiKey(context) // Implement this method securely
-//        val payload = getGeminiPayload(context) // Implement this method securely
-
         val apiKey = BuildConfig.GEMINI_API_KEY
         if (apiKey.isEmpty()) {
-            throw IllegalStateException("Gemini API key not found. Please set the API key in local.properties.")
+            throw IllegalStateException(
+                "Gemini API key not found. " +
+                        "Please set the API key in local.properties."
+            )
         }
 
         return getRetrofitInstance(
@@ -116,37 +127,75 @@ object NetworkModule {
         ).create(GeminiApiService::class.java)
     }
 
-    // Provide OSMApiService
+    /**
+     * Provides OSMRoadApiService (Nominatim)
+     *
+     * Data © OpenStreetMap contributors
+     * https://operations.osmfoundation.org/policies/nominatim/
+     */
     @Provides
     @Singleton
-    fun provideOSMApiService(): OSMApiService {
+    fun provideOSMApiService(): OSMRoadApiService {
+
+
+        // For compliance, identify your app and contact
+        val customHeaders = mapOf(
+            "User-Agent" to "DriveAfrica/1.0 (i.thompson.21@abdn.ac.uk)",
+            "Referer" to "https://github.com/iniakponode/driveafrica"
+        )
         return getRetrofitInstance(
-            baseUrl = ROAD_ADDRESS_BASE_URL
-        ).create(OSMApiService::class.java)
+            baseUrl = NOMINATIM_BASE_URL
+        ).create(OSMRoadApiService::class.java)
     }
+
+
+
+    /**
+     * Provides OSMRoadApiService (Nominatim)
+     *
+     * Data © OpenStreetMap contributors
+     * https://operations.osmfoundation.org/policies/nominatim/
+     */
+    private const val OVERPASS_BASE_URL = "https://overpass-api.de/api/"
 
     @Provides
-    fun provideGenerativeModel(): GenerativeModel {
-        // Initialize and return your GenerativeModel instance here
-        return GenerativeModel("gemini-1.5-flash", apiKey = BuildConfig.GEMINI_API_KEY) // Replace with your actual initialization
+    @Singleton
+    fun provideOSMSpeedLimitApiService(): OSMSpeedLimitApiService {
+        val customHeaders = mapOf(
+            "User-Agent" to "DriveAfrica/1.0 (i.thompson.21@abdn.ac.uk)",
+            "Referer" to "https://github.com/iniakponode/driveafrica"
+        )
+
+        return getRetrofitInstance(
+            baseUrl = OVERPASS_BASE_URL,
+            headers = customHeaders
+        ).create(OSMSpeedLimitApiService::class.java)
     }
 
-    // Provide NLGEngineRepository
+
+    // Provide a GenerativeModel (example)
+    @Provides
+    fun provideGenerativeModel(): GenerativeModel {
+        // Replace with your actual initialization
+        return GenerativeModel("gemini-1.5-flash", apiKey = BuildConfig.GEMINI_API_KEY)
+    }
+
+    // Provide NLGEngineRepository (example)
     @Provides
     @Singleton
     fun provideNLGEngineRepository(
         chatGPTApiService: ChatGPTApiService,
         geminiApiService: GeminiApiService,
-        osmApiService: OSMApiService
+        osmRoadApiService: OSMRoadApiService
     ): NLGEngineRepository {
         return NLGEngineRepositoryImpl(
             chatGPTApiService,
             geminiApiService,
-            osmApiService
+            osmRoadApiService
         )
     }
 
-
+    // Provide network monitor (example)
     @Provides
     @Singleton
     fun provideNetworkMonitor(@ApplicationContext context: Context): NetworkMonitor {

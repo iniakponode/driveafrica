@@ -39,6 +39,7 @@ fun NavGraphBuilder.homeScreen(
         }
         HomeScreenRoute(
             navController = navController,
+            profileId = profileId // pass it into your route if needed
         )
     }
 }

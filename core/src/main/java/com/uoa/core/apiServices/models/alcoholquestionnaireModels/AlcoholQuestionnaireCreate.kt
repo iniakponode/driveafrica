@@ -15,6 +15,7 @@ data class AlcoholQuestionnaireCreate (
     val emptyStomach: Boolean,
     val caffeinatedDrink: Boolean,
     val impairmentLevel: Int,
+    val date: String?, // ISO 8601 format
     val plansToDrive: Boolean
 ) {
     override fun toString(): String {

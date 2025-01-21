@@ -24,7 +24,8 @@ class DeleteLocalDataWorker @AssistedInject constructor(
     private val locationLocalRepository: LocationRepository,
     private val unsafeBehavioursLocalRepository: UnsafeBehaviourRepository,
     private val aiModelInputLocalRepository: AIModelInputRepository,
-    private val reportStatisticsRepository: ReportStatisticsRepository
+    private val reportStatisticsRepository: ReportStatisticsRepository,
+    private val rawSensorDataRepository: RawSensorDataRepository
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -47,7 +48,7 @@ class DeleteLocalDataWorker @AssistedInject constructor(
         val syncedAndProcessedLocations = locationLocalRepository.getSensorDataBySyncAndProcessedStatus(true, true)
         val syncedAndProcessedAIModelInputs = aiModelInputLocalRepository.getAiModelInputsBySyncAndProcessedStatus(true, true)
         val syncedAndProcessedReportStatistics = reportStatisticsRepository.getReportStatisticsBySyncAndProcessedStatus(true, true)
-
+        val syncedAndProcessedRawSensorData= rawSensorDataRepository.getRawSensorDataBySyncAndProcessedStatus(true,true)
         // 2) If all are empty, nothing to delete
         if (
             syncedAndProcessedRawData.isEmpty() &&

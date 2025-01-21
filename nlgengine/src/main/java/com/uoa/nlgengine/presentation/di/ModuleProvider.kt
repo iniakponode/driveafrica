@@ -47,7 +47,7 @@ object ModuleProvider {
 //    @Provides
 //    fun providesNLGEngineRepository(
 //        @ChatGPTRetrofit chatGPTApiService: ChatGPTApiService,
-//        @BaseRetrofit osmRoadApiService: OSMApiService
+//        @BaseRetrofit osmRoadApiService: OSMRoadApiService
 //    ): NLGEngineRepository {
 //        return NLGEngineRepositoryImpl(chatGPTApiService)
 //    }

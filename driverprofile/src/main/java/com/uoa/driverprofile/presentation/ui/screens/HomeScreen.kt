@@ -87,7 +87,8 @@ fun HomeScreen(
 @Composable
 fun HomeScreenRoute(
     navController: NavController,
-    drivingTipsViewModel: DrivingTipsViewModel = hiltViewModel()
+    drivingTipsViewModel: DrivingTipsViewModel = hiltViewModel(),
+    profileId: UUID
 ) {
     val gpt_drivingTips by drivingTipsViewModel.gptDrivingTips.observeAsState(emptyList())
     val gemini_tips by drivingTipsViewModel.geminiDrivingTips.observeAsState(emptyList())

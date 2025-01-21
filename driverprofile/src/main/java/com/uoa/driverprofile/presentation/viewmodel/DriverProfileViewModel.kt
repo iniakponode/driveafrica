@@ -119,26 +119,37 @@ class DriverProfileViewModel @Inject constructor(
 
     fun insertDriverProfile(profileId: UUID, email: String, callback: (Boolean) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
+            // 1) Attempt local insertion first
+            val localResult = runCatching {
+                val entity = DriverProfileEntity(email = email, driverProfileId = profileId, sync = false)
+                insertDriverProfileUseCase.execute(entity)
+            }
+
+            // If local insertion fails, report failure immediately
+            if (localResult.isFailure) {
+                withContext(Dispatchers.Main) {
+                    callback(false)
+                    _driverProfileUploadSuccess.value = false
+                }
+                return@launch
+            }
+
+            // 2) Prepare the payload for remote creation
             val driverProfileCreate = DriverProfileCreate(
                 driverProfileId = profileId,
                 email = email,
                 sync = true
             )
+
+            // 3) Attempt remote creation after local insertion
             val remoteResult = driverProfileApiRepository.createDriverProfile(driverProfileCreate)
 
-            if (remoteResult is Resource.Success) {
-                val localResult = runCatching {
-                    val entity = DriverProfileEntity(email = email, driverProfileId = profileId, sync=true)
-                    insertDriverProfileUseCase.execute(entity)
-                }
-                withContext(Dispatchers.Main) {
-                    callback(localResult.isSuccess)
-                    if (localResult.isSuccess) {
-                        _driverProfileUploadSuccess.value = true
-                    }
-                }
-            } else {
-                withContext(Dispatchers.Main) {
+            // 4) Handle the remote result on the Main thread
+            withContext(Dispatchers.Main) {
+                if (remoteResult is Resource.Success) {
+                    callback(true)
+                    _driverProfileUploadSuccess.value = true
+                } else {
                     callback(false)
                     _driverProfileUploadSuccess.value = false
                 }

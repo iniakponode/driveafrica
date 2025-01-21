@@ -19,6 +19,14 @@ import androidx.compose.ui.unit.sp
 import com.uoa.core.apiServices.models.alcoholquestionnaireModels.AlcoholQuestionnaireCreate
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.core.utils.DateConversionUtils
+import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import java.util.UUID
 
 @Composable
@@ -42,6 +50,15 @@ fun AlcoholQuestionnaireScreen(
     val context = LocalContext.current
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     val savedProfileId = prefs.getString(DRIVER_PROFILE_ID, null)
+
+    // Create and configure the SimpleDateFormat for ISO 8601 format in UTC
+    val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+    sdf.timeZone = TimeZone.getTimeZone("UTC")
+
+    val timestamp = Instant.now().toEpochMilli()
+
+// Format the current date
+    val currentIsoDate = sdf.format(Date())
 
     Column(
         modifier = Modifier
@@ -182,6 +199,7 @@ fun AlcoholQuestionnaireScreen(
                     emptyStomach = emptyStomach,
                     caffeinatedDrink = caffeinatedDrink,
                     impairmentLevel = impairmentLevel.toInt(),
+                    date=DateConversionUtils.dateToString(Date(timestamp)),
                     plansToDrive = plansToDrive
                 )
                 onSubmit(response) // Pass the AlcoholQuestionnaireCreate object

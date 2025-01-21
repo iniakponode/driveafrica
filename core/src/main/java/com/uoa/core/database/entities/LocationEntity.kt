@@ -30,6 +30,7 @@ data class LocationEntity(
     val altitude: Double,
     val speed: Float,
     val distance: Float,
+    val speedLimit: Double,
     val processed: Boolean= false,
     var sync: Boolean
 )

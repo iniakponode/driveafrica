@@ -34,7 +34,7 @@ class UpdateTripUseCase @Inject constructor(private val tripRepository: TripData
                     endTime = System.currentTimeMillis(),
                     endDate = Date(),
                     influence=influence,
-                    synced = true
+                    synced = false
                 )
                 tripRepository.updateTrip(tripToUpdate)
                 Log.i("Trip", "Update successful")

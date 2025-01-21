@@ -16,6 +16,7 @@ data class AlcoholQuestionnaireResponse(
     val emptyStomach: Boolean,
     val caffeinatedDrink: Boolean,
     val impairmentLevel: Int,
+    val date: String?, // ISO 8601 format
     val plansToDrive: Boolean
 ) {
     override fun toString(): String {
@@ -24,6 +25,7 @@ data class AlcoholQuestionnaireResponse(
                 "wineQuantity=$wineQuantity, spiritsQuantity=$spiritsQuantity, " +
                 "firstDrinkTime=$firstDrinkTime, lastDrinkTime=$lastDrinkTime, " +
                 "emptyStomach=$emptyStomach, caffeinatedDrink=$caffeinatedDrink, " +
+                "date=$date," +
                 "impairmentLevel=$impairmentLevel, plansToDrive=$plansToDrive)"
     }
 }

@@ -44,6 +44,8 @@ android {
         }
         debug {
             buildConfigField("String", "DRIVE_AFRICA_BASE_URL", "\"https://safe-drive-africa-9fd1c750b777.herokuapp.com/\"")
+            buildConfigField("String", "EMULATOR_BASE_URL", "\"http://10.0.2.2:8000/\"")
+            buildConfigField("String", "NOMINATIM_BASE_URL", "\"https://nominatim.openstreetmap.org/\"")
         }
     }
     compileOptions {
@@ -84,6 +86,13 @@ dependencies {
     implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.androidx.navigation.runtime.ktx)
     implementation(libs.androidx.metrics)
+
+//    Moshi
+    ksp(libs.moshi.codegen)
+    implementation(libs.moshi.converter)
+    implementation(libs.moshi.lib)
+    implementation(libs.moshi.kotlin)
+
 //    implementation(libs.androidx.pagination)
 //    implementation(libs.androidx.ui.desktop)
     implementation(libs.navigation.compose)

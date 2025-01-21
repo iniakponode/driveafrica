@@ -1,11 +1,13 @@
 package com.uoa.sensor.repository
 
-import android.R
+import android.content.Context
+import android.util.Log
 import com.uoa.core.database.daos.RawSensorDataDao
 import com.uoa.core.database.entities.RawSensorDataEntity
 import com.uoa.core.database.repository.RawSensorDataRepository
 import com.uoa.core.model.RawSensorData
 import com.uoa.core.utils.toDomainModel
+
 
 import com.uoa.core.utils.toEntity
 import kotlinx.coroutines.Dispatchers
@@ -13,11 +15,23 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
+import com.uoa.core.Sdadb
+import androidx.room.Transaction
+import com.uoa.core.behaviouranalysis.NewUnsafeDrivingBehaviourAnalyser
+import com.uoa.core.database.daos.LocationDao
+import com.uoa.core.database.daos.UnsafeBehaviourDao
+import com.uoa.core.database.repository.AIModelInputRepository
+import com.uoa.core.database.repository.ProcessAndStoreSensorData
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.runBlocking
+import javax.inject.Inject
 
-class RawSensorDataRepositoryImpl(private val rawSensorDataDao: RawSensorDataDao):
+class RawSensorDataRepositoryImpl @Inject constructor(
+    private val rawSensorDataDao: RawSensorDataDao,
+    private val processAndStoreSensorData: ProcessAndStoreSensorData
+):
     RawSensorDataRepository {
 
     override fun getRawSensorDataBetween(start: LocalDate, end: LocalDate): Flow<List<RawSensorData>> {
@@ -113,4 +127,14 @@ class RawSensorDataRepositoryImpl(private val rawSensorDataDao: RawSensorDataDao
             rawSensorDataDao.getSensorDataByTripId(tripId)
         }
     }
+
+    /**
+     * A concrete repository implementation that uses Room.
+     * The @Transaction is done using either `withTransaction` or a DAO-based approach.
+     */
+    override suspend fun processAndStoreSensorData(bufferCopy: List<RawSensorData>) {
+        processAndStoreSensorData.processAndStoreSensorData(bufferCopy)
+    }
+
+
 }

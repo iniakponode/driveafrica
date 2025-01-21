@@ -7,15 +7,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uoa.core.database.repository.LocationRepository
 import com.uoa.core.database.repository.ReportStatisticsRepository
+import com.uoa.core.database.repository.RoadRepository
 import com.uoa.core.database.repository.TripDataRepository
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
 import com.uoa.core.model.LocationData
 import com.uoa.core.model.UnsafeBehaviourModel
-import com.uoa.core.network.apiservices.OSMApiService
+import com.uoa.core.network.apiservices.OSMRoadApiService
 import com.uoa.core.utils.toDomainModel
 import com.uoa.nlgengine.data.model.DateHourKey
 import com.uoa.nlgengine.data.model.HourlySummary
 import com.uoa.core.model.ReportStatistics
+import com.uoa.core.network.apiservices.OSMSpeedLimitApiService
 import com.uoa.nlgengine.data.model.UnsafeBehaviorChartEntry
 import com.uoa.nlgengine.domain.usecases.local.GetLastInsertedUnsafeBehaviourUseCase
 import com.uoa.core.utils.PeriodType
@@ -34,17 +36,18 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 import javax.inject.Inject
 import com.uoa.nlgengine.util.computeReportStatistics
-import kotlinx.datetime.LocalDate
 
 
 @HiltViewModel
 class NLGEngineViewModel @Inject constructor(
     private val locationRepository: LocationRepository,
     private val tripRepository: TripDataRepository,
-    private val osmApiService: OSMApiService,
+    private val osmRoadApiService: OSMRoadApiService,
     private val lastInsertedUnsafeBehaviourUseCase: GetLastInsertedUnsafeBehaviourUseCase,
     private val reportStatisticsRepository: ReportStatisticsRepository,
-    private val unsafeBehaviourRepository: UnsafeBehaviourRepository
+    private val unsafeBehaviourRepository: UnsafeBehaviourRepository,
+    private val osmSpeedLimitApiService: OSMSpeedLimitApiService,
+    private val roadRepository: RoadRepository,
 ) : ViewModel() {
 
     private val _isLoading = MutableStateFlow(false)
@@ -106,7 +109,9 @@ class NLGEngineViewModel @Inject constructor(
 
                     val reportStatistics = computeReportStatistics(
                         context,
-                        osmApiService,
+                        osmRoadApiService,
+                        osmSpeedLimitApiService,
+                        roadRepository,
                         startDate,
                         endDate,
                         periodType,

@@ -2,7 +2,7 @@
 //import androidx.room.Room
 //import androidx.test.core.app.ApplicationProvider
 //import androidx.test.ext.junit.runners.AndroidJUnit4
-//import com.uoa.core.Sdaddb
+//import com.uoa.core.Sdadb
 //import com.uoa.core.database.daos.TripDao
 //import com.uoa.core.database.entities.TripEntity
 //import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -19,14 +19,14 @@
 //@RunWith(AndroidJUnit4::class)
 //class TripDaoTest {
 //
-//    private lateinit var database: Sdaddb
+//    private lateinit var database: Sdadb
 //    private lateinit var tripDao: TripDao
 //
 //    @Before
 //    fun setUp() {
 //        database = Room.inMemoryDatabaseBuilder(
 //            ApplicationProvider.getApplicationContext(),
-//            Sdaddb::class.java
+//            Sdadb::class.java
 //        ).allowMainThreadQueries().build()
 //        tripDao = database.tripDao()
 //    }

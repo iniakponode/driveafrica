@@ -1,5 +1,6 @@
 package com.uoa.core.model
 
+import java.util.Date
 import java.util.UUID
 
 data class Questionnaire(
@@ -15,5 +16,6 @@ data class Questionnaire(
     val emptyStomach: Boolean,
     val caffeinatedDrink: Boolean,
     val impairmentLevel: Int,
+    val date: Date,
     val plansToDrive: Boolean
 )

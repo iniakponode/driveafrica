@@ -170,6 +170,7 @@ class LocationManager @Inject constructor(
 //            roadRepository.saveOrUpdateRoad(road)
 
             if (shouldRecordNewLocation(location)) {
+                val speedLimitMps = speedLimit * 0.44704
                 val locationData = LocationData(
                     id = UUID.randomUUID(),
                     latitude = location.latitude,
@@ -179,7 +180,7 @@ class LocationManager @Inject constructor(
                     distance = distance,
                     timestamp = location.time,
                     date = Date(location.time),
-                    speedLimit = speedLimit.toDouble(),
+                    speedLimit = speedLimitMps.toDouble(),
                     sync = false
                 )
 

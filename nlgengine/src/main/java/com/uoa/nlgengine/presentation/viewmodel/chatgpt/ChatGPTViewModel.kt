@@ -7,16 +7,29 @@ import com.uoa.core.nlg.repository.NLGEngineRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uoa.core.apiServices.services.nlgReportApiService.NLGReportApiRepository
+import com.uoa.core.database.entities.NLGReportEntity
+import com.uoa.core.database.repository.NLGReportRepository
+import com.uoa.core.database.repository.TripDataRepository
 import com.uoa.core.network.model.chatGPT.Message
 import com.uoa.core.network.model.chatGPT.RequestBody
+import com.uoa.core.utils.PeriodType
+import com.uoa.core.utils.PeriodUtils
+import com.uoa.core.utils.PeriodUtils.toJavaUtilDate
+import com.uoa.core.utils.toDomainModel
+import com.uoa.core.utils.toNLGReportCreate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
 class ChatGPTViewModel @Inject constructor(
-    private val nlgEngineRepository: NLGEngineRepository
+    private val nlgEngineRepository: NLGEngineRepository,
+    private val nlgReportRepository: NLGReportRepository,
+    private val nlgReportApiRepository: NLGReportApiRepository,
+    private val tripDataRepository: TripDataRepository
 ) : ViewModel() {
 
     private val _response = MutableLiveData<String>("")
@@ -89,10 +102,37 @@ class ChatGPTViewModel @Inject constructor(
 //        }
 //    }
 
-    fun getChatGPTPrompt(prompt: String) {
+    suspend fun getCachedReport(periodType: PeriodType): String?{
+        if (periodType== PeriodType.LAST_TRIP){
+            val tripId= tripDataRepository.getLastInsertedTrip()?.id
+
+            if (tripId!=null){
+                val cachedNlgReport=nlgReportRepository.getNlgReportsByTripId(tripId)
+
+                return cachedNlgReport.reportText
+            }
+            else{
+                return null
+            }
+        }
+        else{
+            val periodOfReport=PeriodUtils.getReportingPeriod(periodType)
+
+            if(periodOfReport!=null){
+                val cachedNlgReport=nlgReportRepository.getReportsBetweenDates(periodOfReport.first,periodOfReport.second)
+
+                return cachedNlgReport.reportText
+            }
+            else{
+                return null
+            }
+        }
+    }
+    fun promptChatGPTForResponse(prompt: String, periodType: PeriodType, driverProfileId: UUID) {
         viewModelScope.launch {
             _isLoading.value = true
-            try {
+        try {
+            if (getCachedReport(periodType) == null){
                 val systemMessageContent = """
             You are an assistant that generates driving behavior reports based on provided data. After generating the report, you will reflect on your response to ensure it includes the key components of the Theory of Planned Behavior (TPB) and adheres strictly to the provided data.
             """.trimIndent()
@@ -117,14 +157,18 @@ class ChatGPTViewModel @Inject constructor(
                 messages.add(Message(role = "assistant", content = initialReply))
 
                 // Step 2: Ask for reflection and revised report
-                messages.add(Message(role = "user", content = """
+                messages.add(
+                    Message(
+                        role = "user", content = """
                 Please reflect on your previous response to ensure it meets all specified criteria,
                 including the key components of the Theory of Planned Behavior (TPB). 
                 If any components are missing or need correction, 
                 provide a revised report that includes all necessary elements. 
                 Present only the final, corrected report to the user without including any reflection or internal notes.
                 Do not also mention the TPB keywords (Attitudes, Subjective Norms and Perceived Behavioral Control) in the report, other descriptive words should be used that drivers may easily understand if there is ever the need to mention those words.
-            """.trimIndent()))
+            """.trimIndent()
+                    )
+                )
 
                 val reflectionRequestBody = RequestBody(
                     model = "gpt-4-turbo",
@@ -133,28 +177,89 @@ class ChatGPTViewModel @Inject constructor(
                     temperature = 0f
                 )
 
-                val reflectionResponse = nlgEngineRepository.sendChatGPTPrompt(reflectionRequestBody)
-                val finalReply = reflectionResponse.choices.firstOrNull()?.message?.content ?: ""
+                val reflectionResponse =
+                    nlgEngineRepository.sendChatGPTPrompt(reflectionRequestBody)
+                val finalReply =
+                    reflectionResponse.choices.firstOrNull()?.message?.content ?: ""
 
                 // Assign the final reply to the response
                 _response.value = finalReply
                 _isLoading.value = false
 
+                if (periodType== PeriodType.LAST_TRIP){
+
+                    val lastTripId=tripDataRepository.getLastInsertedTrip()?.id
+                nlgReportRepository.insertReport(
+                    NLGReportEntity(
+                        id = UUID.randomUUID(),
+                        userId =driverProfileId,
+                        tripId = lastTripId,
+                        reportText = finalReply,
+                        createdDate = PeriodUtils.getReportingPeriod(PeriodType.TODAY)!!.first,
+                        synced = false
+                    )
+                )
+
+                nlgReportApiRepository.createNLGReport(
+                        NLGReportEntity(
+                            id = UUID.randomUUID(),
+                            userId =driverProfileId,
+                            startDate = PeriodUtils.getReportingPeriod(periodType)?.first!!,
+                            endDate = PeriodUtils.getReportingPeriod(periodType)?.second!!,
+                            reportText = finalReply,
+                            createdDate = PeriodUtils.getReportingPeriod(PeriodType.TODAY)!!.first,
+                            synced = true
+                        ).toDomainModel().toNLGReportCreate()
+                    )
+
+                }
+                else{
+                    nlgReportRepository.insertReport(
+                        NLGReportEntity(
+                            id = UUID.randomUUID(),
+                            userId =driverProfileId,
+                            startDate = PeriodUtils.getReportingPeriod(periodType)?.first!!,
+                            endDate = PeriodUtils.getReportingPeriod(periodType)?.second!!,
+                            reportText = finalReply,
+                            createdDate = PeriodUtils.getReportingPeriod(PeriodType.TODAY)!!.first,
+                            synced = true
+                        )
+                    )
+
+                    nlgReportApiRepository.createNLGReport(
+                        NLGReportEntity(
+                            id = UUID.randomUUID(),
+                            userId =driverProfileId,
+                            startDate = PeriodUtils.getReportingPeriod(periodType)?.first!!,
+                            endDate = PeriodUtils.getReportingPeriod(periodType)?.second!!,
+                            reportText = finalReply,
+                            createdDate = PeriodUtils.getReportingPeriod(PeriodType.TODAY)!!.first,
+                            synced = false
+                        ).toDomainModel().toNLGReportCreate()
+                    )
+                }
+
                 // Optionally, log both initial and final replies
-               initialReply.chunked(100).forEach {
-                   Log.d("ChatGPTViewModel", "Initial Response: $it")
-               }
+                initialReply.chunked(100).forEach {
+                    Log.d("ChatGPTViewModel", "Initial Response: $it")
+                }
                 finalReply.chunked(100).forEach {
                     Log.d("ChatGPTViewModel", "Final Response: $it")
                 }
 //                Log.d("ChatGPTViewModel", "Final Response: $finalReply")
-            } catch (e: Exception) {
-                Log.e("ChatGPTViewModel", "Error fetching chat completion", e)
-                _response.value = "Error fetching data"
-                _isLoading.value = false
-            } finally {
+            }
+            else{
+                val resp=getCachedReport(periodType)
+                _response.value = resp!!
                 _isLoading.value = false
             }
+                } catch (e: Exception) {
+                    Log.e("ChatGPTViewModel", "Error fetching chat completion", e)
+                    _response.value = "Error fetching data"
+                    _isLoading.value = false
+                } finally {
+                    _isLoading.value = false
+                }
         }
     }
 

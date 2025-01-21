@@ -8,18 +8,19 @@ import java.time.LocalDate
 import java.util.UUID
 @Entity(tableName = "driving_tips",
     foreignKeys = [
+
         ForeignKey(entity = DriverProfileEntity::class,
-            parentColumns = arrayOf("driverProfileId"),
-            childColumns = arrayOf("profileId"),
-            onDelete = ForeignKey.CASCADE
-        )],
-    indices = [Index(value = ["profileId"]),
+            parentColumns = ["driverProfileId"],
+            childColumns = ["driverProfileId"],
+            onDelete = ForeignKey.CASCADE)],
+    indices = [Index(value = ["driverProfileId"]),
         Index(value = ["tipId"], unique = true),
         Index(value = ["date"])]
 )
 data class DrivingTipEntity(
     @PrimaryKey(autoGenerate = false)
     val tipId: UUID,
+    val driverProfileId: UUID,
     val title: String,
     val meaning: String?=null,
     val penalty: String?=null,
@@ -29,6 +30,5 @@ data class DrivingTipEntity(
     val summaryTip: String?=null,
     val sync: Boolean = false,
     val date: LocalDate,
-    val profileId: UUID,
     val llm: String?=null,
 )

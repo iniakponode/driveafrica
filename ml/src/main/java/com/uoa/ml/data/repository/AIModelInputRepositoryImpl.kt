@@ -1,5 +1,7 @@
 package com.uoa.ml.data.repository
 
+import android.app.Application
+import android.content.Context
 import android.hardware.Sensor
 import android.util.Log
 import android.util.TimeUtils
@@ -12,6 +14,7 @@ import com.uoa.core.mlclassifier.data.TripFeatures
 import com.uoa.core.model.AIModelInputs
 import com.uoa.core.model.LocationData
 import com.uoa.core.model.RawSensorData
+import com.uoa.core.utils.PreferenceUtils
 import com.uoa.core.utils.toEntity
 import com.uoa.ml.utils.IncrementalAccelerationYMean
 import com.uoa.ml.utils.IncrementalCourseStd
@@ -30,7 +33,8 @@ class AIModelInputRepositoryImpl @Inject constructor(
     private val incrementalSpeedStdProvider: IncrementalSpeedStd,
     private val incrementalAccelerationYMeanProvider: IncrementalAccelerationYMean,
     private val incrementalCourseStdProvider: IncrementalCourseStd,
-    private val minMaxValuesLoader: MinMaxValuesLoader
+    private val minMaxValuesLoader: MinMaxValuesLoader,
+    private val context: Context
 ) : AIModelInputRepository {
 
     var windowStartTime=System.currentTimeMillis()
@@ -59,8 +63,23 @@ class AIModelInputRepositoryImpl @Inject constructor(
         aiModelInputDao.deleteAiModelInputById(id)
     }
 
+    override suspend fun deleteAIModelInputsByIds(ids: List<UUID>) {
+        aiModelInputDao.deleteAIModelInputsByIds(ids)
+    }
+
     override suspend fun getAiModelInputInputByTripId(tripId: UUID): List<AIModelInputs> {
         return aiModelInputDao.getAiModelInputsByTripId(tripId)
+    }
+
+    override suspend fun getAiModelInputsBySyncStatus(status: Boolean): List<AIModelInputsEntity> {
+        return aiModelInputDao.getAiModelInputsBySyncStatus(status)
+    }
+
+    override suspend fun getAiModelInputsBySyncAndProcessedStatus(
+        synced: Boolean,
+        processed: Boolean
+    ): List<AIModelInputsEntity> {
+        return aiModelInputDao.getAiModelInputBySyncAndProcessedStatus(synced,processed)
     }
 
 
@@ -96,6 +115,7 @@ class AIModelInputRepositoryImpl @Inject constructor(
                 val aiModelInputs= AIModelInputsEntity(
                     id= UUID.randomUUID(),
                     tripId= tripId,
+                    driverProfileId =PreferenceUtils.getDriverProfileId(context)!!,
                     timestamp=System.currentTimeMillis().toLong(),
                     startTimestamp=System.currentTimeMillis().toLong(),
                     endTimestamp=System.currentTimeMillis().toLong(),

@@ -45,4 +45,8 @@ interface TripDao {
 
     @Query("DELETE FROM trip_data WHERE id = :id")
     suspend fun deleteTripById(id: UUID)
+
+    // New function to fetch the last inserted trip
+    @Query("SELECT * FROM trip_data ORDER BY endTime DESC LIMIT 1")
+    suspend fun getLastInsertedTrip(): TripEntity?
 }

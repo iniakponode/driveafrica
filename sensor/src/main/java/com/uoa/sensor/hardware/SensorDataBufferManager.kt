@@ -1,5 +1,6 @@
 package com.uoa.sensor.hardware
 
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -12,6 +13,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.map
+//import kotlinx.coroutines.flow.asFlow
+//import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -19,12 +22,11 @@ import javax.inject.Singleton
 @Singleton
 class SensorDataBufferManager @Inject constructor(
     private val rawSensorDataRepository: RawSensorDataRepository,
-    private val unsafeBehaviourRepository: UnsafeBehaviourRepository
 ) {
 
     private val sensorDataBuffer = mutableListOf<RawSensorData>()
     private val bufferInsertInterval: Long = 5000  // Time interval to process the buffer (e.g., every 5 seconds)
-    private val bufferLimit = 100  // Threshold limit for batch size
+    private val bufferLimit = 500  // Threshold limit for batch size
 
     private val bufferHandler = Handler(Looper.getMainLooper())
 
@@ -62,24 +64,15 @@ class SensorDataBufferManager @Inject constructor(
             sensorDataBuffer.clear()
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO).launch(){
             try {
-                // Batch insert sensor data into the repository
-                rawSensorDataRepository.insertRawSensorDataBatch(bufferCopy.map { it.toEntity() })
-//                Log.d("BufferManager", "Successfully stored sensor data batch.")
-
-                // Analyze the data
-                val analyzer = NewUnsafeDrivingBehaviourAnalyser()
-                val sensorDataFlow = bufferCopy.asFlow().map { it.toEntity() }
-                analyzer.analyze(sensorDataFlow)
-                    .collect { unsafeBehaviour ->
-                        // Handle the detected unsafe behavior, e.g., store into database
-                        unsafeBehaviourRepository.insertUnsafeBehaviour(unsafeBehaviour)
-                    }
-
+                // Just call the repository method (transaction logic is inside the repository)
+                rawSensorDataRepository.processAndStoreSensorData(bufferCopy)
+                Log.d("SensorBufferManager", "Data processed successfully.")
             } catch (e: Exception) {
-                Log.e("BufferManager", "Error storing sensor data", e)
+                Log.e("SensorBufferManager", "Error in processAndStoreSensorData", e)
             }
+
         }
     }
 

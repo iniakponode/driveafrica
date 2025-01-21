@@ -11,25 +11,42 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import com.google.android.gms.location.*
 import com.uoa.core.model.LocationData
+import com.uoa.core.model.Road
+import com.uoa.core.network.apiservices.OSMSpeedLimitApiService
+import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
+import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.core.utils.buildSpeedLimitQuery
 import com.uoa.sensor.repository.LocationRepositoryImpl
 import com.uoa.core.utils.toEntity
 import com.uoa.sensor.hardware.MotionDetector
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.text.filter
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Singleton
 class LocationManager @Inject constructor(
     private val bufferManager: LocationDataBufferManager,
     private val fusedLocationProviderClient: FusedLocationProviderClient,
-    private val motionDetector: MotionDetector // Inject MotionDetector to allow listener registration
+    private val motionDetector: MotionDetector,// Inject MotionDetector to allow listener registration
+    private val osmSpeedLimitApiService: OSMSpeedLimitApiService,
+//    private val context: Context
 ) : MotionDetector.MotionListener {
+
+//    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+//    val profileIdString = prefs.getString(DRIVER_PROFILE_ID, null) ?: return null
+//    val driverProfileId = UUID.fromString(profileIdString)
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
 
     private var lastRecordedLocation: Location? = null
 
@@ -119,25 +136,62 @@ class LocationManager @Inject constructor(
      * Process the location and determine if it should be recorded.
      */
     private fun processLocation(location: Location) {
-        val speed = location.speed  // Speed in m/s
-        val distance = lastRecordedLocation?.distanceTo(location)?.toDouble() ?: 0.0
+        scope.launch {
+            val speed = location.speed  // Speed in m/s
+            val distance = lastRecordedLocation?.distanceTo(location)?.toDouble() ?: 0.0
 
-        if (shouldRecordNewLocation(location)) {
-            val locationData = LocationData(
-                id = UUID.randomUUID(),
-                latitude = location.latitude,
-                longitude = location.longitude,
-                altitude = location.altitude,
-                speed = speed.toDouble(),
-                distance = distance,
-                timestamp = location.time,
-                date = Date(location.time),
-                sync = false
-            )
+            val query = buildSpeedLimitQuery(location.latitude, location.longitude, radius = 200.0)
 
-            lastRecordedLocation = location
-            bufferManager.addLocationData(locationData) // Delegate buffering to LocationDataBufferManager
+            // Call suspend function within coroutine and handle potential exceptions
+            val response = try {
+                osmSpeedLimitApiService.fetchSpeedLimits(query)
+            } catch (e: Exception) {
+                Log.e("LocationProcessor", "Error fetching speed limits", e)
+                null
+            }
+
+            // Extract maxspeed from Overpass response (simple numeric parsing)
+            val speedLimit = response?.elements?.firstOrNull()
+                ?.tags?.get("maxspeed")
+                ?.filter { it.isDigit() }
+                ?.toIntOrNull() ?: 0
+
+
+            // Create and persist a Road object
+//            val road = Road(
+//                id = UUID.randomUUID(),
+//                driverProfileId = profileId, // Update this as needed
+//                name = roadName,
+//                roadType = "",      // Populate if available
+//                speedLimit = speedLimit ?: 0,
+//                latitude = coordinate.first,
+//                longitude = coordinate.second
+//            )
+//            roadRepository.saveOrUpdateRoad(road)
+
+            if (shouldRecordNewLocation(location)) {
+                val locationData = LocationData(
+                    id = UUID.randomUUID(),
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    altitude = location.altitude,
+                    speed = speed.toDouble(),
+                    distance = distance,
+                    timestamp = location.time,
+                    date = Date(location.time),
+                    speedLimit = speedLimit.toDouble(),
+                    sync = false
+                )
+
+                lastRecordedLocation = location
+                bufferManager.addLocationData(locationData) // Delegate buffering to LocationDataBufferManager
+            }
         }
+    }
+
+    fun stop() {
+        // Cancel all coroutines launched by this manager
+        scope.cancel()
     }
 
     /**
@@ -196,6 +250,7 @@ class LocationManager @Inject constructor(
     fun stopLocationUpdates() {
         fusedLocationProviderClient.removeLocationUpdates(locationCallback)
         bufferManager.stopBufferHandler() // Delegate stopping buffer handler to LocationDataBufferManager
+        stop()
     }
 
     // Implementing MotionListener methods from MotionDetector.MotionListener

@@ -7,6 +7,7 @@ import java.util.UUID
 data class AIModelInputs(
     val id: UUID,
     val tripId: UUID,
+    val driverProfileId: UUID,
     val timestamp: Long,
     val startTimestamp: Long,
     val endTimestamp: Long,
@@ -15,5 +16,7 @@ data class AIModelInputs(
     val dayOfWeekMean: Float,
     val speedStd: Float,
     val courseStd: Float,
-    val accelerationYOriginalMean: Float
+    val accelerationYOriginalMean: Float,
+    val processed: Boolean= false,
+    val sync: Boolean = false
 )

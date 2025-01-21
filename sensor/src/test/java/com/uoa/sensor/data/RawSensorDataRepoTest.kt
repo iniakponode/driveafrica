@@ -1,17 +1,27 @@
 package com.uoa.sensor.data
 
+import android.content.Context
 import com.nhaarman.mockitokotlin2.mock
+import com.uoa.core.Sdadb
+import com.uoa.core.behaviouranalysis.NewUnsafeDrivingBehaviourAnalyser
+import com.uoa.core.database.daos.LocationDao
 import com.uoa.core.database.daos.RawSensorDataDao
+import com.uoa.core.database.daos.UnsafeBehaviourDao
 import com.uoa.core.database.entities.RawSensorDataEntity
+import com.uoa.core.database.repository.AIModelInputRepository
+import com.uoa.core.database.repository.ProcessAndStoreSensorData
 import com.uoa.core.model.RawSensorData
 import com.uoa.core.utils.toDomainModel
 import com.uoa.core.utils.toEntity
 import com.uoa.sensor.repository.RawSensorDataRepositoryImpl
+import kotlinx.coroutines.Dispatchers
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.TestCoroutineDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.Before
 import org.junit.Test
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -23,13 +33,42 @@ import java.util.*
 @ExperimentalCoroutinesApi
 class RawSensorDataRepoTest {
 
+    // Mocked dependencies
     private lateinit var rawSensorDataDao: RawSensorDataDao
+    private lateinit var appDatabase: Sdadb
+    private lateinit var context: Context
+    private lateinit var unsafeDrivingAnalyser: NewUnsafeDrivingBehaviourAnalyser
+    private lateinit var aiModelInputRepository: AIModelInputRepository
+    private lateinit var locationDao: LocationDao
+    private lateinit var unsafeBehaviourDao: UnsafeBehaviourDao
+    private lateinit var processAndStoreSensorData: ProcessAndStoreSensorData
+
+    // Class under test
     private lateinit var rawSensorDataRepositoryImpl: RawSensorDataRepositoryImpl
+
+    // Test coroutine dispatcher
+    private val testDispatcher = TestCoroutineDispatcher()
 
     @Before
     fun setUp() {
+        // Initialize mocks
         rawSensorDataDao = mock()
-        rawSensorDataRepositoryImpl = RawSensorDataRepositoryImpl(rawSensorDataDao)
+        appDatabase = mock()
+        context = mock()
+        unsafeDrivingAnalyser = mock()
+        aiModelInputRepository = mock()
+        locationDao = mock()
+        unsafeBehaviourDao = mock()
+        processAndStoreSensorData=mock()
+
+        // Create the repository implementation with mocks
+        rawSensorDataRepositoryImpl = RawSensorDataRepositoryImpl(
+            rawSensorDataDao = rawSensorDataDao,
+            processAndStoreSensorData = processAndStoreSensorData
+        )
+
+        // Set the test dispatcher as the main dispatcher
+        Dispatchers.setMain(testDispatcher)
     }
 
     @Test
@@ -46,6 +85,7 @@ class RawSensorDataRepoTest {
             date = Date(),
             accuracy = 1,
             locationId = UUID.randomUUID(),
+            driverProfileId = UUID.randomUUID(),
             tripId = UUID.randomUUID(),
             sync = false
 
@@ -72,6 +112,7 @@ class RawSensorDataRepoTest {
             timestamp = 1234567890,
             date = Date(),
             accuracy = 1,
+            driverProfileId = UUID.randomUUID(),
             locationId = UUID.randomUUID(),
             tripId = tripId,
             sync = false
@@ -99,6 +140,7 @@ class RawSensorDataRepoTest {
                 timestamp = 1234567890,
                 date = Date(),
                 accuracy = 1,
+                driverProfileId = UUID.randomUUID(),
                 locationId = UUID.randomUUID(),
                 tripId = UUID.randomUUID(),
                 sync = false
@@ -124,6 +166,7 @@ class RawSensorDataRepoTest {
             timestamp = 1234567890,
             date = Date(),
             accuracy = 1,
+            driverProfileId = UUID.randomUUID(),
             locationId = UUID.randomUUID(),
             tripId = UUID.randomUUID(),
             sync = false
@@ -146,6 +189,7 @@ class RawSensorDataRepoTest {
                 timestamp = 1234567890,
                 date = Date(),
                 accuracy = 1,
+                driverProfileId = UUID.randomUUID(),
                 locationId = UUID.randomUUID(),
                 tripId = UUID.randomUUID(),
                 sync = false
@@ -169,6 +213,7 @@ class RawSensorDataRepoTest {
             timestamp = 1234567890,
             date = Date(),
             accuracy = 1,
+            driverProfileId = UUID.randomUUID(),
             locationId = UUID.randomUUID(),
             tripId = UUID.randomUUID(),
             sync = false
@@ -192,6 +237,7 @@ class RawSensorDataRepoTest {
             timestamp = 1234567890,
             date = Date(),
             accuracy = 1,
+            driverProfileId = UUID.randomUUID(),
             locationId = UUID.randomUUID(),
             tripId = UUID.randomUUID(),
             sync = false
@@ -217,6 +263,7 @@ class RawSensorDataRepoTest {
             timestamp = 1234567890,
             date = Date(),
             accuracy = 1,
+            driverProfileId = UUID.randomUUID(),
             locationId = UUID.randomUUID(),
             tripId = UUID.randomUUID(),
             sync = false
@@ -251,6 +298,7 @@ class RawSensorDataRepoTest {
             timestamp = 1234567890,
             date = Date(),
             accuracy = 1,
+            driverProfileId = UUID.randomUUID(),
             locationId = UUID.randomUUID(),
             tripId = UUID.randomUUID(),
             sync = false
@@ -277,6 +325,7 @@ class RawSensorDataRepoTest {
             timestamp = 1234567890,
             date = Date(),
             accuracy = 1,
+            driverProfileId = UUID.randomUUID(),
             locationId = UUID.randomUUID(),
             tripId = tripId,
             sync = false

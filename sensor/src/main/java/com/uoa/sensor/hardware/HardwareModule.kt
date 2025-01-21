@@ -1,11 +1,19 @@
 package com.uoa.sensor.hardware
 
+import android.app.Application
+import android.content.Context
 import android.hardware.SensorManager
 import android.util.Log
+import androidx.compose.ui.platform.LocalContext
 import com.uoa.core.database.repository.AIModelInputRepository
 import com.uoa.core.database.repository.LocationRepository
+import com.uoa.core.database.repository.RawSensorDataRepository
 import com.uoa.core.model.RawSensorData
+import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
+import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.core.utils.PreferenceUtils
 import com.uoa.core.utils.toDomainModel
+import com.uoa.core.utils.toEntity
 import com.uoa.sensor.location.LocationDataBufferManager
 import com.uoa.sensor.location.LocationManager
 import com.uoa.sensor.repository.SensorDataColStateRepository
@@ -17,6 +25,7 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.util.Date
 import com.uoa.sensor.utils.ProcessSensorData.processSensorData
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
@@ -36,7 +45,9 @@ class HardwareModule @Inject constructor(
     private val motionDetector: MotionDetector,
     private val aiModelInputRepository: AIModelInputRepository,
     private val locationRepository: LocationRepository,
-    private val sensorDataColStateRepository: SensorDataColStateRepository
+    private val context: Context,
+    private val sensorDataColStateRepository: SensorDataColStateRepository,
+    private val rawSensorDataRepository: RawSensorDataRepository
 ) : MotionDetector.MotionListener {
 
     private val isCollecting = AtomicBoolean(false)
@@ -44,6 +55,9 @@ class HardwareModule @Inject constructor(
     private var rotationMatrix = FloatArray(9) { 0f }
     private val hardwareModuleScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var sensorEventListener: (Int, List<Float>, Int) -> Unit
+
+
+
 
        override fun onMotionDetected() {
 
@@ -120,6 +134,8 @@ class HardwareModule @Inject constructor(
 
     private fun setupListeners() {
 
+
+
         sensorEventListener = fun(sensorType: Int, values: List<Float>, accuracy: Int) {
             val sensorTypeName = GetSensorTypeNameUtil.getSensorTypeName(sensorType)
 
@@ -143,6 +159,7 @@ class HardwareModule @Inject constructor(
                         accuracy=accuracy,
                         locationId = locationBufferManager.getCurrentLocationId(),
                         tripId = tripId,
+                        driverProfileId= PreferenceUtils.getDriverProfileId(context),
                         sync = false
                     )
 
@@ -152,22 +169,30 @@ class HardwareModule @Inject constructor(
 //                        Log.d("HardwareModule", "Attempting to save Sensor Data")
                         sensorDataBufferManager.addToSensorBuffer(rawSensorData)
 
-                        hardwareModuleScope.launch(Dispatchers.IO) {
-                            val locationId = locationBufferManager.getCurrentLocationId()
-                            if (locationId != null) {
-                                Log.d("HardwareModule", "Processing sensor data for AIModelInput in coroutine")
-                                val location = locationRepository.getLocationById(locationId)
-                                if (location != null) {
-                                    Log.d("HardwareModule", "Processing sensor data for AIModelInput in coroutine")
-                                     aiModelInputRepository.processDataForAIModelInputs(rawSensorData, location.toDomainModel(), tripId)
-                                    Log.d("HardwareModule", "Sensor data processing for AIModelInput completed")
-                                } else {
-                                    Log.e("HardwareModule", "Location not found for ID: $locationId")
-                                }
-                            } else {
-                                Log.e("HardwareModule", "Current Location ID is null")
-                            }
-                        }
+//                        hardwareModuleScope.launch(Dispatchers.IO) {
+//                            val locationId = locationBufferManager.getCurrentLocationId()
+//                            if (locationId != null) {
+//                                Log.d("HardwareModule", "Processing sensor data for AIModelInput in coroutine")
+//                                val location = locationRepository.getLocationById(locationId)
+//                                if (location != null) {
+//                                    Log.d("HardwareModule", "Processing sensor data for AIModelInput in coroutine")
+//                                     aiModelInputRepository.processDataForAIModelInputs(rawSensorData, location.toDomainModel(), tripId)
+//
+////                                    Update Raw Sensor and Location data after using them
+//                                    val rawSensorDataCopy=rawSensorData.copy(processed = true)
+//                                    rawSensorDataRepository.updateRawSensorData(rawSensorDataCopy.toEntity())
+//
+//                                    val locationDataCopy=location.copy(processed = true)
+//                                    locationRepository.updateLocation(locationDataCopy)
+//
+//                                    Log.d("HardwareModule", "Sensor data processing for AIModelInput completed")
+//                                } else {
+//                                    Log.e("HardwareModule", "Location not found for ID: $locationId")
+//                                }
+//                            } else {
+//                                Log.e("HardwareModule", "Current Location ID is null")
+//                            }
+//                        }
 
                     }
                     else{

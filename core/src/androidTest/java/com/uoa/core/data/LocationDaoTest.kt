@@ -3,7 +3,7 @@
 //import androidx.room.Room
 //import androidx.test.core.app.ApplicationProvider
 //import androidx.test.ext.junit.runners.AndroidJUnit4
-//import com.uoa.core.Sdaddb
+//import com.uoa.core.Sdadb
 //import com.uoa.core.database.daos.LocationDao
 //import com.uoa.core.database.entities.LocationEntity
 //import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -21,14 +21,14 @@
 //@RunWith(AndroidJUnit4::class)
 //class LocationDaoTest {
 //
-//    private lateinit var database: Sdaddb
+//    private lateinit var database: Sdadb
 //    private lateinit var locationDao: LocationDao
 //
 //    @Before
 //    fun setUp() {
 //        database = Room.inMemoryDatabaseBuilder(
 //            ApplicationProvider.getApplicationContext(),
-//            Sdaddb::class.java
+//            Sdadb::class.java
 //        ).allowMainThreadQueries().build()
 //        locationDao = database.locationDataDao()
 //    }

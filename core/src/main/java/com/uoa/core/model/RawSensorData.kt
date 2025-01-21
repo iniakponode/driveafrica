@@ -21,5 +21,7 @@ data class RawSensorData(
     val accuracy: Int,
     val locationId: UUID? = null,  // Foreign key to LocationEntity
     val tripId: UUID? = null,  // Foreign key to TripEntity
+    val driverProfileId: UUID?,
+    val processed: Boolean=false,
     val sync: Boolean = false
 )

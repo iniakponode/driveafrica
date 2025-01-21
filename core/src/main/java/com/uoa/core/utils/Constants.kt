@@ -5,6 +5,6 @@ class Constants {
         const val PREFS_NAME = "MyPrefs"
         const val DRIVER_PROFILE_ID = "driver_profile_id"
         const val TRIP_ID = "trip_id"
-
+        const val QUESTIONNAIRE_COMPLETED = "questionnaireCompleted"
     }
 }

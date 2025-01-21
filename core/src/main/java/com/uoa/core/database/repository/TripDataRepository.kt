@@ -1,5 +1,6 @@
 package com.uoa.core.database.repository
 
+import com.uoa.core.database.entities.TripEntity
 import com.uoa.core.model.LocationData
 import com.uoa.core.model.Trip
 import java.time.LocalDate
@@ -22,6 +23,8 @@ interface TripDataRepository {
     suspend fun getTripsBetweenDates(startDate: LocalDate, endDate: LocalDate): List<Trip>
 
     suspend fun getTripsBySyncStatus(synced: Boolean): List<Trip>
+
+    suspend fun getLastInsertedTrip(): TripEntity?
 
     suspend fun deleteTripById(id: UUID)
 }

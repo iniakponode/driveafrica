@@ -1,4 +1,4 @@
-package com.uoa.core.apiServices.models.embedding
+package com.uoa.core.apiServices.models.embeddingModels
 
 // EmbeddingResponse.kt
 data class EmbeddingResponse(

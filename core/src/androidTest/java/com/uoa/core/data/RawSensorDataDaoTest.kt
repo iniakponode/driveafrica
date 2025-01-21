@@ -4,7 +4,7 @@
 //import androidx.room.Room
 //import androidx.test.core.app.ApplicationProvider
 //import androidx.test.ext.junit.runners.AndroidJUnit4
-//import com.uoa.core.Sdaddb
+//import com.uoa.core.Sdadb
 //import com.uoa.core.database.daos.RawSensorDataDao
 //import com.uoa.core.database.entities.RawSensorDataEntity
 //import kotlinx.coroutines.runBlocking
@@ -25,7 +25,7 @@
 //@RunWith(AndroidJUnit4::class)
 //class RawSensorDataDaoTest {
 //
-//    private lateinit var database: Sdaddb
+//    private lateinit var database: Sdadb
 //    private lateinit var rawSensorDataDao: RawSensorDataDao
 //
 //    private val id: UUID = UUID.randomUUID()
@@ -46,7 +46,7 @@
 //    fun createDb() {
 //        val context = ApplicationProvider.getApplicationContext<Context>()
 //        database = Room.inMemoryDatabaseBuilder(
-//            context, Sdaddb::class.java
+//            context, Sdadb::class.java
 //        ).build()
 //        rawSensorDataDao = database.rawSensorDataDao()
 //    }

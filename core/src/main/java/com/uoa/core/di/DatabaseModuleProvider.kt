@@ -2,12 +2,11 @@ package com.uoa.core.di
 
 import android.app.Application
 import androidx.room.Room
-import com.uoa.core.Sdaddb
+import com.uoa.core.Sdadb
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import javax.inject.Qualifier
 import javax.inject.Singleton
 
 @Module
@@ -16,8 +15,8 @@ object DatabaseModuleProvider {
 
     @Provides
     @Singleton
-    fun provideDatabaseModule(app: Application): Sdaddb {
-        return Room.databaseBuilder(app, Sdaddb::class.java, "sda-db")
+    fun provideDatabaseModule(app: Application): Sdadb {
+        return Room.databaseBuilder(app, Sdadb::class.java, "sda-db")
 //            .setQueryCallback(RoomDatabase.QueryCallback { sqlQuery, bindArgs ->
 //                Log.d("RoomQuery", "SQL Query: $sqlQuery SQL Args: $bindArgs")
 //            }, Executors.newSingleThreadExecutor())
@@ -27,56 +26,63 @@ object DatabaseModuleProvider {
 
     @Provides
     @Singleton
-    fun provideSensorDataDao(db: Sdaddb) = db.sensorDataDao()
+    fun provideSensorDataDao(db: Sdadb) = db.sensorDataDao()
 
     @Provides
     @Singleton
-    fun provideAIModelInputDao(db: Sdaddb) = db.aiModelInputsDao()
-
-
-    @Provides
-    @Singleton
-    fun provideRoadDao(db: Sdaddb) = db.roadDao()
+    fun provideAIModelInputDao(db: Sdadb) = db.aiModelInputsDao()
 
     @Provides
     @Singleton
-    fun provideDbdaResultDao(db: Sdaddb) = db.dbdaResultDao()
+    fun provideQuestionnaireDao(db: Sdadb) = db.alcoholQuestionnaireDao()
 
     @Provides
     @Singleton
-    fun provideEmbeddingDao(db: Sdaddb) = db.embeddingDao()
+    fun provideRoadDao(db: Sdadb) = db.roadDao()
+
+//    @Provides
+//    @Singleton
+//    fun provideDbdaResultDao(db: Sdadb) = db.dbdaResultDao()
 
     @Provides
     @Singleton
-    fun provideNlgReportDao(db: Sdaddb) = db.nlgReportDao()
+    fun provideEmbeddingDao(db: Sdadb) = db.embeddingDao()
 
     @Provides
     @Singleton
-    fun provideTripDao(db: Sdaddb) = db.tripDao()
+    fun provideNlgReportDao(db: Sdadb) = db.nlgReportDao()
 
     @Provides
     @Singleton
-    fun provideRawsensorDataDao(db: Sdaddb) = db.rawSensorDataDao()
+    fun provideTripDao(db: Sdadb) = db.tripDao()
 
     @Provides
     @Singleton
-    fun provideLocationDataDao(db: Sdaddb) = db.locationDataDao()
+    fun provideRawsensorDataDao(db: Sdadb) = db.rawSensorDataDao()
 
     @Provides
     @Singleton
-    fun provideDriverProfileDao(db: Sdaddb) = db.driverProfileDao()
+    fun provideLocationDataDao(db: Sdadb) = db.locationDataDao()
 
     @Provides
     @Singleton
-    fun provideDrivingTipDao(db: Sdaddb) = db.drivingTipDao()
+    fun provideDriverProfileDao(db: Sdadb) = db.driverProfileDao()
 
     @Provides
     @Singleton
-    fun provideUnsafeBehaviourDao(db: Sdaddb) = db.unsafeBehaviourDao()
+    fun provideDrivingTipDao(db: Sdadb) = db.drivingTipDao()
 
     @Provides
     @Singleton
-    fun provideCauseDao(db: Sdaddb) = db.causeDao()
+    fun provideUnsafeBehaviourDao(db: Sdadb) = db.unsafeBehaviourDao()
+
+    @Provides
+    @Singleton
+    fun provideCauseDao(db: Sdadb) = db.causeDao()
+
+    @Provides
+    @Singleton
+    fun provideReportStatisticsDao(db: Sdadb) = db.reportStatisticsDao()
 
 }
 

@@ -4,6 +4,7 @@ package com.uoa.nlgengine.presentation.ui
 // Beutifully designed with Jetpack Compose and scrollable with a back button and navigation
 // to previous screen.
 
+import android.app.Application
 import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.background
@@ -37,22 +38,17 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.uoa.core.ui.DAAppTopNavBar
-import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
-import com.uoa.core.utils.Constants.Companion.PREFS_NAME
-import com.uoa.core.utils.Constants.Companion.TRIP_ID
-import com.uoa.nlgengine.data.model.UnsafeBehaviorChartEntry
+import com.uoa.core.utils.DateUtils
 import com.uoa.nlgengine.presentation.ui.theme.NLGEngineTheme
 import com.uoa.nlgengine.presentation.viewmodel.LocalUnsafeBehavioursViewModel
 import com.uoa.nlgengine.presentation.viewmodel.NLGEngineViewModel
 import com.uoa.nlgengine.presentation.viewmodel.chatgpt.ChatGPTViewModel
-import com.uoa.nlgengine.util.PeriodType
-import java.time.Instant
+import com.uoa.core.utils.PeriodType
+import com.uoa.core.utils.PreferenceUtils
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import com.uoa.nlgengine.R
 import kotlinx.datetime.toKotlinLocalDate
-import java.util.UUID
 
 @Composable
 fun ReportScreen(
@@ -214,14 +210,15 @@ fun ReportScreenRoute(
     endDate: Long,
     chatGPTViewModel: ChatGPTViewModel = hiltViewModel(),
     unsafeBehavioursViewModel: LocalUnsafeBehavioursViewModel = hiltViewModel(),
+//    trip: Trip
     nlgEngineViewModel: NLGEngineViewModel = hiltViewModel(),
 ) {
     // Convert the start and end date to LocalDate
     val context = LocalContext
     val appContext= context.current.applicationContext
-    val zoneId = ZoneId.systemDefault()
-    val sDate = Instant.ofEpochMilli(startDate).atZone(zoneId).toLocalDate()
-    val eDate = Instant.ofEpochMilli(endDate).atZone(zoneId).toLocalDate()
+
+   val sDate= DateUtils.convertToLocalDate(startDate)
+    val eDate = DateUtils.convertToLocalDate(endDate)
 
     // Observe the unsafe behaviours and other data from the view model
     val unsafeBehaviours by unsafeBehavioursViewModel.unsafeBehaviours.collectAsState()
@@ -270,7 +267,12 @@ fun ReportScreenRoute(
 //            Log.d("ReportScreen", "Unsafe behaviours retrieved: ${unsafeBehaviours.size} records")
 
             // Call the ViewModel function to generate the prompt
-            nlgEngineViewModel.generatePromptForBehaviours(appContext,unsafeBehaviours, periodType)
+
+            // Convert to kotlinx.datetime.LocalDate
+
+
+
+            nlgEngineViewModel.generatePromptForBehaviours(appContext,unsafeBehaviours, periodType, sDate,eDate)
         } else {
             Log.i("ReportScreen", "No unsafe behaviours found for the given criteria.")
         }
@@ -281,7 +283,7 @@ fun ReportScreenRoute(
     LaunchedEffect(generatedPrompt) {
         if (generatedPrompt.isNotEmpty()) {
 //            Log.d("ReportScreen", "Generated Prompt: $generatedPrompt")
-            chatGPTViewModel.getChatGPTPrompt(generatedPrompt)
+            chatGPTViewModel.promptChatGPTForResponse(generatedPrompt, periodType, PreferenceUtils.getTripId(appContext)!!)
         }
     }
 

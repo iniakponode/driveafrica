@@ -8,6 +8,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import com.uoa.core.database.entities.LocationEntity
 import com.uoa.core.database.entities.UnsafeBehaviourEntity
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
@@ -31,6 +32,9 @@ interface UnsafeBehaviourDao {
 
     @Query("SELECT * FROM unsafe_behaviour WHERE tripId = :tripID")
     fun getUnsafeBehavioursByTripId(tripID: UUID): Flow<List<UnsafeBehaviourEntity>>
+
+    @Query("SELECT * FROM unsafe_behaviour WHERE locationId = :locationId AND synced = :synced AND processed= :procd")
+     fun getUnsafeBehavioursByLocationIdAndSyncStatus(locationId: UUID, synced: Boolean, procd: Boolean): List<UnsafeBehaviourEntity>
 
     @Query("SELECT * FROM unsafe_behaviour ORDER BY id DESC LIMIT 20")
     fun getUnsafeBehavioursForTips(): Flow<List<UnsafeBehaviourEntity>>
@@ -115,11 +119,18 @@ interface UnsafeBehaviourDao {
     @Query("SELECT * FROM unsafe_behaviour WHERE synced = :synced")
     suspend fun getUnsafeBehavioursBySyncStatus(synced: Boolean): List<UnsafeBehaviourEntity>
 
+    @Query("SELECT * FROM unsafe_behaviour WHERE synced= :synced AND processed= :processed")
+    suspend fun getUnsafeBehaviourBySyncAndProcessedStatus(synced: Boolean, processed: Boolean): List<UnsafeBehaviourEntity>
+
+
     @Query("DELETE FROM unsafe_behaviour WHERE synced = :synced")
     suspend fun deleteAllUnsafeBehavioursBySyncStatus(synced: Boolean)
 
     @Query("DELETE FROM unsafe_behaviour")
     suspend fun deleteAllUnsafeBehaviours()
+
+    @Query("DELETE FROM unsafe_behaviour WHERE id IN (:ids)")
+    suspend fun deleteUnsafeBehavioursByIds(ids: List<UUID>)
 
     @Query("SELECT COUNT(*) FROM unsafe_behaviour WHERE behaviorType = :behaviorType AND timestamp BETWEEN :startTime AND :endTime")
     suspend fun getUnsafeBehaviourCountByTypeAndTime(behaviorType: String, startTime: Long, endTime: Long): Int

@@ -1,9 +1,11 @@
 package com.uoa.sensor.presentation.di
 
+import android.app.Application
 import com.uoa.core.database.daos.RawSensorDataDao
 import android.content.Context
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.uoa.core.behaviouranalysis.NewUnsafeDrivingBehaviourAnalyser
 import com.uoa.core.database.daos.LocationDao
 import com.uoa.core.database.repository.AIModelInputRepository
 import com.uoa.core.database.repository.LocationRepository
@@ -38,12 +40,16 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object HardwareModuleProvider{
 
+//    @Provides
+//    @Singleton
+//    fun provideRawSensorDataRepository(rawSensorDataDao: RawSensorDataDao): RawSensorDataRepositoryImpl {
+//        // Provide an instance of RawSensorDataRepositoryImpl
+//        return RawSensorDataRepositoryImpl(rawSensorDataDao)
+//    }
+
     @Provides
     @Singleton
-    fun provideRawSensorDataRepository(rawSensorDataDao: RawSensorDataDao): RawSensorDataRepositoryImpl {
-        // Provide an instance of RawSensorDataRepositoryImpl
-        return RawSensorDataRepositoryImpl(rawSensorDataDao)
-    }
+    fun provideContext(@ApplicationContext context: Context): Context = context
 
     @Provides
     @Singleton
@@ -123,9 +129,13 @@ object HardwareModuleProvider{
     @Singleton
     fun provideBufferManager(
         rawSensorDataRepository: RawSensorDataRepository,
-        unsafeBehaviourRepository: UnsafeBehaviourRepository
+//        unsafeBehaviourRepository: UnsafeBehaviourRepository,
+//        newUnsafeDrivingBehaviourAnalyser: NewUnsafeDrivingBehaviourAnalyser,
+//        @ApplicationContext context: Context
     ): SensorDataBufferManager {
-        return SensorDataBufferManager(rawSensorDataRepository,unsafeBehaviourRepository)
+        return SensorDataBufferManager(rawSensorDataRepository
+//            ,unsafeBehaviourRepository, context, newUnsafeDrivingBehaviourAnalyser
+        )
     }
 
     @Provides
@@ -144,8 +154,9 @@ object HardwareModuleProvider{
         sensorDataColStateRepository: SensorDataColStateRepository,
         aiModelInputRepository: AIModelInputRepository,
         locationRepository: LocationRepository,
-
-        updateTripUseCase: UpdateTripUseCase
+        @ApplicationContext context: Context,
+        updateTripUseCase: UpdateTripUseCase,
+        rawSensorDataRepository: RawSensorDataRepository
 
         ): HardwareModule {
         return HardwareModule(
@@ -161,7 +172,10 @@ object HardwareModuleProvider{
             motionDetector,
             aiModelInputRepository,
             locationRepository,
-            sensorDataColStateRepository
+            context,
+            sensorDataColStateRepository,
+            rawSensorDataRepository
+
 
 
         )

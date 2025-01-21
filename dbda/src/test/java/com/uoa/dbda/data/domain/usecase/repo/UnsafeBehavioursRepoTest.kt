@@ -49,7 +49,7 @@ class UnsafeBehaviourRepositoryImplTest {
 
     @Test
     fun testInsertUnsafeBehaviour() = runTest {
-        val unsafeBehaviour = UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date())
+        val unsafeBehaviour = UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date())
         repository.insertUnsafeBehaviour(unsafeBehaviour)
         verify(unsafeBehaviourDao).insertUnsafeBehaviour(unsafeBehaviour.toEntity())
     }
@@ -57,8 +57,8 @@ class UnsafeBehaviourRepositoryImplTest {
     @Test
     fun testInsertUnsafeBehaviourBatch() = runTest {
         val unsafeBehaviours = listOf(
-            UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date()),
-            UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Harsh Braking", 3.0f, System.currentTimeMillis(), Date(), Date())
+            UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date()),
+            UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),UUID.randomUUID(), "Harsh Braking", 3.0f, System.currentTimeMillis(), Date(), Date())
         )
         repository.insertUnsafeBehaviourBatch(unsafeBehaviours)
         verify(unsafeBehaviourDao).insertUnsafeBehaviourBatch(unsafeBehaviours.map { it.toEntity() })
@@ -66,14 +66,14 @@ class UnsafeBehaviourRepositoryImplTest {
 
     @Test
     fun testUpdateUnsafeBehaviour() = runBlocking {
-        val unsafeBehaviour = UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(), )
+        val unsafeBehaviour = UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(), )
         repository.updateUnsafeBehaviour(unsafeBehaviour)
         verify(unsafeBehaviourDao).updateUnsafeBehaviour(unsafeBehaviour.toEntity())
     }
 
     @Test
     fun testDeleteUnsafeBehaviour() = runTest {
-        val unsafeBehaviour = UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(),)
+        val unsafeBehaviour = UnsafeBehaviourModel(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(),)
         repository.deleteUnsafeBehaviour(unsafeBehaviour)
         verify(unsafeBehaviourDao).deleteUnsafeBehaviour(unsafeBehaviour.toEntity())
     }
@@ -82,8 +82,8 @@ class UnsafeBehaviourRepositoryImplTest {
     fun testGetUnsafeBehavioursByTripId() = runTest {
         val tripId = UUID.randomUUID()
         val unsafeBehaviourEntities = listOf(
-            UnsafeBehaviourEntity(UUID.randomUUID(), tripId, UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(), ),
-            UnsafeBehaviourEntity(UUID.randomUUID(), tripId, UUID.randomUUID(), "Harsh Braking", 3.0f, System.currentTimeMillis(), Date(), Date())
+            UnsafeBehaviourEntity(UUID.randomUUID(), tripId, UUID.randomUUID(),UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(), ),
+            UnsafeBehaviourEntity(UUID.randomUUID(), tripId, UUID.randomUUID(),UUID.randomUUID(), "Harsh Braking", 3.0f, System.currentTimeMillis(), Date(), Date())
         )
         whenever(unsafeBehaviourDao.getUnsafeBehavioursByTripId(tripId)).thenReturn(flowOf(unsafeBehaviourEntities))
 
@@ -97,7 +97,7 @@ class UnsafeBehaviourRepositoryImplTest {
     @Test
     fun testGetUnsafeBehaviourById() = runTest {
         val id = UUID.randomUUID()
-        val unsafeBehaviourEntity = UnsafeBehaviourEntity(id, UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(),)
+        val unsafeBehaviourEntity = UnsafeBehaviourEntity(id, UUID.randomUUID(), UUID.randomUUID(),UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(),)
         whenever(unsafeBehaviourDao.getUnsafeBehaviourById(id)).thenReturn(unsafeBehaviourEntity)
 
         val result = repository.getUnsafeBehaviourById(id)
@@ -109,7 +109,7 @@ class UnsafeBehaviourRepositoryImplTest {
     fun testGetUnsafeBehavioursBySyncStatus() = runTest {
         val syncStatus = false
         val unsafeBehaviourEntities = listOf(
-            UnsafeBehaviourEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(),)
+            UnsafeBehaviourEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(),)
         )
         whenever(unsafeBehaviourDao.getUnsafeBehavioursBySyncStatus(syncStatus)).thenReturn(unsafeBehaviourEntities)
 
@@ -167,8 +167,8 @@ class UnsafeBehaviourRepositoryImplTest {
         val eDate = Instant.ofEpochMilli(endDate.toInstant().toEpochMilli()).atZone(zoneId).toLocalDate()
 
         val unsafeBehaviourEntities = listOf(
-            UnsafeBehaviourEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(), ),
-            UnsafeBehaviourEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Harsh Braking", 3.0f, System.currentTimeMillis(), Date(), Date())
+            UnsafeBehaviourEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(), Date(), ),
+            UnsafeBehaviourEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),UUID.randomUUID(), "Harsh Braking", 3.0f, System.currentTimeMillis(), Date(), Date())
         )
         whenever(unsafeBehaviourDao.getUnsafeBehavioursBetweenDates(sDate, eDate)).thenReturn(flowOf(unsafeBehaviourEntities))
 

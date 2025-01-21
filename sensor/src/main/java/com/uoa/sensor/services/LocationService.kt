@@ -6,7 +6,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.annotation.RequiresApi
 import com.uoa.sensor.location.LocationManager
-import com.uoa.sensor.notifications.VehicleNotificationManager
+import com.uoa.core.notifications.VehicleNotificationManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 

@@ -2,51 +2,52 @@ package com.uoa.nlgengine.presentation.viewmodel
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.uoa.nlgengine.data.model.BehaviourSummary
 import com.uoa.core.database.repository.LocationRepository
+import com.uoa.core.database.repository.ReportStatisticsRepository
+import com.uoa.core.database.repository.RoadRepository
 import com.uoa.core.database.repository.TripDataRepository
+import com.uoa.core.database.repository.UnsafeBehaviourRepository
 import com.uoa.core.model.LocationData
 import com.uoa.core.model.UnsafeBehaviourModel
-import com.uoa.core.network.apiservices.OSMApiService
+import com.uoa.core.network.apiservices.OSMRoadApiService
 import com.uoa.core.utils.toDomainModel
 import com.uoa.nlgengine.data.model.DateHourKey
 import com.uoa.nlgengine.data.model.HourlySummary
-import com.uoa.nlgengine.data.model.LocationDateHourKey
-import com.uoa.nlgengine.data.model.ReportStatistics
+import com.uoa.core.model.ReportStatistics
+import com.uoa.core.network.apiservices.OSMSpeedLimitApiService
 import com.uoa.nlgengine.data.model.UnsafeBehaviorChartEntry
 import com.uoa.nlgengine.domain.usecases.local.GetLastInsertedUnsafeBehaviourUseCase
-import com.uoa.nlgengine.util.PeriodType
+import com.uoa.core.utils.PeriodType
+import com.uoa.core.utils.PeriodUtils
+import com.uoa.core.utils.toEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.LocalDate
-import retrofit2.HttpException
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 import javax.inject.Inject
-import kotlin.math.log
 import com.uoa.nlgengine.util.computeReportStatistics
-import kotlin.time.toJavaDuration
 
 
 @HiltViewModel
 class NLGEngineViewModel @Inject constructor(
     private val locationRepository: LocationRepository,
     private val tripRepository: TripDataRepository,
-    private val osmApiService: OSMApiService,
-    private val lastInsertedUnsafeBehaviourUseCase: GetLastInsertedUnsafeBehaviourUseCase
+    private val osmRoadApiService: OSMRoadApiService,
+    private val lastInsertedUnsafeBehaviourUseCase: GetLastInsertedUnsafeBehaviourUseCase,
+    private val reportStatisticsRepository: ReportStatisticsRepository,
+    private val unsafeBehaviourRepository: UnsafeBehaviourRepository,
+    private val osmSpeedLimitApiService: OSMSpeedLimitApiService,
+    private val roadRepository: RoadRepository,
 ) : ViewModel() {
 
     private val _isLoading = MutableStateFlow(false)
@@ -58,33 +59,91 @@ class NLGEngineViewModel @Inject constructor(
     private val _summaryDataByDateHour = MutableStateFlow<Map<DateHourKey, HourlySummary>>(emptyMap())
     val summaryDataByDateHour: StateFlow<Map<DateHourKey, HourlySummary>> get() = _summaryDataByDateHour
 
-    private suspend fun generatePrompt(context: Context,unsafeBehaviours: List<UnsafeBehaviourModel>, periodType: PeriodType): String {
+
+    suspend fun getCachedReportStats(periodType: PeriodType): ReportStatistics?{
+        if (periodType== PeriodType.LAST_TRIP){
+            val tripId= tripRepository.getLastInsertedTrip()?.id
+
+            if (tripId!=null){
+                val cachedReportStat=reportStatisticsRepository.getReportByTripId(tripId)
+
+                return cachedReportStat.toDomainModel()
+            }
+            else{
+                return null
+            }
+        }
+        else{
+            val periodOfReport=PeriodUtils.getReportingPeriod(periodType)
+
+            if(periodOfReport!=null){
+                val cachedReportStat=reportStatisticsRepository.getReportsBetweenDates(periodOfReport.first,periodOfReport.second)
+
+                return cachedReportStat
+            }
+            else{
+                return null
+            }
+        }
+    }
+
+    private suspend fun generatePrompt(context: Context,
+                                       unsafeBehaviours: List<UnsafeBehaviourModel>,
+                                       periodType: PeriodType,
+                                       startDate: java.time.LocalDate,
+                                       endDate: java.time.LocalDate,): String {
         _isLoading.value = true
 
         return withContext(Dispatchers.IO) {
             try {
-                val reportStatistics = computeReportStatistics(
-                    context,
-                    osmApiService,
-                    periodType,
-                    unsafeBehaviours,
-                    tripRepository,
-                    locationRepository,
-                    lastInsertedUnsafeBehaviourUseCase
-                )
 
-                // Generate prompt with statistics
-                val prompt = buildPrompt(context, unsafeBehaviours,periodType,reportStatistics!!)
-                prompt
+                // Check if NLG Report for selected range already exists, if it does then, use that
+                // and do not start processing and generation all over again.
 
-            } catch (e: Exception) {
-                Log.e("NLGEngineViewModel", "Error generating prompt", e)
-                ""
+//                val reportStatsInDatabase = reportStatisticsRepository.getReportsBetweenDates(
+//                    startDate.toJavaLocalDate(),
+//                    endDate.toJavaLocalDate()
+//                )
+                val prompt = mutableStateOf<String>("")
+                if (getCachedReportStats(periodType)==null) {
+
+                    val reportStatistics = computeReportStatistics(
+                        context,
+                        osmRoadApiService,
+                        osmSpeedLimitApiService,
+                        roadRepository,
+                        startDate,
+                        endDate,
+                        periodType,
+                        unsafeBehaviours,
+                        tripRepository,
+                        locationRepository,
+                        lastInsertedUnsafeBehaviourUseCase
+                    )
+
+                    reportStatistics?.let {
+                        val reportStat=it.copy(processed = true)
+                        reportStatisticsRepository.insertReportStatistics(reportStat)
+                    }
+                    prompt.value = buildPrompt(context, unsafeBehaviours, periodType, reportStatistics!!)
+                }
+                else{
+                    // Generate prompt with statistics
+                    prompt.value = buildPrompt(context, unsafeBehaviours, periodType, getCachedReportStats(periodType)!!)
+
+                }
+                prompt.value
+
+
+
+                } catch (e: Exception) {
+                    Log.e("NLGEngineViewModel", "Error generating prompt", e)
+                    ""
+                }
+                finally {
+                    _isLoading.value = false
+                }
             }
-            finally {
-                _isLoading.value=false
-            }
-        }
     }
 
 
@@ -173,7 +232,7 @@ class NLGEngineViewModel @Inject constructor(
             when (periodType) {
                 PeriodType.LAST_TRIP -> {
                     // Include last trip specific statistics
-                    promptBuilder.append("Trip Duration: ${reportStatistics.lastTripDuration?.toJavaDuration()} minutes\n")
+                    promptBuilder.append("Trip Duration: ${reportStatistics.lastTripDuration} minutes\n")
                     promptBuilder.append("Distance Covered: ${"%.2f".format(reportStatistics.lastTripDistance)} km\n")
                     promptBuilder.append("Average Speed: ${"%.2f".format(reportStatistics.lastTripAverageSpeed)} km/h\n")
                     promptBuilder.append("Start Location: ${reportStatistics.lastTripStartLocation}\n")
@@ -209,7 +268,7 @@ class NLGEngineViewModel @Inject constructor(
                     // Include trip with most incidences
                     if (reportStatistics.tripWithMostIncidences != null) {
                         val tripStartTime =
-                            Instant.ofEpochMilli(reportStatistics.tripWithMostIncidences.startTime)
+                            Instant.ofEpochMilli(reportStatistics.tripWithMostIncidences!!.startTime)
                                 .atZone(ZoneId.systemDefault()).toLocalDateTime()
                         promptBuilder.append(
                             "Trip with Most Incidences Start Time: ${
@@ -250,13 +309,27 @@ class NLGEngineViewModel @Inject constructor(
 
     fun generatePromptForBehaviours(context: Context,
                                     unsafeBehaviours: List<UnsafeBehaviourModel>,
-                                    periodType: PeriodType) {
+                                    periodType: PeriodType,
+                                    startDate: java.time.LocalDate,
+                                    endDate: java.time.LocalDate)
+    {
 
         _isLoading.value = true
         viewModelScope.launch {
             try {
-                val prompt = generatePrompt(context, unsafeBehaviours, periodType)
+
+
+
+                val prompt = generatePrompt(context, unsafeBehaviours, periodType, startDate, endDate)
                 _generatedPrompt.value = prompt
+
+                val unsafeBehavioursCopyList=unsafeBehaviours.map{ unsafeBehaviour->
+                    unsafeBehaviour.copy(processed = true).toEntity()
+                }
+
+//                Update Unsafe Behaviours
+                unsafeBehaviourRepository.batchUpdateUnsafeBehaviours(unsafeBehavioursCopyList)
+
                 prompt.chunked(100).forEach { chunk ->
                     Log.d("LocationRoadViewModel", "Generated Prompt in ViewModel: $chunk")
                 }

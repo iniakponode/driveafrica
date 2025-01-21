@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.uoa.core.database.repository.LocationRepository
+import com.uoa.core.network.apiservices.OSMSpeedLimitApiService
 import com.uoa.sensor.hardware.MotionDetector
 import com.uoa.sensor.location.LocationDataBufferManager
 import com.uoa.sensor.repository.LocationRepositoryImpl
@@ -23,10 +24,11 @@ object LocationManagerModule {
 //        @ApplicationContext context: Context,
         locationDataBufferManager: LocationDataBufferManager,
         fusedLocationProviderClient: FusedLocationProviderClient,
-        motionDector: MotionDetector
+        motionDector: MotionDetector,
+        osmSpeedLimitApiService: OSMSpeedLimitApiService
     ): LocationManager {
         // Provide an instance of LocationManager
-        return LocationManager(locationDataBufferManager, fusedLocationProviderClient, motionDector)
+        return LocationManager(locationDataBufferManager, fusedLocationProviderClient, motionDector,osmSpeedLimitApiService)
     }
 
     @Provides

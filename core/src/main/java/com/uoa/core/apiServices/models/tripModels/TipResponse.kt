@@ -1,9 +1,11 @@
-package com.uoa.core.apiServices.models.tripModel
+package com.uoa.core.apiServices.models.tripModels
+
+import java.util.UUID
 
 // TripResponse.kt
 data class TripResponse(
-    val id: String,
-    val driver_profile_id: String,
+    val id: UUID,
+    val driverProfileId: UUID,
     val start_date: String,
     val end_date: String?,
     val start_time: Long,

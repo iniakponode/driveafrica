@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -103,6 +104,14 @@ fun DriverProfileCreationRoute(
                 // Handle invalid saved profile ID
                 prefs.edit().remove(DRIVER_PROFILE_ID).apply()
             }
+        }
+    }
+
+    val uploadSuccess by driverProfileViewModel.driverProfileUploadSuccess.collectAsState()
+
+    LaunchedEffect(uploadSuccess) {
+        if (uploadSuccess) {
+            onShowSnackbar("Driver Profile successfully uploaded!", null)
         }
     }
 

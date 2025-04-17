@@ -8,8 +8,8 @@ data class NLGReport(
     val userId: UUID,
     val tripId: UUID?=null,
     val reportText: String,
-    val startDate: java.time.LocalDate?=null,
-    val endDate: java.time.LocalDate?=null,
-    val createdDate: java.time.LocalDate,
-    val synced: Boolean,
+    val startDate: java.time.LocalDateTime?=null,
+    val endDate: java.time.LocalDateTime?=null,
+    val createdDate: java.time.LocalDateTime,
+    val sync: Boolean,
 )

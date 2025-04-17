@@ -14,10 +14,12 @@ interface TripDataRepository {
     suspend fun getAllTrips(): List<Trip>
 
     suspend fun getTripById(id: UUID): Trip?
+    suspend fun getUpdatedTrips(): List<Trip>
+    suspend fun getNewTrips(): List<Trip>
 
     suspend fun getTripByIds(ids: List<UUID>): List<Trip>
 
-    suspend fun updateUploadStatus(id: Int, sync: Boolean)
+    suspend fun updateUploadStatus(id: UUID, sync: Boolean)
 
     suspend fun getTripsByDriverProfileId(driverProfileId: UUID): List<Trip>
     suspend fun getTripsBetweenDates(startDate: LocalDate, endDate: LocalDate): List<Trip>

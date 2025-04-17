@@ -12,7 +12,7 @@ data class RawSensorDataCreate(
     val timestamp: Long,
     val date: String?, // ISO 8601 format
     val accuracy: Int,
-    val location_id: UUID?,
+    val location_id: UUID?=null,
     val driverProfileId: UUID,
     val trip_id: UUID,
     val sync: Boolean

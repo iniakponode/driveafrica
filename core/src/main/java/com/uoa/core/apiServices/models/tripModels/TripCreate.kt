@@ -13,5 +13,6 @@ data class TripCreate(
     val end_date: String?=null, // Optional
     val start_time: Long?=null,
     val end_time: Long?=null, // Optional
-    val synced: Boolean
+    val sync: Boolean,
+    val influence: String
 )

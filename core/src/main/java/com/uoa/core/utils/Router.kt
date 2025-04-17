@@ -1,6 +1,7 @@
 package com.uoa.core.utils
 
 // Constants
+const val SPLASH_SCREEN_ROUTE = "entryPointRoute"
 const val ENTRYPOINT_ROUTE = "entryPointRoute"
 const val WELCOME_ROUTE = "welcome"
 const val DISCLAIMER_ROUTE = "disclaimer"

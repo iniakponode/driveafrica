@@ -43,6 +43,14 @@ class TripDataRepositoryImpl @Inject constructor(private val tripDataDao: TripDa
 
     }
 
+    override suspend fun getNewTrips(): List<Trip> {
+        return tripDataDao.getNewTrips() // Implemented as trips with sync=false and endDate/endTime=null
+    }
+
+    override suspend fun getUpdatedTrips(): List<Trip> {
+        return tripDataDao.getUpdatedTrips() // Implemented as trips with sync=false and endDate/endTime!=null
+    }
+
     override suspend fun getTripByIds(ids: List<UUID>): List<Trip>{
         Log.d("TripRepository", "getTripByIds called with ids: $ids")
 
@@ -79,7 +87,7 @@ class TripDataRepositoryImpl @Inject constructor(private val tripDataDao: TripDa
         return tripDataDao.getTripById(id)?.toDomainModel()
     }
 
-    override suspend fun updateUploadStatus(id: Int, sync: Boolean) {
+    override suspend fun updateUploadStatus(id: UUID, sync: Boolean) {
         return tripDataDao.updateUploadStatus(id, sync)
     }
 

@@ -10,5 +10,6 @@ data class Road (
     val speedLimit: Int,
     val latitude: Double,
     val longitude: Double,
-    val synced: Boolean?=false
+    val radius: Double,
+    val sync: Boolean?=false
 )

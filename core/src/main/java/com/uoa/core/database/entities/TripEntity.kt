@@ -29,6 +29,6 @@ data class TripEntity(
     val startTime: Long,
     var endTime: Long?,
     var influence: String?,
-    var synced: Boolean=false
+    var sync: Boolean=false
     // Other trip data fields
 )

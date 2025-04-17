@@ -1,17 +1,18 @@
 package com.uoa.sensor.presentation.di
 
-import android.os.Build
-import androidx.annotation.RequiresApi
+import android.content.Context
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.uoa.core.database.repository.LocationRepository
+import com.uoa.core.database.repository.RoadRepository
+import com.uoa.core.network.apiservices.OSMRoadApiService
 import com.uoa.core.network.apiservices.OSMSpeedLimitApiService
-import com.uoa.sensor.hardware.MotionDetector
+import com.uoa.sensor.hardware.MotionDetection
 import com.uoa.sensor.location.LocationDataBufferManager
-import com.uoa.sensor.repository.LocationRepositoryImpl
 import com.uoa.sensor.location.LocationManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
@@ -21,15 +22,43 @@ object LocationManagerModule {
     // Provide the LocationManager implementation
     @Provides
     fun provideLocationManager(
-//        @ApplicationContext context: Context,
+        @ApplicationContext context: Context,
         locationDataBufferManager: LocationDataBufferManager,
         fusedLocationProviderClient: FusedLocationProviderClient,
-        motionDector: MotionDetector,
-        osmSpeedLimitApiService: OSMSpeedLimitApiService
+        motionDector: MotionDetection,
+        osmSpeedLimitApiService: OSMSpeedLimitApiService,
+        osmRoadApiService: OSMRoadApiService,
+        roadRepository: RoadRepository
     ): LocationManager {
         // Provide an instance of LocationManager
-        return LocationManager(locationDataBufferManager, fusedLocationProviderClient, motionDector,osmSpeedLimitApiService)
+        return LocationManager(
+            locationDataBufferManager,
+            fusedLocationProviderClient,
+            motionDector,
+            osmSpeedLimitApiService,
+            context,
+            osmRoadApiService,
+            roadRepository
+        )
     }
+
+//    @Provides
+//    @Singleton
+//    fun provideLocationManager(
+//        bufferManager: LocationDataBufferManager,
+//        fusedLocationProviderClient: FusedLocationProviderClient,
+//        osmSpeedLimitApiService: OSMSpeedLimitApiService,
+//        sensorDataColRepository: SensorDataColStateRepository,
+////        vehicleMovementManager: VehicleMovementManager
+//    ): LocationManagerBackup {
+//        return LocationManagerBackup(
+//            bufferManager = bufferManager,
+//            fusedLocationProviderClient = fusedLocationProviderClient,
+//            osmSpeedLimitApiService = osmSpeedLimitApiService,
+//            sensorDataColRepository
+////            vehicleMovementManager = vehicleMovementManager
+//        )
+//    }
 
     @Provides
     @Singleton

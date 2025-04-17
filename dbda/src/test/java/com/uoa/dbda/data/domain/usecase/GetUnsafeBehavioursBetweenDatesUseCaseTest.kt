@@ -52,7 +52,7 @@ class GetUnsafeBehavioursBetweenDatesUseCaseTest {
                 date = Date(),
                 updatedAt = null,
                 updated = false,
-                synced = false,
+                sync = false,
             )
         )
 

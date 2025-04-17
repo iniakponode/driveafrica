@@ -4,7 +4,7 @@ import com.google.gson.annotations.SerializedName
 import java.util.UUID
 
 data class DriverProfileResponse(
-    @SerializedName("driver_profile_id")
+    @SerializedName("driverProfileId")
     val driverProfileId: UUID, // Should be parsed from String in JSON
     val email: String,
     val sync: Boolean

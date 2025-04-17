@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.uoa.core.utils.Constants.Companion.DRIVER_EMAIL_ID
 //import com.uoa.driverprofile.presentation.ui.CustomTextField
 import com.uoa.driverprofile.presentation.viewmodel.DriverProfileViewModel
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
@@ -103,6 +104,7 @@ fun DriverProfileCreationRoute(
             } else {
                 // Handle invalid saved profile ID
                 prefs.edit().remove(DRIVER_PROFILE_ID).apply()
+                prefs.edit().remove(DRIVER_EMAIL_ID).apply()
             }
         }
     }
@@ -124,6 +126,7 @@ fun DriverProfileCreationRoute(
             driverProfileViewModel.insertDriverProfile(newProfileId, emailState) { success ->
                 if (success) {
                     prefs.edit().putString(DRIVER_PROFILE_ID, newProfileId.toString()).apply()
+                    prefs.edit().putString(DRIVER_EMAIL_ID, emailState.toString()).apply()
                     navController.navigateToHomeScreen(newProfileId)
                 } else {
                     // Show error message on the main thread

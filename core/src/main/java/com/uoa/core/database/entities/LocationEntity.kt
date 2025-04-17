@@ -32,5 +32,5 @@ data class LocationEntity(
     val distance: Float,
     val speedLimit: Double,
     val processed: Boolean= false,
-    var sync: Boolean
+    var sync: Boolean=false
 )

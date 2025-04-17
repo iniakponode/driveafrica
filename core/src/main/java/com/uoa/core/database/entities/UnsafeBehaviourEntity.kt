@@ -17,7 +17,7 @@ import java.util.UUID
         Index(value = ["tripId"]),
         Index(value = ["locationId"]),
         Index(value = ["date"]),
-        Index(value = ["synced"]),
+        Index(value = ["sync"]),
         Index(value = ["driverProfileId"]),
         Index(value = ["id"], unique = true),
     ],
@@ -36,5 +36,5 @@ data class UnsafeBehaviourEntity(
     val updatedAt:Date?,
     val updated:Boolean=false,
     val processed: Boolean= false,
-    val synced: Boolean=false,
+    val sync: Boolean=false,
     )

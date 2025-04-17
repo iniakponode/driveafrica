@@ -8,9 +8,11 @@ import com.uoa.core.utils.Resource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import java.util.UUID
 
 interface RoadRepository {
     fun getNearByRoad(latitude: Double, longitude: Double, radius: Double): List<Road>
+    fun getRoadById(id:UUID): Road
 
     fun getRoadByCoordinates(latitude: Double, longitude: Double, radius: Double): Road?
 

@@ -10,4 +10,6 @@ data class RoadResponse(
     val speedLimit: Int,
     val latitude: Double,
     val longitude: Double,
+    val radius: Double,
+    val sync: Boolean
 )

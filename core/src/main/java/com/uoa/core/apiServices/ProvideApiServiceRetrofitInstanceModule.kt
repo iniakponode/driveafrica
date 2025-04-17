@@ -1,5 +1,6 @@
 package com.uoa.core.apiServices
 
+import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.uoa.core.BuildConfig
 import com.uoa.core.apiServices.services.aiModellInputApiService.AIModelInputApiRepository
@@ -26,6 +27,7 @@ import com.uoa.core.apiServices.services.tripApiService.TripApiRepository
 import com.uoa.core.apiServices.services.tripApiService.TripApiService
 import com.uoa.core.apiServices.services.unsafeBehaviourApiService.UnsafeBehaviourApiRepository
 import com.uoa.core.apiServices.services.unsafeBehaviourApiService.UnsafeBehaviourApiService
+import com.uoa.core.database.repository.DriverProfileRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -34,99 +36,97 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object ProvideApiServiceRetrofitInstanceModule {
-    const val DRIVE_AFRICA_BASE_URL = BuildConfig.DRIVE_AFRICA_BASE_URL
-//    const val DRIVE_AFRICA_BASE_URL= BuildConfig.EMULATOR_BASE_URL
-    private val gson by lazy {
-        GsonBuilder().create()
+
+    // The base URL to your API
+    private const val DRIVE_AFRICA_BASE_URL = BuildConfig.DRIVE_AFRICA_BASE_URL
+//        const val DRIVE_AFRICA_BASE_URL= BuildConfig.EMULATOR_BASE_URL
+
+    // 1) Provide the custom UUIDTypeAdapter
+    @Provides
+    fun provideUUIDTypeAdapter(): UUIDTypeAdapter = UUIDTypeAdapter()
+
+    // 2) Provide Gson with your UUID adapter
+    @Provides
+    @Singleton
+    fun provideGson(uuidTypeAdapter: UUIDTypeAdapter): Gson {
+        return GsonBuilder()
+            .registerTypeAdapter(UUID::class.java, uuidTypeAdapter)
+            .create()
     }
 
-    private fun getDriveAfricaHttpClientBuilder(): OkHttpClient.Builder {
-        return OkHttpClient.Builder()
+    // 3) Provide OkHttpClient (logging, token interceptors, etc.)
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(): OkHttpClient {
+        val clientBuilder = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
-            .addInterceptor { chain ->
-                val requestBuilder = chain.request().newBuilder()
-                // Retrieve the token from secure storage
-                val token = getAuthToken()
-                if (token != null) {
-                    requestBuilder.addHeader("Authorization", "Bearer $token")
-                }
-                chain.proceed(requestBuilder.build())
-            }
             .addInterceptor(HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BODY
             })
-    }
 
-    private fun getAuthToken(): String? {
-        // Implement secure retrieval of the auth token
-        // For example, using EncryptedSharedPreferences
-        return null // Replace with actual implementation
-    }
-
-    // Function to get Retrofit instance with optional headers
-    fun getRetrofitInstance(
-        baseUrl: String,
-        headers: Map<String, String>? = null
-    ): Retrofit {
-        val clientBuilder = getDriveAfricaHttpClientBuilder()
-
-        headers?.let {
-            clientBuilder.addInterceptor { chain ->
-                val requestBuilder = chain.request().newBuilder()
-                for ((key, value) in it) {
-                    requestBuilder.addHeader(key, value)
-                }
-                chain.proceed(requestBuilder.build())
+        // Example of adding an Authorization header (if token is non-null)
+        clientBuilder.addInterceptor { chain ->
+            val requestBuilder = chain.request().newBuilder()
+            val token = getAuthToken()
+            if (!token.isNullOrEmpty()) {
+                requestBuilder.addHeader("Authorization", "Bearer $token")
             }
+            chain.proceed(requestBuilder.build())
         }
-        val client = clientBuilder.build()
 
+        return clientBuilder.build()
+    }
+
+    // Replace this with your secure token retrieval if needed
+    private fun getAuthToken(): String? {
+        // e.g. read from encrypted shared prefs or some other store
+        return null
+    }
+
+    // 4) Provide a single Retrofit instance
+    @Provides
+    @Singleton
+    fun provideRetrofit(
+        gson: Gson,
+        okHttpClient: OkHttpClient
+    ): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(baseUrl)
-            .addConverterFactory(GsonConverterFactory.create(this.gson))
-            .client(client)
+            .baseUrl(DRIVE_AFRICA_BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .client(okHttpClient)
             .build()
     }
 
-    // Provide AIModelInputApiService
+    // 5) Provide each API service from the single Retrofit
     @Provides
     @Singleton
-    fun provideAIModelInputApiService(): AIModelInputApiService {
-        return getRetrofitInstance(
-            baseUrl = DRIVE_AFRICA_BASE_URL
-            // Add headers if needed
-        ).create(AIModelInputApiService::class.java)
+    fun provideAIModelInputApiService(retrofit: Retrofit): AIModelInputApiService {
+        return retrofit.create(AIModelInputApiService::class.java)
     }
 
-    // Provide AIModelInputRepository
     @Provides
     @Singleton
-    fun provideAiModelInputRepository(
+    fun provideAiModelInputApiRepository(
         aiModelInputApiService: AIModelInputApiService
     ): AIModelInputApiRepository {
         return AIModelInputApiRepository(aiModelInputApiService)
     }
 
-
-    // Provide AlcoholQuestionnaireApiService
     @Provides
     @Singleton
-    fun provideQuestionnaireApiService(): QuestionnaireApiService {
-        return getRetrofitInstance(
-            baseUrl = DRIVE_AFRICA_BASE_URL
-            // Add headers if needed
-        ).create(QuestionnaireApiService::class.java)
+    fun provideQuestionnaireApiService(retrofit: Retrofit): QuestionnaireApiService {
+        return retrofit.create(QuestionnaireApiService::class.java)
     }
 
-    // Provide Questionnaire API Repository
     @Provides
     @Singleton
     fun provideQuestionnaireApiRepository(
@@ -135,77 +135,57 @@ object ProvideApiServiceRetrofitInstanceModule {
         return QuestionnaireApiRepository(questionnaireApiService)
     }
 
-    // Provide DrivingTipApiService
     @Provides
     @Singleton
-    fun provideDrivingTipApiService(): DrivingTipApiService {
-        return getRetrofitInstance(
-            baseUrl = DRIVE_AFRICA_BASE_URL
-            // Add headers if needed
-        ).create(DrivingTipApiService::class.java)
+    fun provideDrivingTipApiService(retrofit: Retrofit): DrivingTipApiService {
+        return retrofit.create(DrivingTipApiService::class.java)
     }
 
-    // Provide DrivingTipRepository
     @Provides
     @Singleton
-    fun provideDrivingTipRepository(
+    fun provideDrivingTipApiRepository(
         drivingTipApiService: DrivingTipApiService
     ): DrivingTipApiRepository {
         return DrivingTipApiRepository(drivingTipApiService)
     }
 
-    // Provide EmbeddingApiService
     @Provides
     @Singleton
-    fun provideEmbeddingApiService(): EmbeddingApiService {
-        return getRetrofitInstance(
-            baseUrl = DRIVE_AFRICA_BASE_URL
-            // Add headers if needed
-        ).create(EmbeddingApiService::class.java)
+    fun provideEmbeddingApiService(retrofit: Retrofit): EmbeddingApiService {
+        return retrofit.create(EmbeddingApiService::class.java)
     }
 
-    // Provide EmbeddingRepository
     @Provides
     @Singleton
-    fun provideEmbeddingRepository(
+    fun provideEmbeddingApiRepository(
         embeddingApiService: EmbeddingApiService
     ): EmbeddingApiRepository {
         return EmbeddingApiRepository(embeddingApiService)
     }
 
-    // Provide LocationApiService
     @Provides
     @Singleton
-    fun provideLocationApiService(): LocationApiService {
-        return getRetrofitInstance(
-            baseUrl = DRIVE_AFRICA_BASE_URL
-            // Add headers if needed
-        ).create(LocationApiService::class.java)
+    fun provideLocationApiService(retrofit: Retrofit): LocationApiService {
+        return retrofit.create(LocationApiService::class.java)
     }
 
-    // Provide LocationRepository
     @Provides
     @Singleton
-    fun provideLocationRepository(
+    fun provideLocationApiRepository(
         locationApiService: LocationApiService
     ): LocationApiRepository {
         return LocationApiRepository(locationApiService)
     }
 
-    // Provide NLGReportApiService
     @Provides
     @Singleton
-    fun provideNLGReportApiService(): NLGReportApiService {
-        return getRetrofitInstance(
-            baseUrl = DRIVE_AFRICA_BASE_URL
-            // Add headers if needed
-        ).create(NLGReportApiService::class.java)
+    fun provideNLGReportApiService(retrofit: Retrofit): NLGReportApiService {
+        return retrofit.create(NLGReportApiService::class.java)
     }
 
-    // Provide NLGReportRepository
     @Provides
     @Singleton
-    fun provideNLGReportRepository(
+    fun provideNLGReportApiRepository(
         nlgReportApiService: NLGReportApiService
     ): NLGReportApiRepository {
         return NLGReportApiRepository(nlgReportApiService)
@@ -213,10 +193,8 @@ object ProvideApiServiceRetrofitInstanceModule {
 
     @Provides
     @Singleton
-    fun provideRawSensorDataApiService(): RawSensorDataApiService {
-        return getRetrofitInstance(
-            baseUrl = DRIVE_AFRICA_BASE_URL
-        ).create(RawSensorDataApiService::class.java)
+    fun provideRawSensorDataApiService(retrofit: Retrofit): RawSensorDataApiService {
+        return retrofit.create(RawSensorDataApiService::class.java)
     }
 
     @Provides
@@ -227,33 +205,24 @@ object ProvideApiServiceRetrofitInstanceModule {
         return RawSensorDataApiRepository(rawSensorDataApiService)
     }
 
-
     @Provides
     @Singleton
-    fun provideTripApiService(): TripApiService {
-        return getRetrofitInstance(
-            baseUrl = DRIVE_AFRICA_BASE_URL
-            // Add headers if needed
-        ).create(TripApiService::class.java)
+    fun provideTripApiService(retrofit: Retrofit): TripApiService {
+        return retrofit.create(TripApiService::class.java)
     }
 
     @Provides
     @Singleton
-    fun providesTripApiRepository(tripApiService: TripApiService): TripApiRepository{
+    fun provideTripApiRepository(tripApiService: TripApiService): TripApiRepository {
         return TripApiRepository(tripApiService)
     }
 
-    // Provide UnsafeBehaviourApiService
     @Provides
     @Singleton
-    fun provideUnsafeBehaviourApiService(): UnsafeBehaviourApiService {
-        return getRetrofitInstance(
-            baseUrl = DRIVE_AFRICA_BASE_URL
-            // Add headers if needed
-        ).create(UnsafeBehaviourApiService::class.java)
+    fun provideUnsafeBehaviourApiService(retrofit: Retrofit): UnsafeBehaviourApiService {
+        return retrofit.create(UnsafeBehaviourApiService::class.java)
     }
 
-    // Provide UnsafeBehaviourRepository
     @Provides
     @Singleton
     fun provideUnsafeBehaviourRepository(
@@ -262,36 +231,27 @@ object ProvideApiServiceRetrofitInstanceModule {
         return UnsafeBehaviourApiRepository(unsafeBehaviourApiService)
     }
 
-    // Provide DriverProfileApiService
     @Provides
     @Singleton
-    fun provideDriverProfileApiService(): DriverProfileApiService {
-        return getRetrofitInstance(
-            baseUrl = DRIVE_AFRICA_BASE_URL
-            // Add headers if needed, e.g., authentication
-        ).create(DriverProfileApiService::class.java)
+    fun provideDriverProfileApiService(retrofit: Retrofit): DriverProfileApiService {
+        return retrofit.create(DriverProfileApiService::class.java)
     }
 
-    // Provide DriverProfileRepository
     @Provides
     @Singleton
-    fun provideDriverProfileRepository(
-        driverProfileApiService: DriverProfileApiService
+    fun provideDriverProfileApiRepository(
+        driverProfileApiService: DriverProfileApiService,
+        driverProfileRepository: DriverProfileRepository
     ): DriverProfileApiRepository {
-        return DriverProfileApiRepository(driverProfileApiService)
+        return DriverProfileApiRepository(driverProfileApiService, driverProfileRepository)
     }
 
-    // Provide ReportStatisticsApiService
     @Provides
     @Singleton
-    fun provideReportStatisticsApiService(): ReportStatisticsApiService {
-        return getRetrofitInstance(
-            baseUrl = DRIVE_AFRICA_BASE_URL
-            // Add headers if needed, e.g., authentication
-        ).create(ReportStatisticsApiService::class.java)
+    fun provideReportStatisticsApiService(retrofit: Retrofit): ReportStatisticsApiService {
+        return retrofit.create(ReportStatisticsApiService::class.java)
     }
 
-    // Provide ReportStatisticsRepository
     @Provides
     @Singleton
     fun provideReportStatisticsApiRepository(
@@ -300,7 +260,12 @@ object ProvideApiServiceRetrofitInstanceModule {
         return ReportStatisticsApiRepository(reportStatisticsApiService)
     }
 
-    // Provide RoadApiRepository
+    @Provides
+    @Singleton
+    fun provideRoadApiService(retrofit: Retrofit): RoadApiService {
+        return retrofit.create(RoadApiService::class.java)
+    }
+
     @Provides
     @Singleton
     fun provideRoadApiRepository(
@@ -308,17 +273,4 @@ object ProvideApiServiceRetrofitInstanceModule {
     ): RoadApiRepository {
         return RoadApiRepository(roadApiService)
     }
-
-    @Provides
-    @Singleton
-    fun provideRoadApiService(): RoadApiService {
-        return getRetrofitInstance(
-            baseUrl = DRIVE_AFRICA_BASE_URL
-            // Add headers if needed, e.g., authentication
-        ).create(RoadApiService::class.java)
-    }
-
-
 }
-
-

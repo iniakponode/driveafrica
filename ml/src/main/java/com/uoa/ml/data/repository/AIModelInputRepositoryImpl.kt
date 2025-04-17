@@ -51,7 +51,7 @@ class AIModelInputRepositoryImpl @Inject constructor(
         return aiModelInputDao.getAllAiModelInputs()
     }
 
-    override suspend fun getAiModelInputById(id: Int): AIModelInputsEntity? {
+    override suspend fun getAiModelInputById(id: UUID): AIModelInputsEntity? {
         return aiModelInputDao.getAiModelInputById(id)
     }
 
@@ -59,7 +59,7 @@ class AIModelInputRepositoryImpl @Inject constructor(
         aiModelInputDao.updateAiModelInput(aiModelInput)
     }
 
-    override suspend fun deleteAiModelInputById(id: Int) {
+    override suspend fun deleteAiModelInputById(id: UUID) {
         aiModelInputDao.deleteAiModelInputById(id)
     }
 

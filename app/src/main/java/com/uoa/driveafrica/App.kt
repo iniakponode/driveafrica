@@ -10,7 +10,9 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.uoa.core.apiServices.workManager.DeleteLocalDataWorker
 import com.uoa.core.apiServices.workManager.UnsafeDrivingAnalysisWorker
-import com.uoa.core.apiServices.workManager.UploadRawSensorDataWorker
+import com.uoa.core.apiServices.workManager.scheduleDataUploadWork
+//import com.uoa.core.apiServices.workManager.UploadRawSensorDataWorker
+import com.uoa.core.utils.scheduleNextUploadWork
 //import androidx.work.Constraints
 //import androidx.work.ExistingPeriodicWorkPolicy
 //import androidx.work.NetworkType
@@ -39,20 +41,22 @@ class App : Application(), Configuration.Provider {
 //            .build())
         // Workers Scheduled here:
 //        scheduleDataUploadWork(this)
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
-
-        val uploadWorkRequest = PeriodicWorkRequestBuilder<UploadRawSensorDataWorker>(5, TimeUnit.MINUTES)
-            .setConstraints(constraints)
-            .build()
-
-        WorkManager.getInstance(this)
-            .enqueueUniquePeriodicWork(
-                "UploadRawData",
-                ExistingPeriodicWorkPolicy.KEEP,
-                uploadWorkRequest
-            )
+//        val constraints = Constraints.Builder()
+//            .setRequiredNetworkType(NetworkType.CONNECTED)
+//            .build()
+//
+//        val uploadWorkRequest = PeriodicWorkRequestBuilder<UploadRawSensorDataWorker>(5, TimeUnit.MINUTES)
+//            .setConstraints(constraints)
+//            .build()
+//
+//        WorkManager.getInstance(this)
+//            .enqueueUniquePeriodicWork(
+//                "UploadRawData",
+//                ExistingPeriodicWorkPolicy.KEEP,
+//                uploadWorkRequest
+//            )
+        scheduleDataUploadWork(this)
+//        scheduleNextUploadWork(this)
 
         val deleteWorkRequest = PeriodicWorkRequestBuilder<DeleteLocalDataWorker>(5, TimeUnit.MINUTES)
             .setConstraints(
@@ -81,7 +85,6 @@ class App : Application(), Configuration.Provider {
                 ExistingPeriodicWorkPolicy.KEEP, // or REPLACE, depending on your needs
                 analysisWorkRequest
             )
-
 
 
     }

@@ -5,6 +5,7 @@ import android.net.http.HttpException
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresExtension
+import com.uoa.core.database.repository.LocationRepository
 import com.uoa.core.nlg.repository.NLGEngineRepository
 import com.uoa.core.network.apiservices.ChatGPTApiService
 import com.uoa.core.network.apiservices.GeminiApiService
@@ -22,7 +23,8 @@ import javax.inject.Inject
 class NLGEngineRepositoryImpl @Inject constructor(
     private val chatGPTApiService: ChatGPTApiService,
     private val geminiApiService: GeminiApiService,
-    private val osmRoadApiService: OSMRoadApiService
+    private val osmRoadApiService: OSMRoadApiService,
+    private val locationRepository: LocationRepository
 ) : NLGEngineRepository {
 
     override suspend fun sendChatGPTPrompt(requestBody: RequestBody): ChatGPTResponse {
@@ -48,28 +50,18 @@ class NLGEngineRepositoryImpl @Inject constructor(
     // Single call that retrieves the road name from OSM given a locationID
     override suspend fun getRoadName(locationID: UUID): ReverseGeocodeResponse {
         // Implement logic to get latitude and longitude from locationID
-        val (latitude, longitude) = getLocationCoordinates(locationID)
+        val lat= locationRepository.getLocationById(locationID)?.latitude
+        val long=locationRepository.getLocationById(locationID)?.longitude
 
         // Comply with usage policy: at most 1 request/sec
         // Optional: If this is the only place calling OSM, you could do a delay(1000)
         // or a more robust rate-limiter approach
         delay(1000) // naive approach: wait 1 second before each call
         return osmRoadApiService.reverseGeocode(
-            lat = latitude.toDouble(),
-            lon = longitude.toDouble(),
+            lat = lat?.toDouble() ?:0.00 ,
+            lon = long?.toDouble() ?: 0.00,
             // Use "jsonv2" to get a fuller structure
             format = "jsonv2"
         )
-    }
-
-
-    // Helper function to retrieve coordinates from locationID
-    private suspend fun getLocationCoordinates(locationID: UUID): Pair<Double, Double> {
-        // Implement logic to retrieve latitude and longitude from locationID
-        // For example, query a local database or a remote API
-        // Placeholder implementation:
-        val latitude = 0.00 // Replace with actual value
-        val longitude = 0.00 // Replace with actual value
-        return Pair(latitude, longitude)
     }
 }

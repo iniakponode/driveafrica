@@ -9,6 +9,8 @@ import androidx.lifecycle.viewModelScope
 import com.uoa.core.apiServices.models.driverProfile.DriverProfileCreate
 import com.uoa.core.apiServices.services.driverProfileApiService.DriverProfileApiRepository
 import com.uoa.core.database.entities.DriverProfileEntity
+import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
+import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.Resource
 //import com.uoa.core.database.entities.EmbeddingEntity
 //import com.uoa.core.nlg.repository.EmbeddingUtilsRepository
@@ -33,7 +35,8 @@ class DriverProfileViewModel @Inject constructor(
     private val insertDriverProfileUseCase: InsertDriverProfileUseCase,
     private val getDriverProfileByEmailUseCase: GetDriverProfileByEmailUseCase,
     private val deleteDriverProfileByEmailUseCase: DeleteDriverProfileByEmailUseCase,
-    private val driverProfileApiRepository: DriverProfileApiRepository,
+//    private val driverProfileApiRepository: DriverProfileApiRepository,
+
 //    private val embeddingUtilsRepository: EmbeddingUtilsRepository,
 
 //    private val ragEngine: RAGEngine,
@@ -123,37 +126,54 @@ class DriverProfileViewModel @Inject constructor(
             val localResult = runCatching {
                 val entity = DriverProfileEntity(email = email, driverProfileId = profileId, sync = false)
                 insertDriverProfileUseCase.execute(entity)
+
             }
+
 
             // If local insertion fails, report failure immediately
             if (localResult.isFailure) {
+//                Log.d("Driver","Error inserting driver profile")
                 withContext(Dispatchers.Main) {
                     callback(false)
                     _driverProfileUploadSuccess.value = false
                 }
                 return@launch
             }
+            else {
+                // If local insertion succeeds, update success state and invoke callback on the Main thread
+                // ***** IMPORTANT: store the updated driverProfileId in SharedPreferences *****
+                val prefs = application.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                prefs.edit()
+                    .putString(DRIVER_PROFILE_ID, profileId.toString())
+                    .apply()
+                _driverProfileUploadSuccess.value = true
+                Log.d("Driver", "Upload status: ${_driverProfileUploadSuccess.value}")
 
-            // 2) Prepare the payload for remote creation
-            val driverProfileCreate = DriverProfileCreate(
-                driverProfileId = profileId,
-                email = email,
-                sync = true
-            )
-
-            // 3) Attempt remote creation after local insertion
-            val remoteResult = driverProfileApiRepository.createDriverProfile(driverProfileCreate)
-
-            // 4) Handle the remote result on the Main thread
-            withContext(Dispatchers.Main) {
-                if (remoteResult is Resource.Success) {
+                withContext(Dispatchers.Main) {
                     callback(true)
-                    _driverProfileUploadSuccess.value = true
-                } else {
-                    callback(false)
-                    _driverProfileUploadSuccess.value = false
                 }
             }
+
+//            // 2) Prepare the payload for remote creation
+//            val driverProfileCreate = DriverProfileCreate(
+//                driverProfileId = profileId,
+//                email = email,
+//                sync = true
+//            )
+//
+//            // 3) Attempt remote creation after local insertion
+//            val remoteResult = driverProfileApiRepository.createDriverProfile(driverProfileCreate)
+//
+//            // 4) Handle the remote result on the Main thread
+//            withContext(Dispatchers.Main) {
+//                if (remoteResult is Resource.Success) {
+//                    callback(true)
+//                    _driverProfileUploadSuccess.value = true
+//                } else {
+//                    callback(false)
+//                    _driverProfileUploadSuccess.value = false
+//                }
+//            }
         }
     }
 

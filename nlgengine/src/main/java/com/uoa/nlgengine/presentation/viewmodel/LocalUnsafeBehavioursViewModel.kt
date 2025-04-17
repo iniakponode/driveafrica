@@ -2,22 +2,16 @@ package com.uoa.nlgengine.presentation.viewmodel
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.uoa.nlgengine.domain.usecases.local.UnsafeBehavioursBtwnDatesUseCase
+import com.uoa.core.utils.UnsafeBehavioursBtwnDatesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import androidx.lifecycle.viewModelScope
 //import com.uoa.core.behaviouranalysis.UnsafeBehaviorAnalyser
 import com.uoa.core.model.UnsafeBehaviourModel
-import com.uoa.core.utils.toDomainModel
-import com.uoa.core.utils.toEntity
-import com.uoa.dbda.domain.usecase.FetchRawSensorDataByDateUseCase
-import com.uoa.dbda.domain.usecase.FetchRawSensorDataByTripIdUseCase
-import com.uoa.dbda.domain.usecase.InsertUnsafeBehaviourUseCase
-import com.uoa.nlgengine.domain.usecases.local.GetLastInsertedUnsafeBehaviourUseCase
-import com.uoa.nlgengine.domain.usecases.local.UnsafeBehaviourByTripIdUseCase
+import com.uoa.core.utils.GetLastInsertedUnsafeBehaviourUseCase
+import com.uoa.core.utils.UnsafeBehaviourByTripIdUseCase
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.util.UUID

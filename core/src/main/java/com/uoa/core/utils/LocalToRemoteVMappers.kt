@@ -19,6 +19,7 @@ import com.uoa.core.apiServices.models.unsafeBehaviourModels.*
 import com.uoa.core.database.entities.ReportStatisticsEntity
 import okhttp3.internal.format
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.ZoneId
 
 
@@ -33,7 +34,7 @@ private val dateFormatUTC = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.
 
 // ---------------- Trip Conversions ----------------
 fun Trip.toTripCreate(): TripCreate {
-    val isoStartDate = dateFormatUTC.format(startDate)
+    val isoStartDate = dateFormatUTC.format(startDate!!)
     val isoEndDate = endDate?.let { dateFormatUTC.format(it) }
     return TripCreate(
         id= id,
@@ -42,7 +43,8 @@ fun Trip.toTripCreate(): TripCreate {
         end_date = isoEndDate!!,
         start_time = startTime,
         end_time = endTime,
-        synced = true
+        sync = sync,
+        influence=influence!!
     )
 }
 
@@ -56,7 +58,8 @@ fun TripCreate.toTrip(): Trip {
         startDate = parsedStartDate,
         endDate = parsedEndDate,
         id = UUID.randomUUID(), // Adjust as needed if you have a way to set the ID
-        influence = ""
+        influence = influence,
+        sync =sync
     )
 }
 
@@ -197,7 +200,8 @@ fun UnsafeBehaviourModel.toUnsafeBehaviourCreate(): UnsafeBehaviourCreate {
         severity = severity.toDouble(),
         timestamp = timestamp,
         date = formattedDate,
-        behaviour_type = behaviorType
+        behaviour_type = behaviorType,
+        sync=sync
     )
 }
 
@@ -251,8 +255,8 @@ fun UnsafeBehaviourModel.toUnsafeBehaviourCreate(): UnsafeBehaviourCreate {
 fun DrivingTip.toDrivingTipCreate(): DrivingTipCreate {
 //    val dateString = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
-    val formatter = DateTimeFormatter.ISO_DATE_TIME
-    val isoDate = date.format(formatter)
+
+    val isoDate = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
     return DrivingTipCreate(
         tip_id= tipId,
         title = title,
@@ -303,7 +307,8 @@ fun AlcoholQuestionnaireResponse.toQuestionnaire(): Questionnaire {
         caffeinatedDrink = this.caffeinatedDrink,
         impairmentLevel = this.impairmentLevel,
         date= DateConversionUtils.stringToDate(this.date)!!, // ISO 8601 format
-        plansToDrive = this.plansToDrive
+        plansToDrive = this.plansToDrive,
+        sync=this.sync
     )
 }
 
@@ -369,26 +374,38 @@ fun AlcoholQuestionnaireResponse.toQuestionnaire(): Questionnaire {
 private val isoDateTimeFormatter = DateTimeFormatter.ISO_DATE_TIME
 
 fun NLGReport.toNLGReportCreate(): NLGReportCreate {
+    // Ensure the critical fields are non-null
+    val safeCreatedDate = createdDate
+        ?: throw IllegalStateException("NLGReport.toNLGReportCreate(): createdDate is null for report id $id")
+    val safeStartDate = startDate
+        ?: throw IllegalStateException("NLGReport.toNLGReportCreate(): startDate is null for report id $id")
+    val safeEndDate = endDate
+        ?: throw IllegalStateException("NLGReport.toNLGReportCreate(): endDate is null for report id $id")
     return NLGReportCreate(
         id=id,
         driverProfileId = userId,
-        startDate = startDate!!,
-        endDate = endDate!!,
+        startDate = safeStartDate,
+        endDate = safeEndDate,
         report_text = reportText,
-        generated_at = createdDate.format(isoDateTimeFormatter),
-        synced = synced
+        generated_at = safeCreatedDate.format(isoDateTimeFormatter),
+        sync = sync
     )
 }
 
 fun NLGReport.toNLGReportResponse(): NLGReportResponse {
+    val safeEndDate = endDate
+        ?: throw IllegalStateException("NLGReport.toNLGReportCreate(): endDate is null for report id $id")
+    val safeCreatedDate = createdDate
+        ?: throw IllegalStateException("NLGReport.toNLGReportCreate(): createdDate is null for report id $id")
+
     return NLGReportResponse(
         id = id,
         driverProfileId = userId,
-        startDate = startDate!!,
-        endDate = endDate!!,
+        startDate =safeCreatedDate,
+        endDate = safeEndDate,
         report_text = reportText,
         generated_at = createdDate.format(isoDateTimeFormatter),
-        synced = synced
+        sync = sync
     )
 }
 
@@ -405,7 +422,9 @@ fun NLGReport.toNLGReportResponse(): NLGReportResponse {
 //}
 
 fun NLGReportResponse.toDomainModel(): NLGReport {
-    val generatedLocalDateTime = LocalDate.parse(generated_at, isoDateTimeFormatter)
+
+    val localDate = LocalDate.parse(generated_at, isoDateTimeFormatter)  // if generated_at has only date info
+    val generatedLocalDateTime = localDate.atStartOfDay()
     return NLGReport(
         id = id,
         userId = driverProfileId,
@@ -413,6 +432,6 @@ fun NLGReportResponse.toDomainModel(): NLGReport {
         endDate = endDate,
         reportText = report_text,
         createdDate = generatedLocalDateTime,
-        synced = synced
+        sync = sync
     )
 }

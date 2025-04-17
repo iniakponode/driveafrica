@@ -24,6 +24,14 @@ class DriverProfileRepositoryImpl @Inject constructor(
         return driverProfileDAO.updateDriverProfile(driverProfileEntity)
     }
 
+    override suspend fun updateDriverProfileByEmail(
+        driverProfileId: UUID,
+        sync: Boolean,
+        email: String
+    ){
+        return driverProfileDAO.updateDriverProfileByEmail(driverProfileId,sync, email)
+    }
+
     override suspend fun getAllDriverProfiles(): List<DriverProfile> {
         return driverProfileDAO.getAllDriverProfiles().map { it.toDomainModel() }
     }

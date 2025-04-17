@@ -15,5 +15,5 @@ data class UnsafeBehaviourModel(
     val updatedAt:Date?,
     val updated:Boolean=false,
     val processed: Boolean= false,
-    val synced: Boolean=false,
+    val sync: Boolean=false,
 )

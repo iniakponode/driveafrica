@@ -50,7 +50,7 @@ import com.uoa.core.database.entities.UnsafeBehaviourEntity
                         EmbeddingEntity::class,
                         ReportStatisticsEntity::class,
                         QuestionnaireEntity::class],
-                        version = 37)
+                        version = 39)
 @TypeConverters(Converters::class)
 abstract class Sdadb : RoomDatabase() {
     abstract fun sensorDataDao(): SensorDataDao

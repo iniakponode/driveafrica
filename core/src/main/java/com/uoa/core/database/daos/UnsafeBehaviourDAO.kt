@@ -33,7 +33,7 @@ interface UnsafeBehaviourDao {
     @Query("SELECT * FROM unsafe_behaviour WHERE tripId = :tripID")
     fun getUnsafeBehavioursByTripId(tripID: UUID): Flow<List<UnsafeBehaviourEntity>>
 
-    @Query("SELECT * FROM unsafe_behaviour WHERE locationId = :locationId AND synced = :synced AND processed= :procd")
+    @Query("SELECT * FROM unsafe_behaviour WHERE locationId = :locationId AND sync = :synced AND processed= :procd")
      fun getUnsafeBehavioursByLocationIdAndSyncStatus(locationId: UUID, synced: Boolean, procd: Boolean): List<UnsafeBehaviourEntity>
 
     @Query("SELECT * FROM unsafe_behaviour ORDER BY id DESC LIMIT 20")
@@ -116,14 +116,14 @@ interface UnsafeBehaviourDao {
         }
     }
 
-    @Query("SELECT * FROM unsafe_behaviour WHERE synced = :synced")
+    @Query("SELECT * FROM unsafe_behaviour WHERE sync = :synced")
     suspend fun getUnsafeBehavioursBySyncStatus(synced: Boolean): List<UnsafeBehaviourEntity>
 
-    @Query("SELECT * FROM unsafe_behaviour WHERE synced= :synced AND processed= :processed")
+    @Query("SELECT * FROM unsafe_behaviour WHERE sync= :synced AND processed= :processed")
     suspend fun getUnsafeBehaviourBySyncAndProcessedStatus(synced: Boolean, processed: Boolean): List<UnsafeBehaviourEntity>
 
 
-    @Query("DELETE FROM unsafe_behaviour WHERE synced = :synced")
+    @Query("DELETE FROM unsafe_behaviour WHERE sync = :synced")
     suspend fun deleteAllUnsafeBehavioursBySyncStatus(synced: Boolean)
 
     @Query("DELETE FROM unsafe_behaviour")

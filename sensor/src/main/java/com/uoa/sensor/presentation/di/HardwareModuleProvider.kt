@@ -1,32 +1,28 @@
 package com.uoa.sensor.presentation.di
 
-import android.app.Application
 import com.uoa.core.database.daos.RawSensorDataDao
 import android.content.Context
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
-import com.uoa.core.behaviouranalysis.NewUnsafeDrivingBehaviourAnalyser
 import com.uoa.core.database.daos.LocationDao
-import com.uoa.core.database.repository.AIModelInputRepository
-import com.uoa.core.database.repository.LocationRepository
 import com.uoa.core.database.repository.RawSensorDataRepository
-import com.uoa.core.database.repository.UnsafeBehaviourRepository
-import com.uoa.sensor.domain.usecases.trip.UpdateTripUseCase
 import com.uoa.sensor.repository.LocationRepositoryImpl
-import com.uoa.sensor.repository.RawSensorDataRepositoryImpl
 import com.uoa.sensor.hardware.AccelerometerSensor
+//import com.uoa.sensor.hardware.ActivityRecognitionManager
+//import com.uoa.sensor.hardware.DataCollectionTrigger
 import com.uoa.sensor.hardware.SensorDataBufferManager
 import com.uoa.sensor.hardware.GravitySensor
 import com.uoa.sensor.hardware.GyroscopeSensor
 import com.uoa.sensor.hardware.HardwareModule
 import com.uoa.sensor.hardware.LinearAccelerationSensor
 import com.uoa.sensor.hardware.MagnetometerSensor
+import com.uoa.sensor.hardware.MotionDetection
 import com.uoa.sensor.hardware.RotationVectorSensor
 import com.uoa.sensor.hardware.SignificantMotion
-
-import com.uoa.sensor.location.LocationManager
-import com.uoa.sensor.hardware.MotionDetector
+//import com.uoa.sensor.hardware.VehicleMovementManager
 import com.uoa.sensor.location.LocationDataBufferManager
+import com.uoa.sensor.location.LocationManager
+import com.uoa.sensor.presentation.viewModel.SensorViewModel
 import com.uoa.sensor.repository.SensorDataColStateRepository
 import dagger.Module
 import dagger.Provides
@@ -113,15 +109,17 @@ object HardwareModuleProvider{
 
     @Provides
     @Singleton
-    fun provideMotionDector(
+    fun provideMotionDection(
         @SignificantMotionSensorM significantMotionSensor: SignificantMotion,
         @LinearAccelerationM linearAccelerationSensor: LinearAccelerationSensor,
-        @AccelerometerSensorM accelerometerSensor: AccelerometerSensor
-    ): MotionDetector{
-        return MotionDetector(
+        @AccelerometerSensorM accelerometerSensor: AccelerometerSensor,
+        sensorDataColStateRepository: SensorDataColStateRepository
+    ): MotionDetection{
+        return MotionDetection(
             significantMotionSensor,
             linearAccelerationSensor,
-            accelerometerSensor
+            accelerometerSensor,
+            sensorDataColStateRepository
         )
     }
 
@@ -150,13 +148,9 @@ object HardwareModuleProvider{
         locationManager: LocationManager,
         locationBufferManager: LocationDataBufferManager,
         sensorDataBufferManager: SensorDataBufferManager,
-        motionDetector: MotionDetector,
+        motionDetector: MotionDetection,
         sensorDataColStateRepository: SensorDataColStateRepository,
-        aiModelInputRepository: AIModelInputRepository,
-        locationRepository: LocationRepository,
         @ApplicationContext context: Context,
-        updateTripUseCase: UpdateTripUseCase,
-        rawSensorDataRepository: RawSensorDataRepository
 
         ): HardwareModule {
         return HardwareModule(
@@ -170,16 +164,80 @@ object HardwareModuleProvider{
             locationManager,
             sensorDataBufferManager,
             motionDetector,
-            aiModelInputRepository,
-            locationRepository,
-            context,
             sensorDataColStateRepository,
-            rawSensorDataRepository
-
-
+            context,
 
         )
     }
+
+
+//    @Provides
+//    @Singleton
+//    fun provideHardwareModuleBackup(
+//        @AccelerometerSensorM accelerometerSensor: AccelerometerSensor,
+//        @GyroscopeSensorM gyroscopeSensor: GyroscopeSensor,
+//        @RotationVectorSensorM rotationVectorSensor: RotationVectorSensor,
+//        @MagnetometerSensorM magnetometerSensor: MagnetometerSensor,
+//        @GravitySensorM gravitySensor: GravitySensor,
+//        @LinearAccelerationM linearAccelerationSensor: LinearAccelerationSensor,
+//        locationManager: LocationManagerBackup,
+//        locationBufferManager: LocationDataBufferManager,
+//        sensorDataBufferManager: SensorDataBufferManager,
+////        vehicleMovementManager: VehicleMovementManager,
+//        dataCollectionTrigger: DataCollectionTrigger,
+//        sensorDataColStateRepository: SensorDataColStateRepository,
+//        @ApplicationContext context: Context,
+//
+//    ): HardwareModuleBackUp {
+//        return HardwareModuleBackUp(
+//            accelerometerSensor,
+//            gyroscopeSensor,
+//            rotationVectorSensor,
+//            magnetometerSensor,
+//            gravitySensor,
+//            linearAccelerationSensor,
+//            locationBufferManager,
+//            locationManager,
+//            sensorDataBufferManager,
+////            vehicleMovementManager,
+//            dataCollectionTrigger,
+//            sensorDataColStateRepository,
+//            context
+//        )
+//    }
+
+//    // Provide DataCollectionTrigger (formerly MotionDetector) that controls all sensor listeners.
+//    @Provides
+//    @Singleton
+//    fun provideDataCollectionTrigger(
+//        accelerometerSensor: AccelerometerSensor,
+//        gyroscopeSensor: GyroscopeSensor,
+//        rotationVectorSensor: RotationVectorSensor,
+//        magnetometerSensor: MagnetometerSensor,
+//        gravitySensor: GravitySensor,
+//        linearAccelerationSensor: LinearAccelerationSensor
+//    ): DataCollectionTrigger {
+//        return DataCollectionTrigger(
+//            accelerometerSensor,
+//            gyroscopeSensor,
+//            rotationVectorSensor,
+//            magnetometerSensor,
+//            gravitySensor,
+//            linearAccelerationSensor
+//        )
+//    }
+
+//    // Provide VehicleMovementManager which uses ActivityRecognition to trigger sensor collection.
+//    @Provides
+//    @Singleton
+//    fun provideVehicleMovementManager(
+//        activityRecognitionManager: ActivityRecognitionManager,
+//        dataCollectionTrigger: DataCollectionTrigger,
+//        @ApplicationContext appContext: Context,
+//        sensorDataColStateRepository: SensorDataColStateRepository,
+//    ): VehicleMovementManager {
+//        return VehicleMovementManager(activityRecognitionManager, dataCollectionTrigger, appContext, sensorDataColStateRepository)
+//    }
 }
 
 @Qualifier

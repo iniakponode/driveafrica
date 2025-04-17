@@ -10,21 +10,27 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.annotation.RequiresApi
 import com.google.android.gms.location.*
+import com.uoa.core.database.repository.RoadRepository
 import com.uoa.core.model.LocationData
 import com.uoa.core.model.Road
+import com.uoa.core.network.apiservices.OSMRoadApiService
 import com.uoa.core.network.apiservices.OSMSpeedLimitApiService
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.buildSpeedLimitQuery
+import com.uoa.core.utils.formatDateToUTCPlusOne
+import com.uoa.core.utils.getRoadDataForLocation
 import com.uoa.sensor.repository.LocationRepositoryImpl
 import com.uoa.core.utils.toEntity
-import com.uoa.sensor.hardware.MotionDetector
+import com.uoa.sensor.hardware.MotionDetection
+//import com.uoa.sensor.hardware.MotionDetector
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.io.IOException
+import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -36,35 +42,38 @@ import kotlin.text.filter
 class LocationManager @Inject constructor(
     private val bufferManager: LocationDataBufferManager,
     private val fusedLocationProviderClient: FusedLocationProviderClient,
-    private val motionDetector: MotionDetector,// Inject MotionDetector to allow listener registration
+    private val motionDetector: MotionDetection, // Injected so we can register as a listener
     private val osmSpeedLimitApiService: OSMSpeedLimitApiService,
-//    private val context: Context
-) : MotionDetector.MotionListener {
+    private val context: Context,
+    private val osmRoadApiService: OSMRoadApiService,
+    private val roadRepository: RoadRepository
+) : MotionDetection.MotionListener {
 
-//    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-//    val profileIdString = prefs.getString(DRIVER_PROFILE_ID, null) ?: return null
-//    val driverProfileId = UUID.fromString(profileIdString)
-
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val profileIdString = prefs.getString(DRIVER_PROFILE_ID, null)
+    val driverProfileId = UUID.fromString(profileIdString)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-
+    // Keep track of the last valid location we've recorded
     private var lastRecordedLocation: Location? = null
 
-    // Define location request intervals
-    private val intervalMovingMillis: Long = 20 * 1000 // 20 seconds
-    private val intervalStationaryMillis: Long = 5 * 60 * 1000 // 5 minutes
+    // This is an immediate in-memory pointer to the *latest created* location ID
+    // not necessarily the one that's persisted or flushed yet.
+    @Volatile
+    private var latestLocationId: UUID? = null
 
-    // Accuracy and age thresholds
-    private val MAX_HORIZONTAL_ACCURACY = 10f // meters
-    private val MAX_LOCATION_AGE_MS = 2 * 60 * 1000L // 2 minutes
-    private val MAX_VERTICAL_ACCURACY = 15f // meters
-    private val MAX_SPEED_ACCURACY = 1f // meters per second
+    // Two different intervals for location updates:
+    private val intervalMovingMillis: Long = 20_000 // 20 seconds
+    private val intervalStationaryMillis: Long = 5 * 60_000 // 5 minutes
 
-    // Callback to process location updates
+    // Example thresholds
+    private val MAX_HORIZONTAL_ACCURACY = 10f     // meters
+    private val MAX_LOCATION_AGE_MS = 2 * 60_000L // 2 minutes
+
+    // Callback that receives raw location updates from FusedLocationProvider
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(locationResult: LocationResult) {
             locationResult.lastLocation?.let { location ->
-                // Validate the location
                 if (isValidLocation(location)) {
                     processLocation(location)
                 } else {
@@ -75,89 +84,139 @@ class LocationManager @Inject constructor(
     }
 
     init {
-        // Register this LocationManager instance as a listener to the MotionDetector
+        // Register as a motion listener, so we can switch intervals
         motionDetector.addMotionListener(this)
     }
 
+    // -----------------------------------------------------------------------
+    //                       Public Lifecycle Methods
+    // -----------------------------------------------------------------------
+
     /**
-     * Validate the location using recommended thresholds.
+     * Start location updates at the "stationary" interval by default.
+     * Then, if motion is detected, onMotionDetected() calls updateLocationRequest(true).
      */
-    private fun isValidLocation(location: Location?): Boolean {
-        // Check for null location
-        if (location == null) {
-            return false
+    fun startLocationUpdates() {
+        updateLocationRequest(isVehicleMoving = false)
+    }
+
+    /**
+     * Stop location updates entirely. Also cancels background coroutines if needed.
+     */
+    fun stopLocationUpdates() {
+        fusedLocationProviderClient.removeLocationUpdates(locationCallback)
+        bufferManager.stopBufferHandler() // Stop the periodic location buffer flush in LocationDataBufferManager
+        scope.cancel()
+    }
+
+    // -----------------------------------------------------------------------
+    //               Implementing MotionListener for MotionDetector
+    // -----------------------------------------------------------------------
+
+    override fun onMotionDetected() {
+        Log.d("LocationManager", "Motion detected → switching to 'moving' location interval")
+        updateLocationRequest(isVehicleMoving = true)
+    }
+
+    override fun onMotionStopped() {
+        Log.d("LocationManager", "Motion stopped → switching to 'stationary' location interval")
+        updateLocationRequest(isVehicleMoving = false)
+    }
+
+    // -----------------------------------------------------------------------
+    //                        Location Request / Updates
+    // -----------------------------------------------------------------------
+
+    /**
+     * Update the FusedLocationProviderClient request intervals based on whether
+     * the vehicle is moving (frequent updates) or stationary (less frequent).
+     */
+    private fun updateLocationRequest(isVehicleMoving: Boolean) {
+        val interval = if (isVehicleMoving) intervalMovingMillis else intervalStationaryMillis
+        val priority = if (isVehicleMoving) {
+            Priority.PRIORITY_HIGH_ACCURACY
+        } else {
+            Priority.PRIORITY_BALANCED_POWER_ACCURACY
         }
 
-        // Check horizontal accuracy
-//        if (!location.hasAccuracy() || location.accuracy < 0 || location.accuracy > MAX_HORIZONTAL_ACCURACY) {
-//            Log.d("isValidLocation", "Invalid horizontal accuracy: ${location.accuracy}")
-//            return false
-//        }
+        val locationRequest = LocationRequest.Builder(priority, interval)
+            .setWaitForAccurateLocation(true)
+            .setMinUpdateIntervalMillis(interval / 2)
+            .setMaxUpdateDelayMillis(interval)
+            .build()
 
-        // Check if elapsedRealtimeNanos is valid
+        try {
+            // Remove any existing requests before requesting a new one
+            fusedLocationProviderClient.removeLocationUpdates(locationCallback)
+                .addOnCompleteListener {
+                    try {
+                        fusedLocationProviderClient.requestLocationUpdates(
+                            locationRequest,
+                            locationCallback,
+                            Looper.getMainLooper()
+                        )
+                    } catch (e: SecurityException) {
+                        Log.e("LocationManager", "Location permission not granted", e)
+                    }
+                }
+        } catch (e: SecurityException) {
+            Log.e("LocationManager", "Location permission not granted", e)
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    //                           Validate & Process
+    // -----------------------------------------------------------------------
+
+    /**
+     * Basic validity checks for the new location fix (age, coordinates, etc.).
+     */
+    private fun isValidLocation(location: Location?): Boolean {
+        if (location == null) return false
+
+        // Check if location is too old
         val locationElapsedNanos = location.elapsedRealtimeNanos
         val currentElapsedNanos = SystemClock.elapsedRealtimeNanos()
         if (locationElapsedNanos <= 0 || locationElapsedNanos > currentElapsedNanos) {
-            Log.d("isValidLocation", "Invalid currentElapsedNanos accuracy: ${location.accuracy}")
             return false
         }
 
-        // Check the age of the location fix
         val locationAgeNanos = currentElapsedNanos - locationElapsedNanos
         val locationAgeMs = TimeUnit.NANOSECONDS.toMillis(locationAgeNanos)
         if (locationAgeMs < 0 || locationAgeMs > MAX_LOCATION_AGE_MS) {
-            Log.d("isValidLocation", "Invalid locationAgeMs accuracy: ${location.accuracy}")
             return false
         }
 
-//        // Optionally, check vertical accuracy if needed
-//        if (location.hasVerticalAccuracy()) {
-//            if (location.verticalAccuracyMeters < 0 || location.verticalAccuracyMeters > MAX_VERTICAL_ACCURACY) {
-//                return false
-//            }
-//        }
-//
-//        // Optionally, check speed accuracy if needed
-//        if (location.hasSpeedAccuracy()) {
-//            if (location.speedAccuracyMetersPerSecond < 0 || location.speedAccuracyMetersPerSecond > MAX_SPEED_ACCURACY) {
-//                return false
-//            }
-//        }
-
-//        if (!location.hasAccuracy() || location.accuracy < 0 || location.accuracy > MAX_HORIZONTAL_ACCURACY) {
-//            Log.d("isValidLocation", "Invalid horizontal accuracy: ${location.accuracy}")
-//            return false
-//        }
+        // Could also check horizontal accuracy:
+        // if (!location.hasAccuracy() || location.accuracy > MAX_HORIZONTAL_ACCURACY) { ... }
 
         return true
     }
 
     /**
-     * Process the location and determine if it should be recorded.
+     * If valid, we check speed limits, build a LocationData object,
+     * and insert it into LocationDataBufferManager.
      */
     private fun processLocation(location: Location) {
         scope.launch {
-            val speed = location.speed  // Speed in m/s
+            val speed = location.speed // m/s
             val distance = lastRecordedLocation?.distanceTo(location)?.toDouble() ?: 0.0
 
+            // Attempt to fetch speed limit from Overpass
             val query = buildSpeedLimitQuery(location.latitude, location.longitude, radius = 200.0)
-
-            // Call suspend function within coroutine and handle potential exceptions
             val response = try {
                 osmSpeedLimitApiService.fetchSpeedLimits(query)
             } catch (e: Exception) {
-                Log.e("LocationProcessor", "Error fetching speed limits", e)
+                Log.e("LocationManager", "Error fetching speed limits", e)
                 null
             }
-
-            // Extract maxspeed from Overpass response (simple numeric parsing)
             val speedLimit = response?.elements?.firstOrNull()
                 ?.tags?.get("maxspeed")
                 ?.filter { it.isDigit() }
                 ?.toIntOrNull() ?: 0
 
-
             // Create and persist a Road object
+
 //            val road = Road(
 //                id = UUID.randomUUID(),
 //                driverProfileId = profileId, // Update this as needed
@@ -169,10 +228,13 @@ class LocationManager @Inject constructor(
 //            )
 //            roadRepository.saveOrUpdateRoad(road)
 
+            val speedLimitMps = speedLimit * 0.44704 // Convert mph to m/s if speedLimit is in mph
+
+            // Decide if we want to record the new location
             if (shouldRecordNewLocation(location)) {
-                val speedLimitMps = speedLimit * 0.44704
+                val locationId = UUID.randomUUID()
                 val locationData = LocationData(
-                    id = UUID.randomUUID(),
+                    id = locationId,
                     latitude = location.latitude,
                     longitude = location.longitude,
                     altitude = location.altitude,
@@ -180,91 +242,75 @@ class LocationManager @Inject constructor(
                     distance = distance,
                     timestamp = location.time,
                     date = Date(location.time),
-                    speedLimit = speedLimitMps.toDouble(),
+                    speedLimit = speedLimitMps,
                     sync = false
                 )
 
+                // 1) Call our new function to fetch road data (road name + speed limit) for this location.
+                val (roadName, speedLimit) = getRoadDataForLocation(
+                    context = context,
+                    location = locationData,
+                    osmApiService =osmRoadApiService /* your OSMRoadApiService */,
+                    speedLimitApiService = osmSpeedLimitApiService, // from your constructor
+                    roadRepository =roadRepository /* your RoadRepository (inject if needed) */,
+                    profileId = driverProfileId
+                )
+
+                // 2) Update the locationData with speed limit from Overpass (if available)
+                val finalSpeedLimitMps: Double? = speedLimit?.let { it * 0.44704 } // mph→m/s if needed
+                val updatedLocationData = locationData.copy(
+                    speedLimit = finalSpeedLimitMps?.toDouble() ?: 0.0
+                )
+
+                // 3) Log or do something with the roadName if you wish
+                Log.d("LocationManager", "Fetched roadName=$roadName for locationId=$locationId")
+
+
+                // Immediately update local memory with the newly-created ID
+                latestLocationId = locationId
                 lastRecordedLocation = location
-                bufferManager.addLocationData(locationData) // Delegate buffering to LocationDataBufferManager
+
+                // Buffer the location; once inserted, the buffer manager will track currentLocationId
+                bufferManager.addLocationData(updatedLocationData)
             }
         }
     }
 
-    fun stop() {
-        // Cancel all coroutines launched by this manager
-        scope.cancel()
-    }
-
     /**
-     * Determine if the new location should be recorded.
+     * Decide whether to record the new location at all.
+     * Example logic: record if it's been >5 minutes or distance > threshold.
      */
     private fun shouldRecordNewLocation(newLocation: Location): Boolean {
-        // If no previous location recorded, record the new one
-        if (lastRecordedLocation == null) return true
+        val oldLoc = lastRecordedLocation ?: return true // if none, record the first
+        val distance = newLocation.distanceTo(oldLoc)
+        val timeDelta = newLocation.time - oldLoc.time
 
-        val distance = newLocation.distanceTo(lastRecordedLocation!!)
-        val timeDelta = newLocation.time - lastRecordedLocation!!.time
-
-        return distance >= MAX_HORIZONTAL_ACCURACY || timeDelta >= intervalStationaryMillis
+        // E.g. if distance >= 10 meters or 5 min has passed, record
+        return (distance >= MAX_HORIZONTAL_ACCURACY) || (timeDelta >= intervalStationaryMillis)
     }
+
+    // -----------------------------------------------------------------------
+    //                  Speed Limit Query Helper (Unchanged)
+    // -----------------------------------------------------------------------
+
+    private fun buildSpeedLimitQuery(lat: Double, lon: Double, radius: Double): String {
+        // Example Overpass query building logic.  Adjust as needed.
+        return """
+            [out:json];
+            way(around:$radius,$lat,$lon)[maxspeed];
+            out;
+        """.trimIndent()
+    }
+
+    // ------------------------------------------------------------
+    // Expose the latest location ID
+    // ------------------------------------------------------------
 
     /**
-     * Start location updates with appropriate parameters based on vehicle movement.
+     * The *immediate* ID of the last created LocationData object,
+     * not necessarily persisted in DB yet. (May differ from bufferManager.getCurrentLocationId()!)
      */
-    fun startLocationUpdates() {
-        // Start with a stationary request
-        updateLocationRequest(isVehicleMoving = false)
+    fun getLatestLocationId(): UUID? {
+        return latestLocationId
     }
-
-    /**
-     * Update the location request based on vehicle movement state.
-     */
-    private fun updateLocationRequest(isVehicleMoving: Boolean) {
-        val interval = if (isVehicleMoving) intervalMovingMillis else intervalStationaryMillis
-        val priority = if (isVehicleMoving) Priority.PRIORITY_HIGH_ACCURACY else Priority.PRIORITY_BALANCED_POWER_ACCURACY
-
-        val locationRequest = LocationRequest.Builder(priority, interval)
-            .setWaitForAccurateLocation(true)
-            .setMinUpdateIntervalMillis(interval / 2)
-            .setMaxUpdateDelayMillis(interval)
-            .build()
-
-        try {
-            // Remove any existing location requests before requesting a new one
-            fusedLocationProviderClient.removeLocationUpdates(locationCallback).addOnCompleteListener {
-                try {
-                    fusedLocationProviderClient.requestLocationUpdates(
-                        locationRequest, locationCallback, Looper.getMainLooper()
-                    )
-                } catch (e: SecurityException) {
-                    Log.e("LocationManager", "Location permission not granted", e)
-                }
-            }
-        } catch (e: SecurityException) {
-            Log.e("LocationManager", "Location permission not granted", e)
-        }
-    }
-
-    /**
-     * Stop location updates.
-     */
-    fun stopLocationUpdates() {
-        fusedLocationProviderClient.removeLocationUpdates(locationCallback)
-        bufferManager.stopBufferHandler() // Delegate stopping buffer handler to LocationDataBufferManager
-        stop()
-    }
-
-    // Implementing MotionListener methods from MotionDetector.MotionListener
-
-    override fun onMotionDetected() {
-        Log.d("LocationManager", "Motion detected - updating location request for moving state")
-        updateLocationRequest(isVehicleMoving = true)
-    }
-
-    override fun onMotionStopped() {
-        Log.d("LocationManager", "Motion stopped - updating location request for stationary state")
-        updateLocationRequest(isVehicleMoving = false)
-    }
-
-
 }

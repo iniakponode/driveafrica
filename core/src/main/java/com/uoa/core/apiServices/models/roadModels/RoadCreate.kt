@@ -16,4 +16,8 @@ data class RoadCreate(
     val latitude: Double? = null,
     @SerializedName("longitude")
     val longitude: Double? = null,
+    @SerializedName("radius")
+    val radius: Double? = null,
+    @SerializedName("sync")
+    val sync: Boolean
 )

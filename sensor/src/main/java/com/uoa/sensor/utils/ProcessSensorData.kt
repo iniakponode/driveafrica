@@ -9,6 +9,7 @@ object ProcessSensorData {
 
  fun processSensorData(sensorType: Int, values: FloatArray, rotationMatrix: FloatArray): FloatArray {
         // Only apply rotation matrix to the relevant sensors
+        val gravityEstimate = FloatArray(3) // Persist between sensor events
         val transformedValues = when (sensorType) {
             Sensor.TYPE_ACCELEROMETER,
             Sensor.TYPE_GYROSCOPE,
@@ -28,9 +29,9 @@ object ProcessSensorData {
                 // gravity array is now updated with the filtered values
 
                 // Remove gravity from accelerometer data to get linear acceleration
-                val linearAcceleration = FloatArray(3)
-                for (i in 0..2) {
-                    linearAcceleration[i] = transformedValues[i] - gravity[i]
+                // Subtract gravity
+                val linearAcceleration = FloatArray(3) {
+                    transformedValues[it] - gravityEstimate[it]
                 }
                 // Apply high-pass filter to remove any remaining gravity influence
                 FilterUtils.highPassFilter(linearAcceleration, linearAcceleration, alpha)
@@ -84,6 +85,7 @@ object ProcessSensorData {
     }
 
     fun checkForNaN(values: List<Float>): List<Float> {
+//        Log.d("HardwareModule", "Sensor data received : ${values.joinToString(", ")}")
         return values.map { if (it.isNaN()) 0f else it }
     }
 

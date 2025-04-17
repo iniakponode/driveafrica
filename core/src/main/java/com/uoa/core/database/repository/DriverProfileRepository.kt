@@ -13,6 +13,9 @@ interface DriverProfileRepository {
     // Update a driver profile
     suspend fun updateDriverProfile(driverProfileEntity: DriverProfileEntity)
 
+    // Update driver profile by email
+    suspend fun updateDriverProfileByEmail(driverProfileId: UUID, sync: Boolean, email: String)
+
     // Get all driver profiles
     suspend fun getAllDriverProfiles(): List<DriverProfile>
 

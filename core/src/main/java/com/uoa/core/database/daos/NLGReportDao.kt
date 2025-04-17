@@ -21,13 +21,13 @@ interface NLGReportDao {
     @Query("SELECT * FROM nlg_report")
     suspend fun getAllReports(): List<NLGReportEntity>
 
-    @Query("SELECT * FROM nlg_report WHERE synced = :synced")
+    @Query("SELECT * FROM nlg_report WHERE sync = :synced")
     suspend fun getNlgReportBySyncStatus(synced: Boolean): List<NLGReportEntity>
 
     @Query("SELECT * FROM nlg_report WHERE startDate == :startDate AND endDate == :endDate")
     fun getReportsBetweenDates(startDate: LocalDate, endDate: LocalDate): NLGReportEntity
 
-    @Query("UPDATE nlg_report SET synced=:synced WHERE id = :id")
+    @Query("UPDATE nlg_report SET sync=:synced WHERE id = :id")
     suspend fun updateUploadStatus(id:Int, synced: Boolean)
 
     @Query("SELECT * FROM nlg_report WHERE userId = :userId")

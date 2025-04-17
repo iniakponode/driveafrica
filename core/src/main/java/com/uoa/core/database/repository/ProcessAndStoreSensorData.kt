@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.room.withTransaction
 import com.uoa.core.Sdadb
+import com.uoa.core.apiServices.workManager.UnsafeDrivingAnalysisWorker
 import com.uoa.core.behaviouranalysis.NewUnsafeDrivingBehaviourAnalyser
 import com.uoa.core.database.daos.LocationDao
 import com.uoa.core.database.daos.RawSensorDataDao
@@ -39,43 +40,62 @@ class ProcessAndStoreSensorData @Inject constructor(
 
                     // 2) Analyze data for unsafe behaviors
                     Log.d(TAG, "Analyzing data for unsafe behaviors...")
-                    val flow = bufferCopy.asFlow().map { it.toEntity() }
-                    unsafeDrivingAnalyser.analyze(flow, context).collect { unsafeEntity ->
-                        Log.d(TAG, "Detected unsafe behavior: $unsafeEntity")
-                        unsafeBehaviourDao.insertUnsafeBehaviour(unsafeEntity.toEntity())
+
+                    // a) Filter out any raw data whose locationId is null
+                    val validItems = bufferCopy.filter { it.locationId != null }
+                    val invalidItems = bufferCopy.size - validItems.size
+                    if (invalidItems > 0) {
+                        Log.w(TAG, "Skipping $invalidItems items in this buffer copy because locationId is null.")
+                    }
+
+                    // b) Convert valid items to a Flow and analyze unsafe behaviors
+                    val sensorDataFlow = validItems.asFlow().map { it.toEntity() }
+                    unsafeDrivingAnalyser.analyze(sensorDataFlow, context).collect { unsafeBehaviour ->
+                        Log.d(TAG, "Unsafe behaviour detected: ${unsafeBehaviour.behaviorType}")
+                        unsafeBehaviourDao.insertUnsafeBehaviour(unsafeBehaviour.toEntity())
                     }
 
                     // 3) AI Model Processing and Mark processed
                     Log.d(TAG, "Starting AI model processing for each record...")
-                    bufferCopy.forEach { rawData ->
-                        val locationId = rawData.locationId
+                    validItems.forEachIndexed { index, rawSensorData ->
+                        val locationId = rawSensorData.locationId
+                        val tripId = rawSensorData.tripId
+
+                        // Location ID should not be null now, but we double-check
                         if (locationId == null) {
-                            Log.w(TAG, "Skipping rawData ID=${rawData.id}: locationId is null.")
-                            return@forEach
+                            Log.w(TAG, "Skipping item index=$index; locationId is null.")
+                            return@forEachIndexed
                         }
 
+                        // Fetch the location from DB
                         val locationEntity = locationDao.getLocationById(locationId)
                         if (locationEntity == null) {
-                            Log.w(TAG, "Skipping rawData ID=${rawData.id}: location $locationId not found.")
-                            return@forEach
+                            Log.w(TAG, "Skipping rawSensorData ID=${rawSensorData.id}; location not found for ID=$locationId.")
+                            return@forEachIndexed
                         }
 
                         try {
-                            Log.d(TAG, "Processing AI model for rawData ID=${rawData.id}, location=$locationId.")
+                            // Actually run the AI model input processing
+                            Log.d(TAG, "Processing AIModelInput for rawSensorData ID=${rawSensorData.id}, location ID=$locationId.")
                             aiModelInputRepository.processDataForAIModelInputs(
-                                sensorData = rawData,
+                                sensorData = rawSensorData,
                                 location = locationEntity.toDomainModel(),
-                                tripId = rawData.tripId!!
+                                tripId = tripId!!
                             )
 
-                            Log.d(TAG, "Marking rawData ID=${rawData.id} and location=$locationId as processed.")
-                            rawSensorDataDao.updateRawSensorData(
-                                rawData.copy(processed = true).toEntity()
-                            )
-                            locationDao.updateLocation(locationEntity.copy(processed = true))
-                        } catch (aiEx: Exception) {
-                            Log.e(TAG, "AI processing failed for rawData ID=${rawData.id}, skipping. ${aiEx.message}", aiEx)
-                            // Optional: decide if you want to throw to rollback or continue
+                            // Mark both rawSensorData & location as processed
+                            val updatedRaw = rawSensorData.copy(processed = true)
+                            rawSensorDataDao.updateRawSensorData(updatedRaw.toEntity())
+
+                            val updatedLocation = locationEntity.copy(processed = true)
+                            locationDao.updateLocation(updatedLocation)
+
+                            Log.d(TAG, "Marked rawSensorData ID=${rawSensorData.id} and location ID=$locationId as processed.")
+
+                        } catch (e: java.lang.Exception) {
+                            // Throw the exception so we roll back the transaction for this entire chunk
+                            Log.e(TAG, "Error processing AIModelInput for rawSensorData ID=${rawSensorData.id}: ${e.message}", e)
+                            throw e
                         }
                     }
 

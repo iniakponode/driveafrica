@@ -13,12 +13,12 @@ interface AIModelInputRepository {
         suspend fun insertAiModelInput(aiModelInput: AIModelInputsEntity)
         suspend fun deleteAiModelInput()
         suspend fun getAiModelInputs(): List<AIModelInputsEntity>
-        suspend fun getAiModelInputById(id: Int): AIModelInputsEntity?
+        suspend fun getAiModelInputById(id: UUID): AIModelInputsEntity?
         suspend fun getAiModelInputsBySyncStatus(status: Boolean): List<AIModelInputsEntity>
         suspend fun getAiModelInputsBySyncAndProcessedStatus(synced: Boolean, processed: Boolean): List<AIModelInputsEntity>
         suspend fun getAiModelInputInputByTripId(tripId:UUID): List<AIModelInputs>
         suspend fun updateAiModelInput(aiModelInput: AIModelInputsEntity)
-        suspend fun deleteAiModelInputById(id: Int)
+        suspend fun deleteAiModelInputById(id: UUID)
         suspend fun deleteAIModelInputsByIds(ids: List<UUID>)
         suspend fun processDataForAIModelInputs(sensorData: RawSensorData, location: LocationData, tripId:UUID)
 

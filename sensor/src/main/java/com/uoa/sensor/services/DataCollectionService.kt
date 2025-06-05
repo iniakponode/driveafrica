@@ -17,7 +17,6 @@ import com.uoa.core.notifications.VehicleNotificationManager
 import com.uoa.sensor.hardware.HardwareModule
 
 @AndroidEntryPoint
-@RequiresApi(Build.VERSION_CODES.O)
 class DataCollectionService : Service() {
 
     @Inject
@@ -48,7 +47,7 @@ class DataCollectionService : Service() {
             NOTIFICATION_ID,
             notificationManager.buildForegroundNotification(
                 title = "Data Collection Service",
-                message = "Collecting sensor data for trip: $tripId"
+                message = "Data collection service is started"
             )
         )
         return START_STICKY
@@ -78,6 +77,10 @@ class DataCollectionService : Service() {
     private fun stopDataCollection() {
         try {
             hardwareModule.stopDataCollection()
+            notificationManager.buildForegroundNotification(
+                title = "Data Collection Service",
+                message = "Data collection service is stopped"
+            )
         } catch (e: Exception) {
             Log.e("DataCollectionService", "Error stopping data collection", e)
         }

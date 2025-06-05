@@ -37,7 +37,7 @@
 <!--        </service>-->
         <!-- Declare the activity recognition service -->
         <service
-            android:name=".services.VehicleMovementService"
+            android:name=".services.VehicleMovementServiceUpdate"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="location" />

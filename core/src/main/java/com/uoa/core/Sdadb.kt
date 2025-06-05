@@ -26,6 +26,8 @@ import com.uoa.core.database.entities.CauseEntity
 import com.uoa.core.database.entities.DriverProfileEntity
 import com.uoa.core.database.entities.DrivingTipEntity
 import com.uoa.core.database.entities.EmbeddingEntity
+import com.uoa.core.database.entities.FFTFeatureDao
+import com.uoa.core.database.entities.FFTFeatureEntity
 import com.uoa.core.database.entities.LocationEntity
 import com.uoa.core.database.entities.QuestionnaireEntity
 import com.uoa.core.database.entities.RawSensorDataEntity
@@ -49,8 +51,9 @@ import com.uoa.core.database.entities.UnsafeBehaviourEntity
                         RoadEntity::class,
                         EmbeddingEntity::class,
                         ReportStatisticsEntity::class,
-                        QuestionnaireEntity::class],
-                        version = 39)
+                        QuestionnaireEntity::class,
+                        FFTFeatureEntity::class],
+                        version = 40)
 @TypeConverters(Converters::class)
 abstract class Sdadb : RoomDatabase() {
     abstract fun sensorDataDao(): SensorDataDao
@@ -68,5 +71,6 @@ abstract class Sdadb : RoomDatabase() {
     abstract fun aiModelInputsDao(): AIModelInputDao
     abstract fun reportStatisticsDao(): ReportStatisticsDao
     abstract fun alcoholQuestionnaireDao(): AlcoholQuestionnaireResponseDao
+    abstract fun fftfeaturesDao(): FFTFeatureDao
 //...
 }

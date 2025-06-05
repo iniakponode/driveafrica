@@ -29,10 +29,10 @@ class HardwareModule @Inject constructor(
     private val locationBufferManager: LocationDataBufferManager,
     private val locationManager: LocationManager,
     private val sensorDataBufferManager: SensorDataBufferManager,
-    private val motionDetection: MotionDetection,
+    private val motionDetection: MotionDetectionFFT,
     private val sensorDataColStateRepository: SensorDataColStateRepository,
     private val context: Context
-) : MotionDetection.MotionListener {
+) : MotionDetectionFFT.MotionListener {
 
     // --------------------------------------
     // Collection State & Concurrency
@@ -70,13 +70,13 @@ class HardwareModule @Inject constructor(
     // --------------------------------------
     override fun onMotionDetected() {
         hardwareModuleScope.launch {
-            sensorDataColStateRepository.updateVehicleMovementStatus(true)
+            sensorDataColStateRepository.updateMovementStatus(true)
         }
     }
 
     override fun onMotionStopped() {
         hardwareModuleScope.launch {
-            sensorDataColStateRepository.updateVehicleMovementStatus(false)
+            sensorDataColStateRepository.updateMovementStatus(false)
         }
     }
 

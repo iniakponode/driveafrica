@@ -38,8 +38,8 @@ object ProcessSensorData {
                 // Denoise using moving average filter
                 val denoisedData = DenoiseUtils.movingAverageFilter(linearAcceleration.toList(), 2)
                 // Normalize using z-score normalization
-//                val normalizedData = NormalizeUtils.minMaxNormalize(denoisedData)
-                checkForNaN(denoisedData).toFloatArray()
+                val normalizedData = NormalizeUtils.minMaxNormalize(denoisedData)
+                checkForNaN(normalizedData).toFloatArray()
             }
             Sensor.TYPE_LINEAR_ACCELERATION -> {
                 // Apply offset removal if calibration data is available (assuming offsets are known)

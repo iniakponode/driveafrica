@@ -47,7 +47,7 @@ fun SensorControlScreenRoute(
     }
 
     // Proceed with the SensorControlScreen if a valid driver profile exists.
-    SensorControlScreen(
+    SensorControlScreenUpdate(
 //        navController = navController,
         sensorViewModel = sensorViewModel,
         tripViewModel = tripViewModel,

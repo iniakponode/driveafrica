@@ -5,6 +5,7 @@ import android.content.Context
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.uoa.core.database.daos.LocationDao
+import com.uoa.core.database.entities.FFTFeatureDao
 import com.uoa.core.database.repository.RawSensorDataRepository
 import com.uoa.sensor.repository.LocationRepositoryImpl
 import com.uoa.sensor.hardware.AccelerometerSensor
@@ -17,6 +18,7 @@ import com.uoa.sensor.hardware.HardwareModule
 import com.uoa.sensor.hardware.LinearAccelerationSensor
 import com.uoa.sensor.hardware.MagnetometerSensor
 import com.uoa.sensor.hardware.MotionDetection
+import com.uoa.sensor.hardware.MotionDetectionFFT
 import com.uoa.sensor.hardware.RotationVectorSensor
 import com.uoa.sensor.hardware.SignificantMotion
 //import com.uoa.sensor.hardware.VehicleMovementManager
@@ -125,6 +127,24 @@ object HardwareModuleProvider{
 
     @Provides
     @Singleton
+    fun provideMotionDetectionFFt(
+        @SignificantMotionSensorM significantMotionSensor: SignificantMotion,
+        @LinearAccelerationM linearAccelerationSensor: LinearAccelerationSensor,
+        @AccelerometerSensorM accelerometerSensor: AccelerometerSensor,
+        fftFeatureDao: FFTFeatureDao,
+        sensorDataColStateRepository: SensorDataColStateRepository
+    ): MotionDetectionFFT{
+        return MotionDetectionFFT(
+            significantMotionSensor,
+            linearAccelerationSensor,
+            accelerometerSensor,
+            fftFeatureDao,
+            sensorDataColStateRepository
+        )
+    }
+
+    @Provides
+    @Singleton
     fun provideBufferManager(
         rawSensorDataRepository: RawSensorDataRepository,
 //        unsafeBehaviourRepository: UnsafeBehaviourRepository,
@@ -148,7 +168,7 @@ object HardwareModuleProvider{
         locationManager: LocationManager,
         locationBufferManager: LocationDataBufferManager,
         sensorDataBufferManager: SensorDataBufferManager,
-        motionDetector: MotionDetection,
+        motionDetector: MotionDetectionFFT,
         sensorDataColStateRepository: SensorDataColStateRepository,
         @ApplicationContext context: Context,
 

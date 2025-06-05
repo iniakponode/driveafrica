@@ -85,7 +85,7 @@ dependencies {
     implementation(libs.play.services.location)
 
     implementation(libs.gson)
-    
+
     implementation(libs.hilt.android)
     implementation(libs.androidx.hilt.common)
     implementation(libs.hilt.ext.work)
@@ -99,6 +99,9 @@ dependencies {
     ksp(libs.hilt.compiler)
     ksp(libs.hilt.ext.compiler)
     implementation(libs.hilt.android)
+
+    implementation(libs.lifecycle.runtime.ktx)
+    implementation(libs.lifecycle.service)
 
     implementation(libs.mapper)
 

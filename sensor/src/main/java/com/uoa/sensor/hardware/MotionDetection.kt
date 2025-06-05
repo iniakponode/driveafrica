@@ -7,7 +7,6 @@ import com.uoa.sensor.hardware.base.SignificantMotionSensor
 import com.uoa.sensor.repository.SensorDataColStateRepository
 import com.uoa.sensor.utils.ProcessSensorData
 import kotlinx.coroutines.*
-import kotlin.math.pow
 import kotlin.math.sqrt
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -291,7 +290,7 @@ class MotionDetection @Inject constructor(
 
         // 3) Update a repository or UI. Because of throttling, this updates far less often.
         motionDetectorScope.launch {
-            sensorDataColStateRepository.updateLinearAcceleration(magnitude)
+            sensorDataColStateRepository.updateLinearAcceleration(magnitude.toDouble())
         }
 
         // 4) Reset inactivity timer

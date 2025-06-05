@@ -3,6 +3,7 @@ package com.uoa.core.di
 import android.app.Application
 import androidx.room.Room
 import com.uoa.core.Sdadb
+import com.uoa.core.database.entities.FFTFeatureDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,6 +24,9 @@ object DatabaseModuleProvider {
             .fallbackToDestructiveMigration()
             .build()
     }
+    @Provides
+    fun provideFftFeatureDao(db: Sdadb): FFTFeatureDao =
+        db.fftfeaturesDao()
 
     @Provides
     @Singleton

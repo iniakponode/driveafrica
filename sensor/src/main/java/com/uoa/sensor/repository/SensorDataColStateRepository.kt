@@ -1,17 +1,15 @@
 package com.uoa.sensor.repository
 
-import androidx.compose.runtime.MutableFloatState
+import android.util.Log
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.math.pow
 
 @Singleton
 class SensorDataColStateRepository @Inject constructor() {
@@ -31,6 +29,13 @@ class SensorDataColStateRepository @Inject constructor() {
     private val _linAcceleReading = mutableFloatStateOf(0f)
     val linAcceleReading: MutableState<Float> get()=_linAcceleReading
 
+    private val _movementLabel = mutableStateOf("")
+    val movementLabel: MutableState<String> get()=_movementLabel
+
+    private val _movementStatus = MutableStateFlow(false)
+    val movementStatus: StateFlow<Boolean> get()=_movementStatus
+
+
     /**
      * Update the data collection status
      */
@@ -39,11 +44,25 @@ class SensorDataColStateRepository @Inject constructor() {
     }
 
     /**
+     * Update the movement type
+     */
+    suspend fun updateMovementType(movementType: String) {
+        _movementLabel.value=movementType
+    }
+
+    /**
+     * Update the movement status
+     */
+    suspend fun updateMovementStatus(ismoving: Boolean) {
+        _movementStatus.value=ismoving
+    }
+
+    /**
      * Update Linear Acceleration reading
      */
-    suspend fun updateLinearAcceleration(linAcceleReading: Float) {
+    suspend fun updateLinearAcceleration(linAcceleReading: Double) {
         withContext(Dispatchers.IO) {
-            _linAcceleReading.floatValue = linAcceleReading
+            _linAcceleReading.floatValue = linAcceleReading.toFloat()
         }
     }
 
@@ -67,8 +86,10 @@ class SensorDataColStateRepository @Inject constructor() {
     /**
      * Update the vehicle movement status
      */
-    suspend fun updateVehicleMovementStatus(isMoving: Boolean) {
-        _isVehicleMoving.emit(isMoving)
+    suspend fun updateVehicleMovementStatus(isVehicle: Boolean) {
+
+            _isVehicleMoving.emit(isVehicle)
+
     }
 
     /**

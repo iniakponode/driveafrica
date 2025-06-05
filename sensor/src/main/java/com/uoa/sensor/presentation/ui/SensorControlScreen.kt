@@ -276,7 +276,7 @@ import com.uoa.core.apiServices.workManager.UploadAllDataWorker
             val linAcceleReading by sensorViewModel.linAcceleReading
             val readableAcceleration by sensorViewModel.readableAcceleration
             val collectionStatus by sensorViewModel.collectionStatus.collectAsState()
-
+            val movementType by sensorViewModel.movementType
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
 

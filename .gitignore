@@ -16,3 +16,6 @@
 local.properties
 /api/.env
 core/src/main/assets/minilm.onnx
+app/release/
+*.aab
+*.apk

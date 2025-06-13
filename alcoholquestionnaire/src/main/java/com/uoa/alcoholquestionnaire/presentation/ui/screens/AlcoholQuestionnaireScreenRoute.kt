@@ -1,6 +1,9 @@
 package com.uoa.alcoholquestionnaire.presentation.ui.screens
 
 import android.content.Context
+import android.os.Build
+import android.util.Log
+import androidx.annotation.RequiresExtension
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.platform.LocalContext
@@ -13,6 +16,7 @@ import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.Resource
 import java.util.UUID
 
+@RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 @Composable
 fun AlcoholQuestionnaireScreenRoute(
     navController: NavController,
@@ -27,6 +31,7 @@ fun AlcoholQuestionnaireScreenRoute(
     LaunchedEffect(uploadState) {
         when (uploadState) {
             is Resource.Success -> {
+                Log.e("Navigation", uploadState.toString())
                 val savedProfileId = prefs.getString(DRIVER_PROFILE_ID, null)
                 val profileUuid = UUID.fromString(savedProfileId ?: return@LaunchedEffect)
 
@@ -39,6 +44,7 @@ fun AlcoholQuestionnaireScreenRoute(
             }
             is Resource.Error -> {
                 val errorMessage = (uploadState as Resource.Error).message
+                Log.e("Navigation", uploadState.toString())
                 onShowSnackbar(errorMessage, null)
             }
             else -> { /* Loading or null state, handle if needed */ }
@@ -47,7 +53,7 @@ fun AlcoholQuestionnaireScreenRoute(
 
     AlcoholQuestionnaireScreen(
         onSubmit = { responseMap ->
-            questionnaireViewModel.uploadResponseToServer(responseMap)
+            questionnaireViewModel.saveAndAttemptUpload(responseMap)
         },
         onCancel = {
             val savedProfileId = prefs.getString(DRIVER_PROFILE_ID, null)

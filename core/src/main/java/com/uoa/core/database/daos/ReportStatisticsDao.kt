@@ -32,7 +32,7 @@ interface ReportStatisticsDao {
     fun getAllReports(): Flow<List<ReportStatisticsEntity>>
 
     @Query("SELECT * FROM report_statistics WHERE id = :id LIMIT 1")
-    fun getReportById(id: UUID): Flow<ReportStatisticsEntity?>
+    fun getReportById(id: UUID): ReportStatisticsEntity
 
     @Query("SELECT * FROM report_statistics WHERE tripId = :tripId LIMIT 1")
     fun getReportByTripId(tripId: UUID): ReportStatisticsEntity

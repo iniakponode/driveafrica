@@ -74,6 +74,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.licycle.viewmodel.ktx)
     implementation(libs.androidx.work.ktx)
 
+//    implementation(libs.play.services.activity)
+
     implementation(libs.map.osmdroid)
 
     implementation(libs.guava)
@@ -83,7 +85,7 @@ dependencies {
     implementation(libs.play.services.location)
 
     implementation(libs.gson)
-    
+
     implementation(libs.hilt.android)
     implementation(libs.androidx.hilt.common)
     implementation(libs.hilt.ext.work)
@@ -93,9 +95,13 @@ dependencies {
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.room.runtime)
     implementation(libs.firebase.dataconnect)
+    implementation(project(":driverprofile"))
     ksp(libs.hilt.compiler)
     ksp(libs.hilt.ext.compiler)
     implementation(libs.hilt.android)
+
+    implementation(libs.lifecycle.runtime.ktx)
+    implementation(libs.lifecycle.service)
 
     implementation(libs.mapper)
 

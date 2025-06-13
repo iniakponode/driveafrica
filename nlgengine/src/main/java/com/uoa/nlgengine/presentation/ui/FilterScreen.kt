@@ -189,6 +189,8 @@ fun FilterScreen(
                     endDate = null
                     periodType = PeriodType.NONE
                 }
+
+//                To be activate in second phase
                 ActionButton("Generate Report") {
                     val selectedStartDate = startDate
                     val selectedEndDate = endDate

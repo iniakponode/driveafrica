@@ -151,7 +151,7 @@ fun Trip.toEntity(): TripEntity {
         startDate = this.startDate,
         endDate = this.endDate,
         influence = this.influence,
-        synced = this.synced
+        sync = this.sync
     )
 }
 
@@ -164,7 +164,7 @@ fun TripEntity.toDomainModel(): Trip {
         startDate = this.startDate,
         endDate = this.endDate,
         influence=this.influence,
-        synced = this.synced
+        sync = this.sync
     )
 }
 
@@ -232,7 +232,7 @@ fun NLGReport.toEntity(): NLGReportEntity {
         startDate=this.startDate,
         endDate=this.endDate,
         createdDate = this.createdDate,
-        synced = this.synced
+        sync = this.sync
     )
 }
 
@@ -244,7 +244,7 @@ fun NLGReportEntity.toDomainModel(): NLGReport {
         startDate=this.startDate,
         endDate=this.endDate,
         createdDate = this.createdDate,
-        synced = this.synced
+        sync = this.sync
     )
 }
 
@@ -290,7 +290,8 @@ fun Road.toEntity(): RoadEntity{
     roadType=this.roadType,
     speedLimit=this.speedLimit,
     latitude=this.latitude,
-    longitude=this.latitude)
+    longitude=this.latitude,
+    radius=this.radius)
 
 }
 
@@ -302,7 +303,8 @@ fun RoadEntity.toDomainModel(): Road{
     roadType=this.roadType,
     speedLimit=this.speedLimit,
     latitude=this.latitude,
-    longitude=this.latitude)
+    longitude=this.latitude,
+    radius=this.radius)
 
 }
 
@@ -322,7 +324,7 @@ fun UnsafeBehaviourEntity.toDomainModel(): UnsafeBehaviourModel {
         updatedAt = safeUpdatedAt,
         updated=this.updated,
         processed = this.processed,
-        synced = this.synced,
+        sync = this.sync,
 
     )
 }
@@ -343,7 +345,7 @@ fun UnsafeBehaviourModel.toEntity(): UnsafeBehaviourEntity {
         updatedAt = safeUpdatedAt,
         updated=this.updated,
         processed = this.processed,
-        synced = this.synced,
+        sync = this.sync,
     )
 }
 

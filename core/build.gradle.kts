@@ -36,6 +36,9 @@ android {
     buildTypes {
         release {
 //            buildConfigField("String", "DRIVE_AFRICA_BASE_URL", "\"https://api.yourproductionurl.com/\"")
+                buildConfigField("String", "DRIVE_AFRICA_BASE_URL", "\"https://api.safedriveafrica.com/\"")
+                buildConfigField("String", "EMULATOR_BASE_URL", "\"http://10.0.2.2:8000/\"")
+                buildConfigField("String", "NOMINATIM_BASE_URL", "\"https://nominatim.openstreetmap.org/\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -43,7 +46,7 @@ android {
             )
         }
         debug {
-            buildConfigField("String", "DRIVE_AFRICA_BASE_URL", "\"https://safe-drive-africa-9fd1c750b777.herokuapp.com/\"")
+            buildConfigField("String", "DRIVE_AFRICA_BASE_URL", "\"https://api.safedriveafrica.com/\"")
             buildConfigField("String", "EMULATOR_BASE_URL", "\"http://10.0.2.2:8000/\"")
             buildConfigField("String", "NOMINATIM_BASE_URL", "\"https://nominatim.openstreetmap.org/\"")
         }

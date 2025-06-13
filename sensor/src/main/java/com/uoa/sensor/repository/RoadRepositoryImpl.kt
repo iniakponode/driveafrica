@@ -13,6 +13,7 @@ import com.uoa.core.utils.toEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import java.util.UUID
 import javax.inject.Inject
 
 class RoadRepositoryImpl @Inject constructor(private val roadDao: RoadDao, private val roadApiRepository: RoadApiRepository): RoadRepository{
@@ -57,6 +58,10 @@ class RoadRepositoryImpl @Inject constructor(private val roadDao: RoadDao, priva
 
     override fun getAllRoads(): List<Road> {
         return roadDao.getAllRoads().map { it.toDomainModel() }
+    }
+
+    override fun getRoadById(id:UUID): Road{
+        return roadDao.getRoadById(id)
     }
 
 //    override suspend fun saveOrUpdateRoadRemotelyFirst(road: Road): Resource<Unit> = withContext(Dispatchers.IO) {

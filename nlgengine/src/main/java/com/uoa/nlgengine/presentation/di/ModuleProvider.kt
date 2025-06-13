@@ -5,15 +5,13 @@ import com.uoa.core.database.daos.ReportStatisticsDao
 import com.uoa.core.database.repository.NLGReportRepository
 import com.uoa.core.database.repository.ReportStatisticsRepository
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
-import com.uoa.core.model.ReportStatistics
-import com.uoa.nlgengine.domain.usecases.local.GetLastInsertedUnsafeBehaviourUseCase
-import com.uoa.nlgengine.domain.usecases.local.UnsafeBehavioursBtwnDatesUseCase
+import com.uoa.core.utils.GetLastInsertedUnsafeBehaviourUseCase
+import com.uoa.core.utils.UnsafeBehavioursBtwnDatesUseCase
 import com.uoa.nlgengine.repository.NLGReportRepositoryImpl
 import com.uoa.nlgengine.repository.ReportStatisticsRepositoryImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.components.ViewModelComponent
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 

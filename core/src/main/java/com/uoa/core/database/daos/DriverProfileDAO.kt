@@ -19,6 +19,10 @@ interface DriverProfileDAO {
     @Update
     fun updateDriverProfile(driverProfileEntity: DriverProfileEntity)
 
+    // Custom update query: update the driver profile where the email matches.
+    @Query("UPDATE driver_profile SET driverProfileId = :driverProfileId, sync = :sync WHERE email = :email")
+    fun updateDriverProfileByEmail(driverProfileId: UUID, sync: Boolean, email: String)
+
     // Get all driver profiles
     @Query("SELECT * FROM driver_profile")
     fun getAllDriverProfiles(): List<DriverProfileEntity>

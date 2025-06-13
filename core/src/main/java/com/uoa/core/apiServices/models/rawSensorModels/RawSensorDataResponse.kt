@@ -11,7 +11,7 @@ data class RawSensorDataResponse(
     val timestamp: Long,
     val date: String,
     val accuracy: Int,
-    val location_id: UUID,
+    val location_id: UUID?=null,
     val trip_id: UUID,
     val sync: Boolean
 )

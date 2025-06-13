@@ -6,6 +6,7 @@ import com.uoa.core.database.repository.QuestionnaireRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import java.util.UUID
 
 class AlcoholQuestionnaireRepoImpl (private val dao: AlcoholQuestionnaireResponseDao): QuestionnaireRepository {
     override suspend fun saveResponseLocally(response: QuestionnaireEntity) {
@@ -19,6 +20,16 @@ class AlcoholQuestionnaireRepoImpl (private val dao: AlcoholQuestionnaireRespons
             dao.getAllResponses()
         }
 
+    }
+
+
+
+    override suspend fun markAsSynced(questionnaireId: UUID, status: Boolean) {
+            dao.updateSyncStatus(questionnaireId,status)
+    }
+
+    override suspend fun getAllUnsyncedQuestionnaires(): List<QuestionnaireEntity> {
+        return return withContext(Dispatchers.IO) {dao.getQuestionnaireResponseSyncStatus(false)}
     }
 
 }

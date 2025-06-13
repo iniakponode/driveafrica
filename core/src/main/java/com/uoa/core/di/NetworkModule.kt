@@ -19,6 +19,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import com.uoa.core.BuildConfig
+import com.uoa.core.database.repository.LocationRepository
 import com.uoa.core.network.apiservices.OSMSpeedLimitApiService
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
@@ -44,6 +45,7 @@ object NetworkModule {
 
     // Renamed to clarify it’s for Nominatim
     private const val NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/"
+
 
     private const val DEFAULT_BASE_URL = "https://safe-drive-africa-9fd1c750b777.herokuapp.com/"
 
@@ -144,7 +146,8 @@ object NetworkModule {
             "Referer" to "https://github.com/iniakponode/driveafrica"
         )
         return getRetrofitInstance(
-            baseUrl = NOMINATIM_BASE_URL
+            headers = customHeaders,
+            baseUrl = NOMINATIM_BASE_URL // Ensure this constant is correct.
         ).create(OSMRoadApiService::class.java)
     }
 
@@ -186,12 +189,15 @@ object NetworkModule {
     fun provideNLGEngineRepository(
         chatGPTApiService: ChatGPTApiService,
         geminiApiService: GeminiApiService,
-        osmRoadApiService: OSMRoadApiService
+        osmRoadApiService: OSMRoadApiService,
+        locationRepository: LocationRepository
     ): NLGEngineRepository {
         return NLGEngineRepositoryImpl(
             chatGPTApiService,
             geminiApiService,
-            osmRoadApiService
+            osmRoadApiService,
+            locationRepository
+
         )
     }
 

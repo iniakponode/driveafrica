@@ -16,14 +16,17 @@ data class AlcoholQuestionnaireCreate (
     val caffeinatedDrink: Boolean,
     val impairmentLevel: Int,
     val date: String?, // ISO 8601 format
-    val plansToDrive: Boolean
+    val plansToDrive: Boolean,
+    val sync: Boolean = false
 ) {
     override fun toString(): String {
-        return "AlcoholQuestionnaireCreate(id=$id, userId=$driverProfileId, drankAlcohol=$drankAlcohol, " +
+        return "AlcoholQuestionnaireCreate(" +
+                "id=$id, driverProfileId=$driverProfileId, drankAlcohol=$drankAlcohol, " +
                 "selectedAlcoholTypes=$selectedAlcoholTypes, beerQuantity=$beerQuantity, " +
                 "wineQuantity=$wineQuantity, spiritsQuantity=$spiritsQuantity, " +
                 "firstDrinkTime=$firstDrinkTime, lastDrinkTime=$lastDrinkTime, " +
                 "emptyStomach=$emptyStomach, caffeinatedDrink=$caffeinatedDrink, " +
-                "impairmentLevel=$impairmentLevel, plansToDrive=$plansToDrive)"
+                "impairmentLevel=$impairmentLevel, date=$date, plansToDrive=$plansToDrive, sync=$sync" +
+                ")"
     }
 }

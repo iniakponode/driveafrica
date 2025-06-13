@@ -76,7 +76,7 @@ class TripDataRepositoryImplTest {
 
     @Test
     fun testUpdateUploadStatus() = runBlocking {
-        val id = 1
+        val id = UUID.randomUUID()
         val sync = true
         repository.updateUploadStatus(id, sync)
         verify(tripDao).updateUploadStatus(id, sync)

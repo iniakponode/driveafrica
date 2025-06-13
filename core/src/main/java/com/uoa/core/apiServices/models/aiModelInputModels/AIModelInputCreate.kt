@@ -16,5 +16,5 @@ data class AIModelInputCreate(
     val speed_std: Double,
     val course_std: Double,
     val acceleration_y_original_mean: Double,
-    val synced: Boolean
+    val sync: Boolean
 )

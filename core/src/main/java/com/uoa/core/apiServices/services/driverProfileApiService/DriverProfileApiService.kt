@@ -3,6 +3,8 @@ package com.uoa.core.apiServices.services.driverProfileApiService
 
 import com.uoa.core.apiServices.models.driverProfile.DriverProfileCreate
 import com.uoa.core.apiServices.models.driverProfile.DriverProfileResponse
+import com.uoa.core.utils.Resource
+import retrofit2.Response
 import retrofit2.http.*
 import java.util.UUID
 
@@ -15,7 +17,16 @@ interface DriverProfileApiService {
      * @return The created DriverProfile response.
      */
     @POST("/api/driver_profiles/")
-    suspend fun createDriverProfile(@Body driverProfile: DriverProfileCreate): DriverProfileResponse
+    suspend fun createDriverProfile(@Body driverProfile: DriverProfileCreate): Response<DriverProfileResponse>
+
+    /**
+     * Retrieves a DriverProfile by its ID.
+     *
+     * @param email The the email of the DriverProfile to retrieve.
+     * @return The DriverProfile response.
+     */
+    @GET("/api/driver-profile-by-email/{email}")
+    suspend fun getDriverProfileByEmail(@Path("email") email: String): Response<DriverProfileResponse>
 
     /**
      * Retrieves a DriverProfile by its ID.

@@ -35,5 +35,6 @@ data class QuestionnaireEntity(
     val caffeinatedDrink: Boolean,
     val impairmentLevel: Int,
     val date: Date,
-    val plansToDrive: Boolean
+    val plansToDrive: Boolean,
+    val sync: Boolean=false
 )

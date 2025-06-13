@@ -6,8 +6,10 @@ import com.uoa.core.database.repository.ReportStatisticsRepository
 import com.uoa.core.model.ReportStatistics
 import com.uoa.core.utils.toDomainModel
 import com.uoa.core.utils.toEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.util.UUID
 
@@ -16,12 +18,12 @@ class ReportStatisticsRepositoryImpl(
     private val dao: ReportStatisticsDao
 ) : ReportStatisticsRepository {
 
-    override fun getReportsBetweenDates(
+    override suspend fun getReportsBetweenDates(
         startDate: LocalDate,
         endDate: LocalDate
-    ): ReportStatistics {
-        return dao.getReportsBetweenDates(startDate, endDate).toDomainModel()
-        }
+    ): ReportStatistics? = withContext(Dispatchers.IO) {
+        dao.getReportsBetweenDates(startDate, endDate)?.toDomainModel()
+    }
 
     override fun getAllReports(): Flow<List<ReportStatistics>> {
         return dao.getAllReports().map { entityList ->
@@ -29,10 +31,8 @@ class ReportStatisticsRepositoryImpl(
         }
     }
 
-    override fun getReportById(id: UUID): Flow<ReportStatistics?> {
-        return dao.getReportById(id).map { entity ->
-            entity?.toDomainModel()
-        }
+    override fun getReportById(id: UUID): ReportStatistics{
+        return dao.getReportById(id).toDomainModel()
     }
 
     override suspend fun getReportByTripId(tripId: UUID): ReportStatisticsEntity {

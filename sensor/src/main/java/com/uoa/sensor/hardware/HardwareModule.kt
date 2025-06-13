@@ -1,32 +1,19 @@
 package com.uoa.sensor.hardware
 
-import android.app.Application
 import android.content.Context
+import android.hardware.Sensor
 import android.hardware.SensorManager
 import android.util.Log
-import androidx.compose.ui.platform.LocalContext
-import com.uoa.core.database.repository.AIModelInputRepository
-import com.uoa.core.database.repository.LocationRepository
-import com.uoa.core.database.repository.RawSensorDataRepository
 import com.uoa.core.model.RawSensorData
-import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
-import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.PreferenceUtils
-import com.uoa.core.utils.toDomainModel
-import com.uoa.core.utils.toEntity
 import com.uoa.sensor.location.LocationDataBufferManager
 import com.uoa.sensor.location.LocationManager
 import com.uoa.sensor.repository.SensorDataColStateRepository
 import com.uoa.sensor.utils.GetSensorTypeNameUtil
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import com.uoa.sensor.utils.ProcessSensorData
+import kotlinx.coroutines.*
 import java.time.Instant
-import java.util.Date
-import com.uoa.sensor.utils.ProcessSensorData.processSensorData
-import dagger.hilt.android.qualifiers.ApplicationContext
-import java.util.UUID
+import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -42,244 +29,282 @@ class HardwareModule @Inject constructor(
     private val locationBufferManager: LocationDataBufferManager,
     private val locationManager: LocationManager,
     private val sensorDataBufferManager: SensorDataBufferManager,
-    private val motionDetector: MotionDetector,
-    private val aiModelInputRepository: AIModelInputRepository,
-    private val locationRepository: LocationRepository,
-    private val context: Context,
+    private val motionDetection: MotionDetectionFFT,
     private val sensorDataColStateRepository: SensorDataColStateRepository,
-    private val rawSensorDataRepository: RawSensorDataRepository
-) : MotionDetector.MotionListener {
+    private val context: Context
+) : MotionDetectionFFT.MotionListener {
 
+    // --------------------------------------
+    // Collection State & Concurrency
+    // --------------------------------------
     private val isCollecting = AtomicBoolean(false)
     private var currentTripId: UUID? = null
-    private var rotationMatrix = FloatArray(9) { 0f }
+
+    // Background scope for async operations
     private val hardwareModuleScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // --------------------------------------
+    // Sensor Event Throttling
+    // --------------------------------------
+    private val MIN_DELAY_BETWEEN_EVENTS_MS = 100L  // Only process sensor data at most ~twice per second
+    private var lastProcessedEventTime = 0L
+
+    // --------------------------------------
+    // Rotation Matrix & Intermediate Reading
+    // --------------------------------------
+    private val rotationMatrix = FloatArray(9) { 0f }
+    private val lastAccelerometer = FloatArray(3)
+    private val lastMagnetometer = FloatArray(3)
+    private var hasAccelerometerReading = false
+    private var hasMagnetometerReading = false
+
+    // Callback that receives raw sensor updates from each sensor wrapper.
     private lateinit var sensorEventListener: (Int, List<Float>, Int) -> Unit
 
+    init {
+        setupListeners()
+    }
 
-
-
-       override fun onMotionDetected() {
-
-           hardwareModuleScope.launch {
-//               Log.d("HardwareModule", "Vehicle Motion Detected")
-               sensorDataColStateRepository.updateVehicleMovementStatus(true)
-           }
-
-           if (!isCollecting.get()) {
-               isCollecting.set(true)
-               locationManager.startLocationUpdates()
-               startSensorListeners()
-               hardwareModuleScope.launch {
-//                   Log.d("HardwareModule","Data Collection Has Started")
-                   sensorDataColStateRepository.updateCollectionStatus(isCollecting.get())
-               }
-           }
+    // --------------------------------------
+    // Movement Detection Hooks
+    // --------------------------------------
+    override fun onMotionDetected() {
+        hardwareModuleScope.launch {
+            sensorDataColStateRepository.updateMovementStatus(true)
+        }
     }
 
     override fun onMotionStopped() {
         hardwareModuleScope.launch {
-//            Log.d("HardwareModule", "Vehicle Motion Stopped")
-            sensorDataColStateRepository.updateVehicleMovementStatus(false)
-        }
-        if (isCollecting.get()) {
-            stopSensorListeners()
-            isCollecting.set(false)
-            hardwareModuleScope.launch{
-                sensorDataColStateRepository.updateCollectionStatus(isCollecting.get())
-            }
-//            Log.d("HardwareModule", "Data collection stopped.")
+            sensorDataColStateRepository.updateMovementStatus(false)
         }
     }
 
+    /**
+     * Start always-on motion detection (hybrid).
+     */
+    fun startMovementDetection() {
+        motionDetection.addMotionListener(this)
+        motionDetection.startHybridMotionDetection()
+    }
+
+    /**
+     * Stop the always-on motion detection.
+     */
+    fun stopMovementDetection() {
+        motionDetection.stopHybridMotionDetection()
+        motionDetection.removeMotionListener(this)
+    }
+
+    // --------------------------------------
+    // Trip Data Collection
+    // --------------------------------------
     fun startDataCollection(tripId: UUID) {
-//        Log.d("HardwareModule", "Starting data collection for trip: $tripId")
-        hardwareModuleScope.launch(Dispatchers.IO){
-//            Log.d("HardwareModule", "Updating tripStartStatus to true")
-                sensorDataColStateRepository.startTripStatus(true)
+        // If a collection is already active, stop it first (so we don't double-collect).
+        if (isCollecting.get()) {
+            Log.d("HardwareModule", "startDataCollection for trip: ${tripId} called, but we're already collecting. Stopping previous trip first.")
+            stopDataCollection()
         }
-        currentTripId = tripId
-        startHybridMotionDetection()
-//        Log.d("HardwareModule", "Data collection started for trip: $tripId")
 
+        // Now mark new trip as active.
+        currentTripId = tripId
+        isCollecting.set(true)
+
+        // Update local repository that trip is started.
+        hardwareModuleScope.launch {
+            sensorDataColStateRepository.startTripStatus(true)
+            sensorDataColStateRepository.updateCollectionStatus(true)
+        }
+
+        // Start location & sensors for data collection.
+        locationManager.startLocationUpdates()
+        startSensorListeners()
+
+        Log.d("HardwareModule", "Data collection started for trip: $tripId")
     }
 
+    /**
+     * Stop the current trip's data collection.
+     * This flushes buffers, updates the DB & repository, and then clears references.
+     */
     fun stopDataCollection() {
-//        Log.d("HardwareModule", "Stopping data collection for trip: $currentTripId")
-        hardwareModuleScope.launch(Dispatchers.IO){
-//            Log.d("HardwareModule", "Updating tripStartStatus to false")
-                    sensorDataColStateRepository.startTripStatus(false)
+        hardwareModuleScope.launch {
+            if (isCollecting.get()) {
+                isCollecting.set(false)
 
+                // Flush everything to local DB.
+                sensorDataBufferManager.flushBufferToDatabase()
+                locationBufferManager.flushBufferToDatabase()
+
+                // Mark trip as stopped.
+                sensorDataColStateRepository.startTripStatus(false)
+                sensorDataColStateRepository.updateCollectionStatus(false)
+
+                Log.d("HardwareModule", "Trip data flushed for trip: $currentTripId")
+            }
         }
+        // Cleanup & reset state
         clear()
     }
 
-    // Start Sensor Listeners
+    // --------------------------------------
+    // Sensor Listeners
+    // --------------------------------------
     private fun startSensorListeners() {
         try {
-
-            // Start all sensors
             accelerometerSensor.startListeningToSensor(SensorManager.SENSOR_DELAY_NORMAL)
             gyroscopeSensor.startListeningToSensor(SensorManager.SENSOR_DELAY_NORMAL)
             rotationVectorSensor.startListeningToSensor(SensorManager.SENSOR_DELAY_NORMAL)
             magnetometerSensor.startListeningToSensor(SensorManager.SENSOR_DELAY_NORMAL)
             gravitySensor.startListeningToSensor(SensorManager.SENSOR_DELAY_NORMAL)
             linearAccelerationSensor.startListeningToSensor(SensorManager.SENSOR_DELAY_NORMAL)
-
-
         } catch (e: Exception) {
             Log.e("HardwareModule", "Error starting sensor listeners", e)
         }
     }
 
+    private fun stopSensorListeners() {
+        try {
+            if (accelerometerSensor.doesSensorExist()) accelerometerSensor.stopListeningToSensor()
+            if (gyroscopeSensor.doesSensorExist()) gyroscopeSensor.stopListeningToSensor()
+            if (rotationVectorSensor.doesSensorExist()) rotationVectorSensor.stopListeningToSensor()
+            if (magnetometerSensor.doesSensorExist()) magnetometerSensor.stopListeningToSensor()
+            if (gravitySensor.doesSensorExist()) gravitySensor.stopListeningToSensor()
+            if (linearAccelerationSensor.doesSensorExist()) linearAccelerationSensor.stopListeningToSensor()
+        } catch (e: Exception) {
+            Log.e("HardwareModule", "Error stopping sensor listeners", e)
+        }
+    }
+
+    /**
+     * Set up the shared sensor event listener that each sensor will invoke.
+     */
     private fun setupListeners() {
-
-
-
         sensorEventListener = fun(sensorType: Int, values: List<Float>, accuracy: Int) {
+            // Throttle sensor events to reduce CPU & battery usage
+            val now = System.currentTimeMillis()
+            if (now - lastProcessedEventTime < MIN_DELAY_BETWEEN_EVENTS_MS) {
+                return
+            }
+            lastProcessedEventTime = now
+
             val sensorTypeName = GetSensorTypeNameUtil.getSensorTypeName(sensorType)
 
-            if (sensorTypeName == "Rotation Vector") {
-                updateRotationMatrix(values.toFloatArray())
-            } else {
+            // Maintain state for heading computation (Accelerometer + Magnetometer)
+            when (sensorTypeName) {
+                "Accelerometer" -> {
+                    if (values.size >= 3) {
+                        for (i in 0 until 3) {
+                            lastAccelerometer[i] = values[i]
+                        }
+                        hasAccelerometerReading = true
+                    }
+                }
+                "Magnetometer" -> {
+                    if (values.size >= 3) {
+                        for (i in 0 until 3) {
+                            lastMagnetometer[i] = values[i]
+                        }
+                        hasMagnetometerReading = true
+                    }
+                }
+                "Rotation Vector" -> {
+                    updateRotationMatrixFromVector(values.toFloatArray())
+                }
+            }
+
+            // If we have both accelerometer + magnetometer, compute heading
+            if (hasAccelerometerReading && hasMagnetometerReading) {
+                val success = SensorManager.getRotationMatrix(
+                    rotationMatrix,
+                    null,
+                    lastAccelerometer,
+                    lastMagnetometer
+                )
+                if (success) {
+                    val orientationAngles = FloatArray(3)
+                    SensorManager.getOrientation(rotationMatrix, orientationAngles)
+                    val headingDeg = Math.toDegrees(orientationAngles[0].toDouble())
+                    Log.d("HardwareModule", "Heading: $headingDeg deg")
+                }
+            }
+
+            // If collecting data for a trip, store these values
+            if (isCollecting.get()) {
                 currentTripId?.let { tripId ->
                     val timestamp = Instant.now().toEpochMilli()
-                    val validValues = values.map { if (it.isFinite()) it else 0f }
+                    // Replace non-finite values (NaN, ±Infinity) with 0.
+                    val validValues = values.map { if (it.isFinite()) it else 0f }.toFloatArray()
 
-                    // Process sensor data and transform it based on rotation matrix
-                    val processedValues = processSensorData(sensorType, validValues.toFloatArray(), rotationMatrix)
-
-                    val rawSensorData = RawSensorData(
-                        id = UUID.randomUUID(),
-                        sensorType = sensorType,
-                        sensorTypeName = sensorTypeName,
-                        values = processedValues.toList(),
-                        timestamp = timestamp,
-                        date = Date(timestamp),
-                        accuracy=accuracy,
-                        locationId = locationBufferManager.getCurrentLocationId(),
-                        tripId = tripId,
-                        driverProfileId= PreferenceUtils.getDriverProfileId(context),
-                        sync = false
-                    )
-
-
-
-                    if (isCollecting.get()) {
-//                        Log.d("HardwareModule", "Attempting to save Sensor Data")
+                    val processedValues = processSensorData(sensorType, validValues, rotationMatrix)
+                    if (processedValues.all { it == 0f }) {
+                        // Filter out sensor events where all axes are 0
+                        Log.d("HardwareModule", "Filtered out sensor reading with all zeros.")
+                    } else {
+                        val rawSensorData = RawSensorData(
+                            id = UUID.randomUUID(),
+                            sensorType = sensorType,
+                            sensorTypeName = sensorTypeName,
+                            values = processedValues.toList(),
+                            timestamp = timestamp,
+                            date = Date(timestamp),
+                            accuracy = accuracy,
+                            locationId = locationBufferManager.getCurrentLocationId(),
+                            tripId = tripId,
+                            driverProfileId = PreferenceUtils.getDriverProfileId(context),
+                            sync = false
+                        )
+                        Log.d("HardwareModule", "Received sensor data for trip: ${rawSensorData.tripId}")
                         sensorDataBufferManager.addToSensorBuffer(rawSensorData)
-
-//                        hardwareModuleScope.launch(Dispatchers.IO) {
-//                            val locationId = locationBufferManager.getCurrentLocationId()
-//                            if (locationId != null) {
-//                                Log.d("HardwareModule", "Processing sensor data for AIModelInput in coroutine")
-//                                val location = locationRepository.getLocationById(locationId)
-//                                if (location != null) {
-//                                    Log.d("HardwareModule", "Processing sensor data for AIModelInput in coroutine")
-//                                     aiModelInputRepository.processDataForAIModelInputs(rawSensorData, location.toDomainModel(), tripId)
-//
-////                                    Update Raw Sensor and Location data after using them
-//                                    val rawSensorDataCopy=rawSensorData.copy(processed = true)
-//                                    rawSensorDataRepository.updateRawSensorData(rawSensorDataCopy.toEntity())
-//
-//                                    val locationDataCopy=location.copy(processed = true)
-//                                    locationRepository.updateLocation(locationDataCopy)
-//
-//                                    Log.d("HardwareModule", "Sensor data processing for AIModelInput completed")
-//                                } else {
-//                                    Log.e("HardwareModule", "Location not found for ID: $locationId")
-//                                }
-//                            } else {
-//                                Log.e("HardwareModule", "Current Location ID is null")
-//                            }
-//                        }
-
-                    }
-                    else{
-                        Log.d("HardwareModule", "Error Data Collection is disabled")
                     }
                 }
             }
         }
 
+        // Register the event listener in each sensor manager
         try {
             accelerometerSensor.whenSensorValueChangesListener(sensorEventListener)
             gyroscopeSensor.whenSensorValueChangesListener(sensorEventListener)
             rotationVectorSensor.whenSensorValueChangesListener(sensorEventListener)
             magnetometerSensor.whenSensorValueChangesListener(sensorEventListener)
             gravitySensor.whenSensorValueChangesListener(sensorEventListener)
-
-
         } catch (e: Exception) {
             Log.e("HardwareModule", "Error setting up sensor listeners", e)
         }
     }
 
-
-
-
-
-    private fun updateRotationMatrix(rotationValues: FloatArray) {
+    // --------------------------------------
+    // Utility & Cleanup
+    // --------------------------------------
+    private fun updateRotationMatrixFromVector(rotationValues: FloatArray) {
         SensorManager.getRotationMatrixFromVector(rotationMatrix, rotationValues)
     }
 
-    private fun stopSensorListeners() {
-        try {
-            try {
-                if (accelerometerSensor.doesSensorExist())
-                    accelerometerSensor.stopListeningToSensor()
-                else
-                    Log.d("Sensor", "Acceleration Sensor Does not Exists")
-                if (gyroscopeSensor.doesSensorExist())
-                    gyroscopeSensor.stopListeningToSensor()
-                else
-                    Log.d("Sensor", "gyroscope Sensor Does not Exists")
-
-                if (rotationVectorSensor.doesSensorExist())
-                    rotationVectorSensor.stopListeningToSensor()
-                else
-                    Log.d("Sensor", "rotationVector Sensor Does not Exists")
-                if (magnetometerSensor.doesSensorExist())
-                    magnetometerSensor.stopListeningToSensor()
-                else
-                    Log.d("Sensor", "Magnetometer Sensor Does not Exists")
-
-                if (gravitySensor.doesSensorExist())
-                    gravitySensor.stopListeningToSensor()
-                else
-                    Log.d("Sensor", "Gravity Sensor Does not Exists")
-
-            } catch (e: Exception) {
-                Log.e("HardwareModule", "Error stopping sensor listeners", e)
-            }
-        } catch (e: Exception) {
-            Log.e("HardwareModule", "Error stopping sensor listeners", e)
-        }
-    }
-
-    fun startHybridMotionDetection() {
-        motionDetector.addMotionListener(this)
-        motionDetector.startHybridMotionDetection()
-    }
-
+    /**
+     * Reset all state, stop listeners, and set isCollecting to false.
+     * This is invoked after stopDataCollection.
+     */
     private fun clear() {
         stopSensorListeners()
         locationManager.stopLocationUpdates()
-        motionDetector.removeMotionListener(this)
-//        hardwareModuleScope.cancel() // Cancel ongoing coroutines
+
         currentTripId = null
         isCollecting.set(false)
-        hardwareModuleScope.launch(Dispatchers.IO){
-            sensorDataColStateRepository.updateVehicleMovementStatus(false)
+
+        hardwareModuleScope.launch {
+            // In case any UI or logic depends on "collection status," ensure false
             sensorDataColStateRepository.updateCollectionStatus(false)
         }
     }
 
-    init {
-        // Register HardwareModule as a listener to motion events from MotionDetector
-        setupListeners()
-        motionDetector.addMotionListener(this)
-
-//        startHybridMotionDetection() // Ensure hybrid motion detection starts at initialization
+    /**
+     * Optionally handle any sensor transformations (e.g., calibration, smoothing).
+     */
+    private fun processSensorData(
+        sensorType: Int,
+        inputValues: FloatArray,
+        rotationMatrix: FloatArray
+    ): FloatArray {
+        return ProcessSensorData.processSensorData(sensorType, inputValues, rotationMatrix)
     }
 }

@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Update
 import com.uoa.core.database.entities.RoadEntity
 import com.uoa.core.model.Road
+import java.util.UUID
 
 @Dao
 interface RoadDao {
@@ -19,8 +20,11 @@ interface RoadDao {
     @Update(onConflict = OnConflictStrategy.REPLACE)
     fun updateRoad(road: RoadEntity)
 
-    @Query("SELECT * FROM roads WHERE synced= :syncStat")
+    @Query("SELECT * FROM roads WHERE sync= :syncStat")
     fun getRoadsBySyncStatus(syncStat: Boolean): List<RoadEntity>
+
+    @Query("SELECT * FROM roads WHERE id= :id")
+    fun getRoadById(id: UUID): Road
 
     @Query("SELECT * FROM roads")
     fun getAllRoads(): List<RoadEntity>

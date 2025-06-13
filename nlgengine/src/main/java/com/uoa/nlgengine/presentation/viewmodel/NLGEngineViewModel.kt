@@ -2,7 +2,6 @@ package com.uoa.nlgengine.presentation.viewmodel
 
 import android.content.Context
 import android.util.Log
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uoa.core.database.repository.LocationRepository
@@ -19,7 +18,7 @@ import com.uoa.nlgengine.data.model.HourlySummary
 import com.uoa.core.model.ReportStatistics
 import com.uoa.core.network.apiservices.OSMSpeedLimitApiService
 import com.uoa.nlgengine.data.model.UnsafeBehaviorChartEntry
-import com.uoa.nlgengine.domain.usecases.local.GetLastInsertedUnsafeBehaviourUseCase
+import com.uoa.core.utils.GetLastInsertedUnsafeBehaviourUseCase
 import com.uoa.core.utils.PeriodType
 import com.uoa.core.utils.PeriodUtils
 import com.uoa.core.utils.toEntity
@@ -34,9 +33,8 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import com.uoa.core.utils.computeReportStatistics
 import javax.inject.Inject
-import com.uoa.nlgengine.util.computeReportStatistics
-
 
 @HiltViewModel
 class NLGEngineViewModel @Inject constructor(
@@ -53,60 +51,61 @@ class NLGEngineViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> get() = _isLoading
 
-    private val _generatedPrompt = MutableStateFlow<String>("")
+    private val _generatedPrompt = MutableStateFlow("")
     val generatedPrompt: StateFlow<String> get() = _generatedPrompt
 
     private val _summaryDataByDateHour = MutableStateFlow<Map<DateHourKey, HourlySummary>>(emptyMap())
     val summaryDataByDateHour: StateFlow<Map<DateHourKey, HourlySummary>> get() = _summaryDataByDateHour
 
-
-    suspend fun getCachedReportStats(periodType: PeriodType): ReportStatistics?{
-        if (periodType== PeriodType.LAST_TRIP){
-            val tripId= tripRepository.getLastInsertedTrip()?.id
-
-            if (tripId!=null){
-                val cachedReportStat=reportStatisticsRepository.getReportByTripId(tripId)
-
-                return cachedReportStat.toDomainModel()
+    /**
+     * Returns cached report statistics. For LAST_TRIP, it checks whether the last inserted trip exists;
+     * if so, it fetches the corresponding report and converts it to the domain model only if non-null.
+     */
+    suspend fun getCachedReportStats(periodType: PeriodType): ReportStatistics? {
+        return if (periodType == PeriodType.LAST_TRIP) {
+            val tripId = tripRepository.getLastInsertedTrip()?.id
+            if (tripId != null) {
+                val cachedReportStat = reportStatisticsRepository.getReportByTripId(tripId)
+                if (cachedReportStat != null) {
+                    cachedReportStat.toDomainModel()
+                } else {
+                    Log.w("NLGEngineViewModel", "No cached report statistics found for tripId: $tripId")
+                    null
+                }
+            } else {
+                Log.w("NLGEngineViewModel", "No last inserted trip found")
+                null
             }
-            else{
-                return null
-            }
-        }
-        else{
-            val periodOfReport=PeriodUtils.getReportingPeriod(periodType)
-
-            if(periodOfReport!=null){
-                val cachedReportStat=reportStatisticsRepository.getReportsBetweenDates(periodOfReport.first,periodOfReport.second)
-
-                return cachedReportStat
-            }
-            else{
-                return null
+        } else {
+            val periodOfReport = PeriodUtils.getReportingPeriod(periodType)
+            if (periodOfReport != null) {
+                reportStatisticsRepository.getReportsBetweenDates(periodOfReport.first, periodOfReport.second)
+            } else {
+                Log.w("NLGEngineViewModel", "No reporting period found for periodType: $periodType")
+                null
             }
         }
     }
 
-    private suspend fun generatePrompt(context: Context,
-                                       unsafeBehaviours: List<UnsafeBehaviourModel>,
-                                       periodType: PeriodType,
-                                       startDate: java.time.LocalDate,
-                                       endDate: java.time.LocalDate,): String {
+    /**
+     * Generates the prompt by either using cached report statistics or computing new ones.
+     * This method runs on the IO dispatcher and updates the loading state accordingly.
+     */
+    private suspend fun generatePrompt(
+        context: Context,
+        unsafeBehaviours: List<UnsafeBehaviourModel>,
+        periodType: PeriodType,
+        startDate: java.time.LocalDate,
+        endDate: java.time.LocalDate,
+    ): String {
         _isLoading.value = true
-
         return withContext(Dispatchers.IO) {
             try {
-
-                // Check if NLG Report for selected range already exists, if it does then, use that
-                // and do not start processing and generation all over again.
-
-//                val reportStatsInDatabase = reportStatisticsRepository.getReportsBetweenDates(
-//                    startDate.toJavaLocalDate(),
-//                    endDate.toJavaLocalDate()
-//                )
-                val prompt = mutableStateOf<String>("")
-                if (getCachedReportStats(periodType)==null) {
-
+//                val cachedReportStats = getCachedReportStats(periodType)
+                val cachedReportStats = withContext(Dispatchers.IO) {
+                    getCachedReportStats(periodType)
+                }
+                val prompt = if (cachedReportStats == null) {
                     val reportStatistics = computeReportStatistics(
                         context,
                         osmRoadApiService,
@@ -120,31 +119,194 @@ class NLGEngineViewModel @Inject constructor(
                         locationRepository,
                         lastInsertedUnsafeBehaviourUseCase
                     )
-
-                    reportStatistics?.let {
-                        val reportStat=it.copy(processed = true)
-                        reportStatisticsRepository.insertReportStatistics(reportStat)
+                    if (reportStatistics == null) {
+                        Log.e("NLGEngineViewModel", "Report statistics computation returned null")
+                        return@withContext "Unable to generate prompt due to missing report statistics."
                     }
-                    prompt.value = buildPrompt(context, unsafeBehaviours, periodType, reportStatistics!!)
+                    // Cache the processed report statistics
+                    val reportStat = reportStatistics.copy(processed = true)
+                    reportStatisticsRepository.insertReportStatistics(reportStat)
+                    buildPrompt(context, unsafeBehaviours, periodType, reportStatistics)
+                } else {
+                    buildPrompt(context, unsafeBehaviours, periodType, cachedReportStats)
                 }
-                else{
-                    // Generate prompt with statistics
-                    prompt.value = buildPrompt(context, unsafeBehaviours, periodType, getCachedReportStats(periodType)!!)
-
-                }
-                prompt.value
-
-
-
-                } catch (e: Exception) {
-                    Log.e("NLGEngineViewModel", "Error generating prompt", e)
-                    ""
-                }
-                finally {
-                    _isLoading.value = false
-                }
+                prompt
+            } catch (e: Exception) {
+                Log.e("NLGEngineViewModel", "Error generating prompt", e)
+                ""
+            } finally {
+                _isLoading.value = false
             }
+        }
     }
+
+
+//    /**
+//     * Builds the prompt string using the provided unsafe behaviors and report statistics.
+//     * Uses formatted dates/times and includes all required report details.
+//     */
+//    private suspend fun buildPrompt(
+//        context: Context,
+//        unsafeBehaviours: List<UnsafeBehaviourModel>,
+//        periodType: PeriodType,
+//        reportStatistics: ReportStatistics
+//    ): String {
+//        val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+//        val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+//
+//        // Determine the start and end dates from the unsafe behaviors
+//        val startDateStr = unsafeBehaviours.minOfOrNull { it.timestamp }?.let {
+//            Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate().format(dateFormatter)
+//        }
+//        val endDateStr = unsafeBehaviours.maxOfOrNull { it.timestamp }?.let {
+//            Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate().format(dateFormatter)
+//        }
+//
+//        val periodText = when (periodType) {
+//            PeriodType.TODAY -> "Report for Today"
+//            PeriodType.THIS_WEEK -> "Report for This Week"
+//            PeriodType.LAST_WEEK -> "Report for Last Week"
+//            PeriodType.CUSTOM_PERIOD -> {
+//                if (startDateStr != null && endDateStr != null) {
+//                    if (startDateStr == endDateStr) "Report for $startDateStr" else "Report Period: $startDateStr to $endDateStr"
+//                } else {
+//                    "Report for Selected Period"
+//                }
+//            }
+//            PeriodType.LAST_TRIP -> "Report for the Last Trip"
+//            else -> "Report"
+//        }
+//
+//        // Build the prompt using a StringBuilder
+//        val promptBuilder = StringBuilder().apply {
+//            append("$periodText\n\n")
+//            append("You are a driving safety specialist in Nigeria. Based on the following data, generate a friendly and encouraging driving behavior report for the driver on their selected report filter ($periodType). The report should:\n")
+//            append("- Must have only between 150-200 words.\n")
+//            append("- Acknowledge the driver's efforts and positive aspects.\n")
+//            append("- Gently highlight areas for improvement without direct criticism.\n")
+//            append("- Offer practical, actionable tips to enhance safety.\n")
+//            append("- Use an uplifting and motivational tone.\n")
+//            append("- The sender's name in the complimentary closing section should be 'Your Driving Safety Specialist Agent'.\n")
+//            append("- Must include the numbers given in this prompt in the response without hallucination.\n")
+//            append("- You will need to decode the Base64 encoded JSON data to get the driving offences, penalties, fines, and laws.\n")
+//            append("- Reference the specific dates, incidents, and locations provided.\n")
+//            append("- Ensure to use only the given data for fines, laws, and sections without hallucination.\n\n")
+//            append("After generating the report, please ensure the response includes the key components of the Theory of Planned Behavior (TPB), specifically:\n")
+//            append("- **Attitudes**: Reflect on the driver's positive and negative evaluations of performing the behavior.\n")
+//            append("- **Subjective Norms**: Reference the social pressure or norms influencing the driver's behavior.\n")
+//            append("- **Perceived Behavioral Control**: Address the driver's perception of their ability to perform the behavior.\n")
+//            append("Also, ensure that the report:\n")
+//            append("- Maintains a supportive tone throughout.\n")
+//            append("- Specifies the unsafe behaviors observed.\n")
+//            append("- Include the corresponding location (Road name) as given from the data and time for the most frequent incident.\n")
+//            append("- State the risks inherent in the identified unsafe behaviours.\n")
+//            append("- State the benefits inherent especially in economic (fuel consumption, vehicle health, etc) and life related terms if the drivers could improve and change from the identified unsafe behaviours.\n")
+//            append("- Has a statement about the alcohol influence based on the given data.\n")
+//            append("- Strictly adheres to the data provided in this prompt without adding any information not directly traceable to the prompt.\n\n")
+//            append("- If any of the above components are missing, please identify and include them before finalizing the response.\n\n")
+//            append("Report Statistics are given below:\n")
+//            // Append common statistics
+//            append("Total Unsafe Behaviors: ${reportStatistics.totalIncidences}\n")
+//            if (reportStatistics.mostFrequentUnsafeBehaviour != null) {
+//                append("Most Frequent Unsafe Behaviour: ${reportStatistics.mostFrequentUnsafeBehaviour}\n")
+//                append("Occurrences: ${reportStatistics.mostFrequentBehaviourCount}\n")
+//                append("Occurrences Details:\n")
+//                reportStatistics.mostFrequentBehaviourOccurrences.forEach { occurrence ->
+//                    val dateStr = occurrence.date.format(dateFormatter)
+//                    val timeStr = occurrence.time.format(timeFormatter)
+//                    append("- Date: $dateStr, Time: $timeStr, Road: ${occurrence.roadName}\n")
+//                }
+//            }
+//            // Append period-specific statistics
+//            when (periodType) {
+//                PeriodType.LAST_TRIP -> {
+//                    append("Trip Duration: ${reportStatistics.lastTripDuration} minutes\n")
+//                    append("Distance Covered: ${"%.2f".format(reportStatistics.lastTripDistance)} km\n")
+//                    append("Average Speed: ${"%.2f".format(reportStatistics.lastTripAverageSpeed)} km/h\n")
+//                    append("Start Location: ${reportStatistics.lastTripStartLocation}\n")
+//                    append("End Location: ${reportStatistics.lastTripEndLocation}\n")
+//                    append("Most Frequent Unsafe Behaviour: ${reportStatistics.mostFrequentUnsafeBehaviour}\n")
+//                    append("Most Frequent Unsafe Behaviour Count: ${reportStatistics.mostFrequentBehaviourCount}\n")
+//                    append("Most Frequent Unsafe Behaviour Occurrences: ${reportStatistics.mostFrequentBehaviourOccurrences}\n")
+//                    append("Alcohol Influence: ${reportStatistics.lastTripInfluence}\n")
+//                }
+//                else -> {
+//                    append("Number of Trips: ${reportStatistics.numberOfTrips}\n")
+//                    append("Number of Trips with Incidences: ${reportStatistics.numberOfTripsWithIncidences}\n")
+//                    append("Incidences Per Trip: ${reportStatistics.incidencesPerTrip}\n")
+//                    append("Number of Trips with Alcohol Influence: ${reportStatistics.numberOfTripsWithAlcoholInfluence}\n")
+//                    if (reportStatistics.mostFrequentUnsafeBehaviour != null) {
+//                        append("Count of Most Frequent Unsafe Behaviour: ${reportStatistics.mostFrequentBehaviourCount}\n")
+//                        append("Occurrence instances (dates, times and road names) of Most Frequent Unsafe Behaviour: ${reportStatistics.mostFrequentBehaviourOccurrences}\n")
+//                    }
+//                    if (reportStatistics.tripWithMostIncidences != null) {
+//                        val tripStartTime = Instant.ofEpochMilli(reportStatistics.tripWithMostIncidences!!.startTime)
+//                            .atZone(ZoneId.systemDefault()).toLocalDateTime()
+//                        append("Trip with Most Incidences Start Time: ${tripStartTime.format(dateFormatter)}\n")
+//                    }
+//                    if (reportStatistics.aggregationUnitWithMostIncidences != null) {
+//                        append("Period with Most Incidences: ${reportStatistics.aggregationUnitWithMostIncidences}\n")
+//                    }
+//                }
+//            }
+//        }
+//        return promptBuilder.toString()
+//    }
+
+//    private suspend fun buildPrompt(
+//        context: Context,
+//        unsafeBehaviours: List<UnsafeBehaviourModel>,
+//        periodType: PeriodType,
+//        reportStatistics: ReportStatistics
+//    ): String {
+//        val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+//
+//        val startDateStr = unsafeBehaviours.minOfOrNull { it.timestamp }?.let {
+//            Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate().format(dateFormatter)
+//        }
+//        val endDateStr = unsafeBehaviours.maxOfOrNull { it.timestamp }?.let {
+//            Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate().format(dateFormatter)
+//        }
+//
+//        val periodText = when (periodType) {
+//            PeriodType.TODAY -> "Today's Report"
+//            PeriodType.THIS_WEEK -> "Weekly Report"
+//            PeriodType.LAST_WEEK -> "Last Week's Report"
+//            PeriodType.CUSTOM_PERIOD -> startDateStr?.let { "Report from $startDateStr to $endDateStr" } ?: "Custom Period Report"
+//            PeriodType.LAST_TRIP -> "Last Trip Report"
+//            else -> "Driving Report"
+//        }
+//
+//        return buildString {
+//            append("$periodText\n\n")
+//            append("Generate a concise, motivational driving behavior report based on the following statistics. Follow these rules:\n")
+//            append("- Length: 150-200 words.\n")
+//            append("- Acknowledge good driving habits.\n")
+//            append("- Highlight areas for improvement positively.\n")
+//            append("- Provide actionable, data-driven tips.\n")
+//            append("- Mention specific dates, incidents, and locations.\n")
+//            append("- Do not introduce information not present in this data.\n\n")
+//            append("Please ensure the response includes the key components of the Theory of Planned Behavior (TPB), specifically:\n")
+//            append("- **Attitudes**: Reflect on the driver's positive and negative evaluations of performing the behavior.\n")
+//            append("- **Subjective Norms**: Reference the social pressure or norms influencing the driver's behavior.\n")
+//            append("- **Perceived Behavioral Control**: Address the driver's perception of their ability to perform the behavior.\n")
+//
+//            append("Key Statistics:\n")
+//            append("Total Incidences: ${reportStatistics.totalIncidences}\n")
+//            append("Alcohol Influence: ${reportStatistics.lastTripInfluence}\n")
+//            reportStatistics.mostFrequentUnsafeBehaviour?.let {
+//                append("Most Frequent Issue: $it (${reportStatistics.mostFrequentBehaviourCount} times)\n")
+//            }
+//            reportStatistics.mostFrequentBehaviourOccurrences.take(3).forEach { occurrence ->
+//                append("- ${occurrence.date.format(dateFormatter)}, ${occurrence.roadName}\n")
+//            }
+//            if (periodType == PeriodType.LAST_TRIP) {
+//                append("Trip Duration: ${reportStatistics.lastTripDuration} min\n")
+//                append("Distance: ${"%.2f".format(reportStatistics.lastTripDistance)} km\n")
+//                append("Avg Speed: ${"%.2f".format(reportStatistics.lastTripAverageSpeed)} km/h\n")
+//            }
+//        }
+//    }
 
 
     private suspend fun buildPrompt(
@@ -156,14 +318,11 @@ class NLGEngineViewModel @Inject constructor(
         val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
         val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
-        // Include the period the report covers
-        val startDate = unsafeBehaviours.minOfOrNull { it.timestamp }?.let {
-            Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
-                .format(dateFormatter)
+        val startDateStr = unsafeBehaviours.minOfOrNull { it.timestamp }?.let {
+            Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate().format(dateFormatter)
         }
-        val endDate = unsafeBehaviours.maxOfOrNull { it.timestamp }?.let {
-            Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
-                .format(dateFormatter)
+        val endDateStr = unsafeBehaviours.maxOfOrNull { it.timestamp }?.let {
+            Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate().format(dateFormatter)
         }
 
         val periodText = when (periodType) {
@@ -171,170 +330,100 @@ class NLGEngineViewModel @Inject constructor(
             PeriodType.THIS_WEEK -> "Report for This Week"
             PeriodType.LAST_WEEK -> "Report for Last Week"
             PeriodType.CUSTOM_PERIOD -> {
-                if (startDate != null && endDate != null && startDate == endDate) {
-                    "Report for $startDate"
-                } else if (startDate != null && endDate != null) {
-                    "Report Period: $startDate to $endDate"
-                } else {
-                    "Report for Selected Period"
-                }
+                if (startDateStr != null && endDateStr != null) {
+                    if (startDateStr == endDateStr) "Report for $startDateStr" else "Report: $startDateStr to $endDateStr"
+                } else "Report for Selected Period"
             }
-            PeriodType.LAST_TRIP -> "Report for the Last Trip"
-            else -> "Report"
+            PeriodType.LAST_TRIP -> "Report for Last Trip"
+            else -> "Driving Report"
         }
 
-        val promptBuilder = StringBuilder()
-            .append("$periodText\n\n")
-            .append("You are a driving safety specialist in Nigeria. Based on the following data, generate a friendly and encouraging driving behavior report for the driver on their selected report filter ($periodType). The report should:\n")
-            .append("- Must have only between 150-200 words.\n")
-            .append("- Acknowledge the driver's efforts and positive aspects.\n")
-            .append("- Gently highlight areas for improvement without direct criticism.\n")
-            .append("- Offer practical, actionable tips to enhance safety.\n")
-            .append("- Use an uplifting and motivational tone.\n")
-            .append("- The sender's name in the complimentary closing section should be 'Your Driving Safety Specialist Agent'.\n")
-            .append("- Must include the numbers given in this prompt in the response without hallucination.\n")
-            .append("- You will need to decode the Base64 encoded JSON data to get the driving offences, penalties, fines, and laws.\n")
-            .append("- Reference the specific dates, incidents, and locations provided.\n")
-            .append("- Ensure to use only the given data for fines, laws, and sections without hallucination.\n\n")
-            .append("After generating the report, please ensure the response includes the key components of the Theory of Planned Behavior (TPB), specifically:\n")
-            .append("- **Attitudes**: Reflect on the driver's positive and negative evaluations of performing the behavior.\n")
-            .append("- **Subjective Norms**: Reference the social pressure or norms influencing the driver's behavior.\n")
-            .append("- **Perceived Behavioral Control**: Address the driver's perception of their ability to perform the behavior.\n")
-            .append("Also, ensure that the report:\n")
-            .append("- Maintains a supportive tone throughout.\n")
-            .append("- Specifies the unsafe behaviors observed.\n")
-            .append("- Include the corresponding location (Road name) as given from the data and time for the most frequent incident.\n")
-            .append("- State the risks inherent in the identified unsafe behaviours.\n")
-            .append("- State the benefits inherent especially in economic (fuel consumption, vehicle health, etc) and life related terms if the drivers could improve and change from the identified unsafe behaviours.\n")
-            .append("- Has a statement about the alcohol influence based on the given data.\n")
-            .append("- Strictly adheres to the data provided in this prompt without adding any information not directly traceable to the prompt.\n\n")
-            .append("- If any of the above components are missing, please identify and include them before finalizing the response.\n\n")
-            .append("Report Statistics are given below:\n")
-
-        if (true) {
-            // Common statistics
-            promptBuilder.append("Total Unsafe Behaviors: ${reportStatistics.totalIncidences}\n")
-            if (reportStatistics.mostFrequentUnsafeBehaviour != null) {
-                promptBuilder.append("Most Frequent Unsafe Behaviour: ${reportStatistics.mostFrequentUnsafeBehaviour}\n")
-                promptBuilder.append("Occurrences: ${reportStatistics.mostFrequentBehaviourCount}\n")
-
-                // Include occurrences
-                promptBuilder.append("Occurrences Details:\n")
-                reportStatistics.mostFrequentBehaviourOccurrences.forEach { occurrence ->
-                    val dateStr = occurrence.date.format(dateFormatter)
-                    val timeStr = occurrence.time.format(timeFormatter)
-                    promptBuilder.append("- Date: $dateStr, Time: $timeStr, Road: ${occurrence.roadName}\n")
-                }
+        return buildString {
+            append("$periodText\n\n")
+            append("You are a Nigerian driving safety specialist. Based on the provided data, generate a concise (150 words) personalised driving behavior report for the driver that:\n")
+            append("• Recognizes positive driving habits.\n")
+            append("• Suggests actionable safety improvements without harsh criticism.\n")
+            append("• Uses the given numeric data for offences, fines, and laws (decoded from Base64 JSON).\n")
+            append("• References specific dates and a location for the most prominent unsafe behavior.\n")
+            append("• Integrates key aspects of the Theory of Planned Behavior in plain language.\n")
+            append("• Signs off as 'Your Driving Safety Specialist Agent'.\n\n")
+            append("Report Statistics:\n")
+            append("Total Unsafe Behaviors: ${reportStatistics.totalIncidences}\n")
+            if (reportStatistics.mostFrequentUnsafeBehaviour != null &&
+                reportStatistics.mostFrequentBehaviourOccurrences.isNotEmpty()
+            ) {
+                append("Most Frequent Unsafe Behaviour: ${reportStatistics.mostFrequentUnsafeBehaviour} (${reportStatistics.mostFrequentBehaviourCount} times)\n")
+                val occurrence = reportStatistics.mostFrequentBehaviourOccurrences.first()
+                val dateStr = occurrence.date.format(dateFormatter)
+                val timeStr = occurrence.time.format(timeFormatter)
+                append("Example Occurrence: $dateStr at $timeStr, Road: ${occurrence.roadName}\n")
             }
-
-
-            // Period-specific statistics
             when (periodType) {
                 PeriodType.LAST_TRIP -> {
-                    // Include last trip specific statistics
-                    promptBuilder.append("Trip Duration: ${reportStatistics.lastTripDuration} minutes\n")
-                    promptBuilder.append("Distance Covered: ${"%.2f".format(reportStatistics.lastTripDistance)} km\n")
-                    promptBuilder.append("Average Speed: ${"%.2f".format(reportStatistics.lastTripAverageSpeed)} km/h\n")
-                    promptBuilder.append("Start Location: ${reportStatistics.lastTripStartLocation}\n")
-                    promptBuilder.append("End Location: ${reportStatistics.lastTripEndLocation}\n")
-                    promptBuilder.append("Most Frequent Unsafe Behaviour: ${reportStatistics.mostFrequentUnsafeBehaviour}\n")
-                    promptBuilder.append("Most Frequent Unsafe Behaviour Count: ${reportStatistics.mostFrequentBehaviourCount}\n")
-                    promptBuilder.append("Most Frequent Unsafe Behaviour Occurrences: ${reportStatistics.mostFrequentBehaviourOccurrences}\n")
-                    promptBuilder.append("Alcohol Influence: ${reportStatistics.lastTripInfluence}\n")
+                    append("Trip Duration: ${reportStatistics.lastTripDuration} minutes, ")
+                    append("Distance: ${"%.2f".format(reportStatistics.lastTripDistance)} km, ")
+                    append("Avg Speed: ${"%.2f".format(reportStatistics.lastTripAverageSpeed)} km/h\n")
+                    append("Start: ${reportStatistics.lastTripStartLocation}, End: ${reportStatistics.lastTripEndLocation}\n")
+                    append("Alcohol Influence: ${reportStatistics.lastTripInfluence}\n")
                 }
-
                 else -> {
-                    // Include statistics for other periods
-                    promptBuilder.append("Number of Trips: ${reportStatistics.numberOfTrips}\n")
-                    promptBuilder.append("Number of Trips with Incidences: ${reportStatistics.numberOfTripsWithIncidences}\n")
-                    promptBuilder.append("Incidences Per trip: ${reportStatistics.incidencesPerTrip}\n")
-                    promptBuilder.append("Number of Trips with Alcohol Influence: ${reportStatistics.numberOfTripsWithAlcoholInfluence}\n")
-
-                    // Include most frequent Unsafe Behaviour
-                    if (reportStatistics.mostFrequentUnsafeBehaviour != null) {
-                        promptBuilder.append("Most Frequent Unsafe Behviour: ${reportStatistics.mostFrequentUnsafeBehaviour}\n")
+                    append("Trips: ${reportStatistics.numberOfTrips}, ")
+                    append("Trips with Incidences: ${reportStatistics.numberOfTripsWithIncidences}, ")
+                    append("Incidences/Trip: ${reportStatistics.incidencesPerTrip}, ")
+                    append("Trips with Alcohol Influence: ${reportStatistics.numberOfTripsWithAlcoholInfluence}\n")
+                    reportStatistics.tripWithMostIncidences?.let { trip ->
+                        val tripStartTime = Instant.ofEpochMilli(trip.startTime)
+                            .atZone(ZoneId.systemDefault()).toLocalDateTime()
+                        append("Trip with Most Incidences Start: ${tripStartTime.format(dateFormatter)}\n")
                     }
-
-                    // Include most frequent Unsafe Behaviour count
-                    if (true) {
-                        promptBuilder.append("Count of Most Frequent Unsafe Behviour: ${reportStatistics.mostFrequentBehaviourCount}\n")
-                    }
-
-                    // Include most frequent Unsafe Behaviour occurrence instance
-                    if (true) {
-                        promptBuilder.append("Occurrence instances (dates, times and road names) of Most Frequent Unsafe Behaviour; get all occurrences out of the variable using a loop: ${reportStatistics.mostFrequentBehaviourOccurrences}\n")
-                    }
-
-                    // Include trip with most incidences
-                    if (reportStatistics.tripWithMostIncidences != null) {
-                        val tripStartTime =
-                            Instant.ofEpochMilli(reportStatistics.tripWithMostIncidences!!.startTime)
-                                .atZone(ZoneId.systemDefault()).toLocalDateTime()
-                        promptBuilder.append(
-                            "Trip with Most Incidences Start Time: ${
-                                tripStartTime.format(
-                                    dateFormatter
-                                )
-                            }\n"
-                        )
-                    }
-
-                    // Include aggregation unit with most incidences
-                    if (reportStatistics.aggregationUnitWithMostIncidences != null) {
-                        promptBuilder.append("Period with Most Incidences: ${reportStatistics.aggregationUnitWithMostIncidences}\n")
+                    reportStatistics.aggregationUnitWithMostIncidences?.let { agg ->
+                        append("Period with Most Incidences: $agg\n")
                     }
                 }
             }
-        }else {
-            promptBuilder.append("No unsafe behaviors recorded during this period.\n")
         }
-
-        return promptBuilder.toString()
     }
 
-    fun prepareChartData(summaryDataByDateHour: Map<DateHourKey, HourlySummary>): List<UnsafeBehaviorChartEntry> {
-        // Aggregate behavior counts per hour
-        val behaviorCountsPerHour = mutableMapOf<Int, Int>()
 
+
+    /**
+     * Prepares chart data by aggregating unsafe behavior counts per hour.
+     */
+    fun prepareChartData(summaryDataByDateHour: Map<DateHourKey, HourlySummary>): List<UnsafeBehaviorChartEntry> {
+        val behaviorCountsPerHour = mutableMapOf<Int, Int>()
         summaryDataByDateHour.values.forEach { summary ->
             behaviorCountsPerHour[summary.hour] = behaviorCountsPerHour.getOrDefault(summary.hour, 0) + summary.totalBehaviors
         }
-
-        // Convert to a list of entries
         return behaviorCountsPerHour.map { (hour, count) ->
             UnsafeBehaviorChartEntry(hour, count)
         }.sortedBy { it.hour }
     }
 
-
-    fun generatePromptForBehaviours(context: Context,
-                                    unsafeBehaviours: List<UnsafeBehaviourModel>,
-                                    periodType: PeriodType,
-                                    startDate: java.time.LocalDate,
-                                    endDate: java.time.LocalDate)
-    {
-
+    /**
+     * Generates the prompt for unsafe behaviours and updates the database to mark them as processed.
+     */
+    fun generatePromptForBehaviours(
+        context: Context,
+        unsafeBehaviours: List<UnsafeBehaviourModel>,
+        periodType: PeriodType,
+        startDate: java.time.LocalDate,
+        endDate: java.time.LocalDate
+    ) {
         _isLoading.value = true
         viewModelScope.launch {
             try {
-
-
-
                 val prompt = generatePrompt(context, unsafeBehaviours, periodType, startDate, endDate)
                 _generatedPrompt.value = prompt
 
-                val unsafeBehavioursCopyList=unsafeBehaviours.map{ unsafeBehaviour->
-                    unsafeBehaviour.copy(processed = true).toEntity()
-                }
-
-//                Update Unsafe Behaviours
+                val unsafeBehavioursCopyList = unsafeBehaviours.map { it.copy(processed = true).toEntity() }
+                // Update unsafe behaviours in the database
                 unsafeBehaviourRepository.batchUpdateUnsafeBehaviours(unsafeBehavioursCopyList)
 
+                // Log the generated prompt in chunks for readability
                 prompt.chunked(100).forEach { chunk ->
                     Log.d("LocationRoadViewModel", "Generated Prompt in ViewModel: $chunk")
                 }
                 Log.d("LocationRoadViewModel", "Generated Prompt in ViewModel: $prompt")
-
             } catch (e: Exception) {
                 Log.e("LocationRoadViewModel", "Error generating prompt", e)
             } finally {
@@ -343,18 +432,19 @@ class NLGEngineViewModel @Inject constructor(
         }
     }
 
-
-
+    /**
+     * Retrieves location data and converts it to the domain model if available.
+     */
     private suspend fun getLocationData(locationId: UUID): LocationData? {
-        // Implement logic to retrieve location data from the repository
-        return locationRepository.getLocationById(locationId)!!.toDomainModel()
+        return locationRepository.getLocationById(locationId)?.toDomainModel()
     }
 
+    /**
+     * Formats an hour value into a 12-hour clock string.
+     */
     private fun formatHour(hour: Int): String {
         val localTime = LocalTime.of(hour % 24, 0)
-        val formatter = DateTimeFormatter.ofPattern("h a") // 'h' for 12-hour clock, 'a' for AM/PM
+        val formatter = DateTimeFormatter.ofPattern("h a")
         return localTime.format(formatter)
     }
-
-
 }

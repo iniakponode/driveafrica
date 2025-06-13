@@ -29,7 +29,7 @@ interface AIModelInputDao {
     suspend fun getAllAiModelInputs(): List<AIModelInputsEntity>
 
     @Query("SELECT * FROM ai_model_inputs WHERE id = :id")
-    suspend fun getAiModelInputById(id: Int): AIModelInputsEntity?
+    suspend fun getAiModelInputById(id: UUID): AIModelInputsEntity?
 
     @Query("Select * FROM ai_model_inputs WHERE tripId = :tripId")
     suspend fun getAiModelInputsByTripId(tripId: UUID): List<AIModelInputs>
@@ -47,7 +47,7 @@ interface AIModelInputDao {
     @Query("DELETE FROM ai_model_inputs")
     suspend fun deleteAiModelInput()
 
-    suspend fun deleteAiModelInputById(id: Int) {
+    suspend fun deleteAiModelInputById(id: UUID) {
         val aiModelInputs = getAiModelInputById(id)
         if (aiModelInputs != null) {
             deleteAiModelInput()

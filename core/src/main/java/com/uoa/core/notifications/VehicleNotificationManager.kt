@@ -1,9 +1,13 @@
 package com.uoa.core.notifications
-import android.R
+
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.os.Build
+import com.uoa.core.R
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 
@@ -12,6 +16,7 @@ class VehicleNotificationManager(private val context: Context) {
     private val CHANNEL_ID = "vehicle_state_channel"
     private val LOCATION_SERVICE_CHANNEL_ID = "location_service_channel"
     private val NOTIFICATION_ID = 1001
+
 
     init {
         createNotificationChannel()
@@ -31,7 +36,7 @@ class VehicleNotificationManager(private val context: Context) {
     // Build the notification with the given message (for general purposes)
     private fun buildNotification(title: String, message: String): Notification {
         return NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_menu_mylocation) // Use a relevant icon
+            .setSmallIcon(R.drawable.ic_stat_ic) // Use a relevant icon
             .setContentTitle(title)
             .setContentText(message)
             .setSilent(false)
@@ -40,10 +45,13 @@ class VehicleNotificationManager(private val context: Context) {
             .build()
     }
 
+
     // Build the notification specifically for foreground service use
     fun buildForegroundNotification(title: String, message: String): Notification {
+       val  largeIcon: Bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.sda_2);
         return NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_menu_mylocation) // Use a relevant icon
+            .setSmallIcon(R.drawable.ic_stat_ic)
+            .setLargeIcon(largeIcon)
             .setContentTitle(title)
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_LOW) // Lower priority for foreground services
@@ -54,14 +62,16 @@ class VehicleNotificationManager(private val context: Context) {
 
     // Create notification channel for Android O and above
     private fun createNotificationChannel() {
-        val name = "Vehicle State Channel"
-        val descriptionText = "Channel for vehicle movement state notifications"
-        val importance = NotificationManager.IMPORTANCE_LOW // Suitable for background/foreground
-        val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
-            description = descriptionText
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channelId = "vehicle_state_channel"
+            val channelName = "Vehicle Movement Channel"
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = NotificationChannel(channelId, channelName, importance).apply {
+                description = "Channel for vehicle movement notifications"
+            }
+            val notificationManager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
         }
-        val notificationManager: NotificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.createNotificationChannel(channel)
     }
 }

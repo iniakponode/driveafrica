@@ -283,7 +283,7 @@ fun ReportScreenRoute(
     LaunchedEffect(generatedPrompt) {
         if (generatedPrompt.isNotEmpty()) {
 //            Log.d("ReportScreen", "Generated Prompt: $generatedPrompt")
-            chatGPTViewModel.promptChatGPTForResponse(generatedPrompt, periodType, PreferenceUtils.getTripId(appContext)!!)
+            chatGPTViewModel.promptChatGPTForResponse(generatedPrompt, periodType, PreferenceUtils.getDriverProfileId(appContext)!!)
         }
     }
 

@@ -11,9 +11,9 @@ import java.util.UUID
 
 // Repository interface
 interface ReportStatisticsRepository {
-    fun getReportsBetweenDates(startDate: LocalDate, endDate: LocalDate): ReportStatistics
+    suspend fun getReportsBetweenDates(startDate: LocalDate, endDate: LocalDate): ReportStatistics?
     fun getAllReports(): Flow<List<ReportStatistics>>
-    fun getReportById(id: UUID): Flow<ReportStatistics?>
+    fun getReportById(id: UUID): ReportStatistics
     suspend fun getReportByTripId(tripId: UUID): ReportStatisticsEntity
     suspend fun insertReportStatistics(reportStatistics: ReportStatistics)
     suspend fun updateReportStatistics(reportStatistics: ReportStatistics)

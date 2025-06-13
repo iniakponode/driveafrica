@@ -1,5 +1,7 @@
 package com.uoa.driveafrica.presentation.daappnavigation
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
@@ -19,6 +21,7 @@ import com.uoa.nlgengine.presentation.ui.reportNavigation.reportScreen
 import com.uoa.sensor.presentation.ui.sensornavigation.sensorControlScreen
 
 
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun DAAppNavHost(
     appState: DAAppState,
@@ -46,7 +49,7 @@ fun DAAppNavHost(
         drivingTipDetailsScreen(navController)
         reportScreen(navController)
         filterScreen(navController)
-        sensorControlScreen()
+        sensorControlScreen(navController)
 
         // Add the Alcohol Questionnaire screen route
         alcoholQuestionnaireScreen(navController)

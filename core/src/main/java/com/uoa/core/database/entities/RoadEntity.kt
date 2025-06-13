@@ -17,6 +17,7 @@ import java.util.UUID
         Index(value=["longitude"]),
         Index(value=["speedLimit"]),
         Index(value = ["driverProfileId"]),
+        Index(value = ["radius"]),
         Index(value = ["id"], unique = true)
     ]
     )
@@ -26,8 +27,9 @@ data class RoadEntity (
     val driverProfileId: UUID,
     val name: String,
     val roadType: String,
-   val speedLimit: Int,
+    val speedLimit: Int,
     val latitude: Double,
-   val longitude: Double,
-   val synced: Boolean?=false
+    val longitude: Double,
+    val radius: Double,
+    val sync: Boolean=false
 )

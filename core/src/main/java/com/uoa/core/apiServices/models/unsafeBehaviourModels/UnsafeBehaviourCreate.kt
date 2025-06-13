@@ -12,4 +12,5 @@ data class UnsafeBehaviourCreate(
     val severity: Double,
     val timestamp: Long,
     val date: String,
+    val sync: Boolean
 )

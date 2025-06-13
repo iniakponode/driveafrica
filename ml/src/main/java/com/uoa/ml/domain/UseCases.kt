@@ -32,56 +32,86 @@ class RunClassificationUseCase @Inject constructor(
         Log.i("Trip", "Classifier invoked for tripId: $tripId")
 
         return withContext(Dispatchers.IO) {
-
             val intermediateStats = aiModelInputRepository.getAiModelInputInputByTripId(tripId)
 
-            val intermediateStatsCopy=intermediateStats.map{ aiModelInput->
+            // Mark them as processed
+            val intermediateStatsCopy = intermediateStats.map { aiModelInput ->
                 aiModelInput.copy(processed = true)
             }
-
             intermediateStatsCopy.forEach {
                 aiModelInputRepository.updateAiModelInput(it.toEntity())
             }
 
+            // If there's no data, bail out
+            if (intermediateStats.isEmpty()) {
+                return@withContext InferenceResult.NotEnoughData
+            }
 
             val totalDuration = intermediateStats.sumOf { it.endTimestamp - it.startTimestamp }
-            val weightedHourOfDayMean =
-                intermediateStats.sumOf { it.hourOfDayMean * (it.endTimestamp - it.startTimestamp) } / totalDuration
-            val weightedDayOfWeekMean =
-                intermediateStats.sumOf { (it.dayOfWeekMean * (it.endTimestamp - it.startTimestamp)).toDouble() } / totalDuration
-            val weightedSpeedStd =
-                intermediateStats.sumOf { (it.speedStd * (it.endTimestamp - it.startTimestamp)).toDouble() } / totalDuration
-            val weightedAccelerationYMean =
-                intermediateStats.sumOf { it.accelerationYOriginalMean * (it.endTimestamp - it.startTimestamp).toDouble() } / totalDuration
-            val weightedCourseStd =
-                intermediateStats.sumOf { it.courseStd * (it.endTimestamp - it.startTimestamp).toDouble() } / totalDuration
+            if (totalDuration <= 0) {
+                // If durations are zero or negative, also bail out
+                return@withContext InferenceResult.NotEnoughData
+            }
 
-// Compute normalized features
+            // Weighted calculations
+            val weightedHourOfDayMean =
+                intermediateStats.sumOf {
+                    it.hourOfDayMean * (it.endTimestamp - it.startTimestamp)
+                } / totalDuration
+
+            val weightedDayOfWeekMean =
+                intermediateStats.sumOf {
+                    // Force a Double so sumOf { Double } is used
+                    (it.dayOfWeekMean.toDouble() * (it.endTimestamp - it.startTimestamp))
+                } / totalDuration.toDouble()
+
+            val weightedSpeedStd =
+                intermediateStats.sumOf {
+                    (it.speedStd.toDouble() * (it.endTimestamp - it.startTimestamp))
+                } / totalDuration.toDouble()
+
+            val weightedAccelerationYMean =
+                intermediateStats.sumOf {
+                    (it.accelerationYOriginalMean.toDouble() * (it.endTimestamp - it.startTimestamp))
+                } / totalDuration.toDouble()
+            val weightedCourseStd =
+                intermediateStats.sumOf {
+                    it.courseStd.toDouble() * (it.endTimestamp - it.startTimestamp)
+                } / totalDuration.toDouble()
+
+            // Build the TripFeatures
             val tripFeatures = TripFeatures(
                 hourOfDayMean = weightedHourOfDayMean.toFloat(),
-                dayOfWeekMean = weightedHourOfDayMean.toFloat(),
+                dayOfWeekMean = weightedDayOfWeekMean.toFloat(),
                 speedStd = weightedSpeedStd.toFloat(),
                 courseStd = weightedCourseStd.toFloat(),
                 accelerationYOriginalMean = weightedAccelerationYMean.toFloat()
             )
+
+            Log.d("Trip", "Extracted Features: $tripFeatures")
+
+            // If any feature is NaN, we consider it "not enough data" scenario
+            if (
+                tripFeatures.hourOfDayMean.isNaN() ||
+                tripFeatures.dayOfWeekMean.isNaN() ||
+                tripFeatures.speedStd.isNaN()      ||
+                tripFeatures.courseStd.isNaN()     ||
+                tripFeatures.accelerationYOriginalMean.isNaN()
+            ) {
+                return@withContext InferenceResult.NotEnoughData
+            }
+
+            // Attempt model inference
             try {
+                val isAlcoholInfluenced = onnxModelRunner.runInference(tripFeatures)
+                Log.i("Trip", "Inference result (boolean): $isAlcoholInfluenced")
 
-
-                Log.d("Trip", "Extracted Features: $tripFeatures")
-
-                // Run inference
-
-                val inferenceResult = onnxModelRunner.runInference(tripFeatures)
-                Log.i("Trip", "Inference result: $inferenceResult")
-                InferenceResult.Success(inferenceResult)
+                // If model returns `true` => alcohol, else => no alcohol
+                InferenceResult.Success(isAlcoholInfluenced)
             } catch (e: Exception) {
                 Log.e("Trip", "Error during model inference: ${e.message}", e)
                 InferenceResult.Failure(e)
-            } catch (e: Exception) {
-                Log.e("Trip", "Exception in invoke function: ${e.message}", e)
-                InferenceResult.Failure(e)
             }
-
         }
     }
 

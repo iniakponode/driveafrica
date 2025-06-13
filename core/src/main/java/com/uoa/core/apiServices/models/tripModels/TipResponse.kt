@@ -10,5 +10,6 @@ data class TripResponse(
     val end_date: String?,
     val start_time: Long,
     val end_time: Long?,
-    val synced: Boolean
+    val synced: Boolean,
+    val influence: String?=null
 )

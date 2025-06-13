@@ -1,6 +1,7 @@
 package com.uoa.alcoholquestionnaire.presentation.ui.screens
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -186,6 +187,12 @@ fun AlcoholQuestionnaireScreen(
 
         Button(
             onClick = {
+                Log.d("AlcoholQuestionnaireScreen", "Submit button clicked")
+                if (savedProfileId == null) {
+                    Log.e("AlcoholQuestionnaireScreen", "Saved profile ID is null!")
+                    // Optionally show an error message to the user.
+                    return@Button
+                }
                 val response = AlcoholQuestionnaireCreate(
                     id = UUID.randomUUID(), // Generates a unique ID for each response
                     driverProfileId = UUID.fromString(savedProfileId), // Ensure `savedProfileId` is not null
@@ -200,8 +207,10 @@ fun AlcoholQuestionnaireScreen(
                     caffeinatedDrink = caffeinatedDrink,
                     impairmentLevel = impairmentLevel.toInt(),
                     date=DateConversionUtils.dateToString(Date(timestamp)),
-                    plansToDrive = plansToDrive
+                    plansToDrive = plansToDrive,
+                    sync = false
                 )
+                Log.d("AlcoholQuestionnaireScreen", "Submit button clicked with response: $response")
                 onSubmit(response) // Pass the AlcoholQuestionnaireCreate object
             },
             modifier = Modifier.align(Alignment.CenterHorizontally)

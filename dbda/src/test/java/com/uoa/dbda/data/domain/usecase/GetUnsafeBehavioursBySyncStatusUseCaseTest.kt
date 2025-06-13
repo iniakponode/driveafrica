@@ -45,7 +45,7 @@ class GetUnsafeBehavioursBySyncStatusUseCaseTest {
                 date = Date(),
                 updatedAt = null,
                 updated = false,
-                synced = false,
+                sync = false,
 
             )
         )

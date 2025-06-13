@@ -6,16 +6,16 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.annotation.RequiresApi
-import com.uoa.sensor.hardware.HardwareModule
-import com.uoa.core.notifications.VehicleNotificationManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import java.util.UUID
 import javax.inject.Inject
+import com.uoa.core.notifications.VehicleNotificationManager
+import com.uoa.sensor.hardware.HardwareModule
 
-@RequiresApi(Build.VERSION_CODES.O)
 @AndroidEntryPoint
 class DataCollectionService : Service() {
 
@@ -23,6 +23,7 @@ class DataCollectionService : Service() {
     lateinit var hardwareModule: HardwareModule
 
     private lateinit var notificationManager: VehicleNotificationManager
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
@@ -35,61 +36,57 @@ class DataCollectionService : Service() {
         val tripId = tripIdString?.let { UUID.fromString(it) }
 
         if (tripId != null) {
-            // Launching the data collection start within the serviceScope
-//            serviceScope.launch {
-                startDataCollection(tripId)
-//            }
+            startDataCollection(tripId)
         } else {
-//            Log.e("DataCollectionService", "Trip ID is null")
-            stopSelf()  // Gracefully stop the service if no Trip ID is found
+            Log.e("DataCollectionService", "No valid Trip ID provided. Stopping service.")
+            stopSelf()
+            return START_NOT_STICKY
         }
 
-        // Start the service as a foreground service
         startForeground(
             NOTIFICATION_ID,
             notificationManager.buildForegroundNotification(
                 title = "Data Collection Service",
-                message = "Collecting location and sensor data in the background"
+                message = "Data collection service is started"
             )
         )
-
         return START_STICKY
     }
 
     override fun onDestroy() {
         stopDataCollection()
+        serviceScope.cancel()
         super.onDestroy()
-//        serviceScope.cancel()  // Cancel any ongoing coroutines to prevent memory leaks
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null  // No binding needed for this service
-    }
+    override fun onBind(intent: Intent?): IBinder? = null
 
-    /**
-     * Initiate Hybrid Motion Detection using HardwareModule
-     */
     private fun startDataCollection(tripId: UUID) {
         try {
-//            Log.d("DataCollectionService", "Initiating hybrid motion detection for trip: $tripId")
-
             hardwareModule.startDataCollection(tripId)
-            notificationManager.displayNotification("Data Collection Service", "Data collection service started for trip: $tripId")
+            notificationManager.displayNotification(
+                "Data Collection Service",
+                "Collecting sensor data for trip: $tripId"
+            )
         } catch (e: Exception) {
-            Log.e("DataCollectionService", "Error initiating hybrid motion detection", e)
+            Log.e("DataCollectionService", "Error starting data collection for trip $tripId", e)
+            stopSelf()
         }
     }
-    private fun stopDataCollection(){
-//        Log.d("DataService", "Call to end service started")
-        hardwareModule.stopDataCollection()
+
+    private fun stopDataCollection() {
+        try {
+            hardwareModule.stopDataCollection()
+            notificationManager.buildForegroundNotification(
+                title = "Data Collection Service",
+                message = "Data collection service is stopped"
+            )
+        } catch (e: Exception) {
+            Log.e("DataCollectionService", "Error stopping data collection", e)
+        }
     }
 
     companion object {
         const val NOTIFICATION_ID = 1001
     }
 }
-
-
-
-
-

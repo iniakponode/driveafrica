@@ -30,5 +30,5 @@ data class DrivingTipEntity(
     val summaryTip: String?=null,
     val sync: Boolean = false,
     val date: LocalDate,
-    val llm: String?=null,
+    val llm: String?=null
 )

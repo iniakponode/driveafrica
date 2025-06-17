@@ -8,6 +8,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import com.uoa.core.database.entities.LocationEntity
 import com.uoa.core.database.entities.UnsafeBehaviourEntity
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
@@ -32,6 +33,9 @@ interface UnsafeBehaviourDao {
     @Query("SELECT * FROM unsafe_behaviour WHERE tripId = :tripID")
     fun getUnsafeBehavioursByTripId(tripID: UUID): Flow<List<UnsafeBehaviourEntity>>
 
+    @Query("SELECT * FROM unsafe_behaviour WHERE locationId = :locationId AND sync = :synced AND processed= :procd")
+     fun getUnsafeBehavioursByLocationIdAndSyncStatus(locationId: UUID, synced: Boolean, procd: Boolean): List<UnsafeBehaviourEntity>
+
     @Query("SELECT * FROM unsafe_behaviour ORDER BY id DESC LIMIT 20")
     fun getUnsafeBehavioursForTips(): Flow<List<UnsafeBehaviourEntity>>
 
@@ -40,13 +44,11 @@ interface UnsafeBehaviourDao {
 
     // Custom SQL query to update specific fields where updated = false
     @Query(" UPDATE unsafe_behaviour " +
-            "SET alcoholInfluence = :alcoholInfluence, " +
-            "updatedAt = :updatedAt, " +
+            "SET updatedAt = :updatedAt, " +
             "updated = :updated " +
             "WHERE id IN (:ids) AND updated = 0"
     )
     suspend fun updateUnsafeBehaviourFields(
-        alcoholInfluence: Boolean,
         updatedAt: Date,
         updated: Boolean,
         ids: List<UUID>
@@ -69,7 +71,6 @@ interface UnsafeBehaviourDao {
 
                 // Perform the batch update using the optimized SQL query
                 updateUnsafeBehaviourFields(
-                    alcoholInfluence = alcoholInf,
                     updatedAt = updatedAt,
                     updated = true,
                     ids = ids
@@ -115,14 +116,21 @@ interface UnsafeBehaviourDao {
         }
     }
 
-    @Query("SELECT * FROM unsafe_behaviour WHERE synced = :synced")
+    @Query("SELECT * FROM unsafe_behaviour WHERE sync = :synced")
     suspend fun getUnsafeBehavioursBySyncStatus(synced: Boolean): List<UnsafeBehaviourEntity>
 
-    @Query("DELETE FROM unsafe_behaviour WHERE synced = :synced")
+    @Query("SELECT * FROM unsafe_behaviour WHERE sync= :synced AND processed= :processed")
+    suspend fun getUnsafeBehaviourBySyncAndProcessedStatus(synced: Boolean, processed: Boolean): List<UnsafeBehaviourEntity>
+
+
+    @Query("DELETE FROM unsafe_behaviour WHERE sync = :synced")
     suspend fun deleteAllUnsafeBehavioursBySyncStatus(synced: Boolean)
 
     @Query("DELETE FROM unsafe_behaviour")
     suspend fun deleteAllUnsafeBehaviours()
+
+    @Query("DELETE FROM unsafe_behaviour WHERE id IN (:ids)")
+    suspend fun deleteUnsafeBehavioursByIds(ids: List<UUID>)
 
     @Query("SELECT COUNT(*) FROM unsafe_behaviour WHERE behaviorType = :behaviorType AND timestamp BETWEEN :startTime AND :endTime")
     suspend fun getUnsafeBehaviourCountByTypeAndTime(behaviorType: String, startTime: Long, endTime: Long): Int

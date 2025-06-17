@@ -1,5 +1,4 @@
 import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.jetbrains.kotlin.android)
@@ -36,19 +35,28 @@ android {
 
     buildTypes {
         release {
+//            buildConfigField("String", "DRIVE_AFRICA_BASE_URL", "\"https://api.yourproductionurl.com/\"")
+                buildConfigField("String", "DRIVE_AFRICA_BASE_URL", "\"https://api.safedriveafrica.com/\"")
+                buildConfigField("String", "EMULATOR_BASE_URL", "\"http://10.0.2.2:8000/\"")
+                buildConfigField("String", "NOMINATIM_BASE_URL", "\"https://nominatim.openstreetmap.org/\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
+        debug {
+            buildConfigField("String", "DRIVE_AFRICA_BASE_URL", "\"https://api.safedriveafrica.com/\"")
+            buildConfigField("String", "EMULATOR_BASE_URL", "\"http://10.0.2.2:8000/\"")
+            buildConfigField("String", "NOMINATIM_BASE_URL", "\"https://nominatim.openstreetmap.org/\"")
+        }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "11"
     }
     buildFeatures { // Enables Jetpack Compose for this module
         compose = true
@@ -81,11 +89,20 @@ dependencies {
     implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.androidx.navigation.runtime.ktx)
     implementation(libs.androidx.metrics)
+
+//    Moshi
+    ksp(libs.moshi.codegen)
+    implementation(libs.moshi.converter)
+    implementation(libs.moshi.lib)
+    implementation(libs.moshi.kotlin)
+
+//    implementation(libs.androidx.pagination)
 //    implementation(libs.androidx.ui.desktop)
     implementation(libs.navigation.compose)
     implementation(libs.firebase.dataconnect)
     implementation(libs.generative.ai)
     implementation(libs.pdfBox)
+    implementation(libs.androidx.constraintlayout)
 //    implementation(libs.compose.preview.renderer)
     ksp(libs.hilt.compiler)
 

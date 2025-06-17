@@ -3,18 +3,50 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.BODY_SENSORS"/>
     <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+<!--    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />-->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Activity recognition permission for detecting vehicle movement -->
+    <!-- Required for 28 and below. -->
+    <uses-permission android:name="com.google.android.gms.permission.ACTIVITY_RECOGNITION" />
+    <!-- Required for 29+. -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/ic_sda_ic_app"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@mipmap/ic_sda_ic_app_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Driveafrica"
         >
         <!-- Declare SensorActivity here if needed -->
 <!--        <activity android:name=".presentation.ui.SensorActivity" />-->
+
+<!--        <service-->
+<!--            android:name=".services.LocationService"-->
+<!--            android:foregroundServiceType="location"-->
+<!--            android:exported="false">-->
+<!--            &lt;!&ndash; Any additional intent filters or elements here &ndash;&gt;-->
+<!--        </service>-->
+        <!-- Declare the activity recognition service -->
+        <service
+            android:name=".services.VehicleMovementServiceUpdate"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
+        <service
+            android:name=".services.DataCollectionService"
+            android:foregroundServiceType="dataSync|location"
+            android:exported="false" />
 
         <provider
             android:name="androidx.startup.InitializationProvider"

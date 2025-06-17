@@ -12,12 +12,14 @@ import java.util.UUID
  */
 data class LocationData(
     val id: UUID,
-    val latitude: Long,
-    val longitude: Long,
+    val latitude: Double,
+    val longitude: Double,
     val altitude: Double? = null,
     val speed: Double? = null,
     val distance: Double? = null,
     val timestamp: Long,
     val date: Date?,
+    val speedLimit: Double,
+    val processed: Boolean= false,
     val sync: Boolean=false
 )

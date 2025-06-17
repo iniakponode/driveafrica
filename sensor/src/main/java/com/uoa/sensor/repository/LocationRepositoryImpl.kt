@@ -64,20 +64,35 @@ class LocationRepositoryImpl(private val locationDao: LocationDao, val rawSensor
         return locationDao.getLocationBySyncStatus(syncStat)
     }
 
+    override suspend fun getSensorDataBySyncAndProcessedStatus(
+        syncstatus: Boolean,
+        procStatus: Boolean
+    ): List<LocationEntity> {
+        return locationDao.getLocationDataBySyncAndProcessedStatus(syncstatus,procStatus)
+    }
+
     override suspend fun updateLocation(location: LocationEntity) {
         locationDao.updateLocation(location)
+    }
+
+    override suspend fun updateLocations(locations: List<LocationEntity>) {
+        locationDao.updateLocations(locations)
     }
 
     override suspend fun deleteAllLocations() {
         locationDao.deleteAllLocations()
     }
 
-    override suspend fun getLocationDataByTripId(tripId: UUID): List<Double> {
+    override suspend fun deleteLocationsByIds(ids: List<UUID>) {
+        locationDao.deleteLocationsByIds(ids)
+    }
+
+    override suspend fun getLocationDataByTripId(tripId: UUID): List<LocationData> {
         val rawSensorDataList=rawSensorDataDao.getSensorDataByTripId(tripId)
 
         val locationIdList= mutableListOf(UUID.randomUUID())
 
-        val locationsList= mutableListOf(0.0,0.0,0.0)
+        val locationsList= mutableListOf<LocationData>()
 
         rawSensorDataList.collect{ rawSensorData ->
             rawSensorData.forEach() {
@@ -87,9 +102,7 @@ class LocationRepositoryImpl(private val locationDao: LocationDao, val rawSensor
 
         locationIdList.forEach() {
             val location=locationDao.getLocationById(it)
-            locationsList.add(location!!.latitude)
-            locationsList.add(location.longitude)
-            locationsList.add(location.altitude)
+            locationsList.add(location?.toDomainModel()!!)
         }
 
         return locationsList.toList()

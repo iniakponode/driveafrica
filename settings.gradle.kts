@@ -12,7 +12,7 @@ pluginManagement {
     }
 }
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    this.repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
@@ -27,3 +27,4 @@ include(":sensor")
 include(":driverprofile")
 include(":nlgengine")
 include(":ml")
+include(":alcoholquestionnaire")

@@ -10,5 +10,6 @@ data class Trip(
     var endTime: Long?,
     val startDate: Date?,
     var endDate: Date?,
-    var synced: Boolean=false
+    var influence: String?,
+    var sync: Boolean=false
 )

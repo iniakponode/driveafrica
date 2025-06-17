@@ -7,7 +7,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.uoa.nlgengine.presentation.ui.ReportScreenRoute
-import com.uoa.nlgengine.util.PeriodType
+import com.uoa.core.utils.PeriodType
 
 const val REPORT_SCREEN_ROUTE = "reportScreen"
 
@@ -36,7 +36,7 @@ fun NavGraphBuilder.reportScreen(navController: NavController) {
                 // Provide ViewModels specific to ReportScreen
                 chatGPTViewModel = hiltViewModel(backStackEntry),
                 unsafeBehavioursViewModel = hiltViewModel(backStackEntry),
-                locationAddressViewModel = hiltViewModel(backStackEntry)
+                nlgEngineViewModel = hiltViewModel(backStackEntry)
             )
         }
         else if (startDate == 0L && endDate == 0L && periodType == PeriodType.LAST_TRIP) {
@@ -48,7 +48,7 @@ fun NavGraphBuilder.reportScreen(navController: NavController) {
                 periodType = periodType,
                 chatGPTViewModel = hiltViewModel(),
                 unsafeBehavioursViewModel = hiltViewModel(),
-                locationAddressViewModel = hiltViewModel()
+                nlgEngineViewModel = hiltViewModel()
             )
         }
         else{
@@ -60,7 +60,7 @@ fun NavGraphBuilder.reportScreen(navController: NavController) {
                 periodType = periodType,
                 chatGPTViewModel = hiltViewModel(),
                 unsafeBehavioursViewModel = hiltViewModel(),
-                locationAddressViewModel = hiltViewModel()
+                nlgEngineViewModel = hiltViewModel()
             )
         }
         }

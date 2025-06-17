@@ -11,8 +11,14 @@ import java.util.UUID
     foreignKeys = [
         ForeignKey(entity = DriverProfileEntity::class,
         parentColumns = ["driverProfileId"],
-        childColumns = ["driverPId"])],
-    indices = [Index(value = ["driverPId"])]
+        childColumns = ["driverPId"],
+            onDelete = ForeignKey.CASCADE)],
+
+    indices = [
+        Index(value = ["driverPId"]),
+        Index(value = ["id"], unique = true)
+    ],
+
 )
 data class TripEntity(
     @PrimaryKey(autoGenerate = false)
@@ -22,6 +28,7 @@ data class TripEntity(
     val endDate: Date?,
     val startTime: Long,
     var endTime: Long?,
-    var synced: Boolean=false
+    var influence: String?,
+    var sync: Boolean=false
     // Other trip data fields
 )

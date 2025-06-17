@@ -36,6 +36,16 @@ class UnsafeBehaviourRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getUnsafeBehavioursByLocationIdAndSyncStatus(
+        locationId: UUID,
+        synced: Boolean,
+        processed: Boolean
+    ): List<UnsafeBehaviourModel> {
+        return unsafeBehaviourDao.getUnsafeBehavioursByLocationIdAndSyncStatus(locationId, synced, processed).map{
+            it.toDomainModel()
+        }
+    }
+
     override suspend fun updateUnsafeBehaviour(unsafeBehaviour: UnsafeBehaviourModel) {
         unsafeBehaviourDao.updateUnsafeBehaviour(unsafeBehaviour.toEntity())
     }
@@ -75,10 +85,20 @@ class UnsafeBehaviourRepositoryImpl @Inject constructor(
         unsafeBehaviourDao.deleteAllUnsafeBehavioursBySyncStatus(synced)
     }
 
+    override suspend fun getUnsafeBehaviourBySyncAndProcessedStatus(
+        synced: Boolean,
+        processed: Boolean
+    ): List<UnsafeBehaviourEntity> {
+        return unsafeBehaviourDao.getUnsafeBehaviourBySyncAndProcessedStatus(synced,processed)
+    }
+
     override suspend fun deleteAllUnsafeBehaviours() {
         unsafeBehaviourDao.deleteAllUnsafeBehaviours()
     }
 
+    override suspend fun deleteUnsafeBehavioursByIds(ids: List<UUID>) {
+        unsafeBehaviourDao.deleteUnsafeBehavioursByIds(ids)
+    }
     override suspend fun getUnsafeBehaviourCountByTypeAndTime(behaviorType: String, startTime: Long, endTime: Long): Int {
         return unsafeBehaviourDao.getUnsafeBehaviourCountByTypeAndTime(behaviorType, startTime, endTime)
     }
@@ -106,24 +126,24 @@ class UnsafeBehaviourRepositoryImpl @Inject constructor(
             }
     }
 
-    override suspend fun getSensorDataBetweenDates(startDate: LocalDate, endDate: LocalDate): Flow<List<RawSensorDataEntity>> {
-//        val formatter = DateTimeFormatter.ISO_LOCAL_DATE
-        return withContext(Dispatchers.IO){
-            rawSensorDataDao.getSensorDataBetweenDates(startDate, endDate)
-        }
+//    override suspend fun getSensorDataBetweenDates(startDate: LocalDate, endDate: LocalDate): Flow<List<RawSensorDataEntity>> {
+////        val formatter = DateTimeFormatter.ISO_LOCAL_DATE
+//        return withContext(Dispatchers.IO){
+//            rawSensorDataDao.getSensorDataBetweenDates(startDate, endDate)
+//        }
+//
+//    }
 
-    }
+//    override suspend fun getSensorDataByTripId(tripId: UUID): Flow<List<RawSensorDataEntity>> {
+//        return withContext(Dispatchers.IO){
+//            rawSensorDataDao.getSensorDataByTripId(tripId)
+//        }
+//    }
 
-    override suspend fun getSensorDataByTripId(tripId: UUID): Flow<List<RawSensorDataEntity>> {
-        return withContext(Dispatchers.IO){
-            rawSensorDataDao.getSensorDataByTripId(tripId)
-        }
-    }
-
-    override suspend fun getSensorDataBySyncStatus(synced: Boolean): List<RawSensorData> {
-        val entities=rawSensorDataDao.getSensorDataBySyncStatus(synced)
-        return entities.map { it.toDomainModel() }
-    }
+//    override suspend fun getSensorDataBySyncStatus(synced: Boolean): List<RawSensorData> {
+//        val entities=rawSensorDataDao.getSensorDataBySyncStatus(synced)
+//        return entities.map { it.toDomainModel() }
+//    }
 
     override suspend fun getLastInsertedUnsafeBehaviour(): UnsafeBehaviourEntity {
         return withContext(Dispatchers.IO){

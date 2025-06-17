@@ -44,6 +44,7 @@ class GetUnsafeBehavioursBetweenDatesUseCaseTest {
             UnsafeBehaviourModel(
                 id = UUID.randomUUID(),
                 tripId = UUID.randomUUID(),
+                driverProfileId = UUID.randomUUID(),
                 locationId = UUID.randomUUID(),
                 behaviorType = "Speeding",
                 severity = 5.0f,
@@ -51,7 +52,7 @@ class GetUnsafeBehavioursBetweenDatesUseCaseTest {
                 date = Date(),
                 updatedAt = null,
                 updated = false,
-                synced = false,
+                sync = false,
             )
         )
 

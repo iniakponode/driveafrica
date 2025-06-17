@@ -3,6 +3,7 @@ package com.uoa.sensor.hardware
 import android.content.Context
 import android.hardware.Sensor
 import com.uoa.sensor.hardware.base.AndroidSensor
+import com.uoa.sensor.hardware.base.SignificantMotionSensor
 import javax.inject.Inject
 
 
@@ -33,13 +34,17 @@ class MagnetometerSensor @Inject constructor(
 
 class SignificantMotion @Inject constructor(
     context: Context
-): AndroidSensor(context=context,
-    sensorType=Sensor.TYPE_SIGNIFICANT_MOTION)
+): SignificantMotionSensor(context=context)
 
 class GravitySensor @Inject constructor(
     context: Context
 ): AndroidSensor(context=context,
     sensorType=Sensor.TYPE_GRAVITY)
+
+class LinearAccelerationSensor @Inject constructor(
+    context: Context
+): AndroidSensor(context=context,
+    sensorType=Sensor.TYPE_LINEAR_ACCELERATION)
 
 class BarometerSensor @Inject constructor(
     context: Context

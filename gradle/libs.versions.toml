@@ -1,11 +1,12 @@
 [versions]
-agp = "8.4.2"
+agp = "8.5.1"
 activity = "1.9.2"
 androidGradlePlugin = "8.4.2"
 androidTools = "31.6.0"
 androidxActivity = "1.9.2"
 androidxAppCompat = "1.7.0"
 fsensor= "1.0.1"
+osmdroid="6.1.10"
 generativeai = "0.9.0"
 androidxBrowser = "1.8.0"
 androidxComposeUI = "1.7.0"
@@ -24,6 +25,7 @@ androidxDataStore = "1.1.1"
 androidxEspresso = "3.6.1"
 androidxHiltNavigationCompose = "1.2.0"
 androidxLifecycle = "2.8.5"
+lifecycle = "2.6.1"
 androidxLifecycleCommon="2.8.5"
 androidxMacroBenchmark = "1.3.0"
 androidxMetrics = "1.0.0-beta01"
@@ -37,6 +39,7 @@ androidxTracing = "1.3.0-alpha02"
 androidxUiAutomator = "2.3.0"
 androidxWindowManager = "1.3.0"
 androidxWork = "2.9.1"
+play-services-activity = "18.0.0"
 appcompat = "1.6.1"
 coil = "2.6.0"
 coreKtx = "1.13.1"
@@ -68,6 +71,8 @@ mapper="2.4.4"
 material3Android = "1.3.0"
 moduleGraph = "2.5.0"
 mokito = "2.1.0"
+moshi-converter="2.9.0"
+moshi="1.14.0"
 jupiter = "5.9.3"
 mokitoKotlin = "4.2.0"
 navigationFragmentKtx = "2.8.0"
@@ -109,10 +114,15 @@ androidxUiDesktop = "1.7.0"
 #composePreviewRenderer = "0.0.1-alpha01"
 
 [libraries]
+moshi-converter={group="com.squareup.retrofit2", name="converter-moshi", version.ref="moshi-converter"}
+moshi-lib={group="com.squareup.moshi", name="moshi", version.ref="moshi"}
+moshi-kotlin={group="com.squareup.moshi", name="moshi-kotlin", version.ref="moshi"}
+moshi-codegen={group="com.squareup.moshi", name="moshi-kotlin-codegen", version.ref="moshi"}
 pdfBox = { group = "com.tom-roush", name = "pdfbox-android", version.ref = "pdfBox" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidxActivity" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidxAppCompat" }
 microsoft-onnx-runtime = { group = "com.microsoft.onnxruntime", name = "onnxruntime-android", version.ref = "onnx-runtime" }
+map-osmdroid={group="org.osmdroid", name="osmdroid-android", version.ref="osmdroid"}
 ai-onnxruntime = { group = "ai.onnxruntime", name = "onnxruntime", version.ref = "onnx-runtime" }
 #anychart = { group = "com.github.AnyChart", name = "AnyChart-Android", version.ref = "chart" }
 #androidx-compose-compiler = { group = "androidx.compose.compiler", name = "compiler", version.ref = "androidxComposeCompiler" }
@@ -135,6 +145,7 @@ androidx-compose-ui-testManifest = { group = "androidx.compose.ui", name = "ui-t
 androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-compose-ui-util = { group = "androidx.compose.ui", name = "ui-util" }
+play-services-activity = { group = "com.google.android.gms", name = "play-services-activity", version.ref = "play-services-activity" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidxCore" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "androidxCoreSplashscreen" }
 androidx-dataStore-core = { group = "androidx.datastore", name = "datastore", version.ref = "androidxDataStore" }
@@ -230,7 +241,8 @@ androidx-navigation-runtime-ktx = { group = "androidx.navigation", name = "navig
 generative-ai = { group = "com.google.ai.client.generativeai", name = "generativeai", version.ref = "generativeai" }
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junitJupiterVersion" }
 firebase-dataconnect = { group = "com.google.firebase", name = "firebase-dataconnect", version.ref = "firebaseDataconnect" }
-
+lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
+lifecycle-service     = { group = "androidx.lifecycle", name = "lifecycle-service", version.ref = "lifecycle" }
 #androidx-compose-material = { group = "androidx.wear.compose", name = "compose-material", version.ref = "composeMaterial" }
 #compose-preview-renderer = { group = "com.android.tools.compose", name = "compose-preview-renderer", version.ref = "composePreviewRenderer" }
 

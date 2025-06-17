@@ -40,14 +40,14 @@ class TripDataRepositoryImplTest {
 
     @Test
     fun testInsertTrip() = runTest {
-        val trip = Trip(UUID.randomUUID(), UUID.randomUUID(), Date().toInstant().toEpochMilli(), Date().toInstant().toEpochMilli(), Date(), Date(), false)
+        val trip = Trip(UUID.randomUUID(), UUID.randomUUID(), Date().toInstant().toEpochMilli(), Date().toInstant().toEpochMilli(), Date(), Date(), "no alcohol", false)
         repository.insertTrip(trip)
         verify(tripDao).insertTrip(trip.toEntity())
     }
 
     @Test
     fun testUpdateTrip() = runBlocking {
-        val trip = Trip(UUID.randomUUID(), UUID.randomUUID(), Date().toInstant().toEpochMilli(), Date().toInstant().toEpochMilli()-6000, Date(), Date(), false)
+        val trip = Trip(UUID.randomUUID(), UUID.randomUUID(), Date().toInstant().toEpochMilli(), Date().toInstant().toEpochMilli()-6000, Date(), Date(), "no alcohol", false)
         repository.updateTrip(trip)
         verify(tripDao).updateTrip(trip.toEntity())
     }
@@ -55,8 +55,8 @@ class TripDataRepositoryImplTest {
     @Test
     fun testGetAllTrips() = runTest {
         val tripEntities = listOf(
-            TripEntity(UUID.randomUUID(), UUID.randomUUID(), Date(), Date(), Date().toInstant().toEpochMilli()-6000, Date().toInstant().toEpochMilli(), false),
-            TripEntity(UUID.randomUUID(), UUID.randomUUID(), Date(), Date(), Date().toInstant().toEpochMilli()-7000, Date().toInstant().toEpochMilli(), true)
+            TripEntity(UUID.randomUUID(), UUID.randomUUID(), Date(), Date(), Date().toInstant().toEpochMilli()-6000, Date().toInstant().toEpochMilli(), "no alcohol", false),
+            TripEntity(UUID.randomUUID(), UUID.randomUUID(), Date(), Date(), Date().toInstant().toEpochMilli()-7000, Date().toInstant().toEpochMilli(), "no alcohol", false)
         )
         whenever(tripDao.getAllTrips()).thenReturn(tripEntities)
         val result = repository.getAllTrips()
@@ -67,7 +67,7 @@ class TripDataRepositoryImplTest {
     @Test
     fun testGetTripById() = runTest {
         val id = UUID.randomUUID()
-        val tripEntity = TripEntity(id, UUID.randomUUID(), Date(), Date(), 0L, 0L, false)
+        val tripEntity = TripEntity(id, UUID.randomUUID(), Date(), Date(), 0L, 0L, "no alcohol", false)
         whenever(tripDao.getTripById(id)).thenReturn(tripEntity)
         val result = repository.getTripById(id)
         assert(result?.id == id)
@@ -76,7 +76,7 @@ class TripDataRepositoryImplTest {
 
     @Test
     fun testUpdateUploadStatus() = runBlocking {
-        val id = 1
+        val id = UUID.randomUUID()
         val sync = true
         repository.updateUploadStatus(id, sync)
         verify(tripDao).updateUploadStatus(id, sync)
@@ -86,7 +86,7 @@ class TripDataRepositoryImplTest {
     fun testGetTripsByDriverProfileId() = runTest {
         val driverProfileId = UUID.randomUUID()
         val tripEntities = listOf(
-            TripEntity(UUID.randomUUID(), driverProfileId, Date(), Date(), 0L, 0L, false)
+            TripEntity(UUID.randomUUID(), driverProfileId, Date(), Date(), 0L, 0L, "no alcohol", false)
         )
         whenever(tripDao.getTripsByDriverProfileId(driverProfileId)).thenReturn(tripEntities)
         val result = repository.getTripsByDriverProfileId(driverProfileId)
@@ -98,7 +98,7 @@ class TripDataRepositoryImplTest {
     fun testGetTripsBySyncStatus() = runTest {
         val syncStatus = false
         val tripEntities = listOf(
-            TripEntity(UUID.randomUUID(), UUID.randomUUID(), Date(), Date(), 0L, 0L, syncStatus)
+            TripEntity(UUID.randomUUID(), UUID.randomUUID(), Date(), Date(), 0L, 0L, "no alcohol",syncStatus)
         )
         whenever(tripDao.getTripsBySyncStatus(syncStatus)).thenReturn(tripEntities)
         val result = repository.getTripsBySyncStatus(syncStatus)

@@ -1,6 +1,7 @@
 package com.uoa.driverprofile.presentation.ui.screens
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -10,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -20,11 +22,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.uoa.core.utils.Constants.Companion.DRIVER_EMAIL_ID
 //import com.uoa.driverprofile.presentation.ui.CustomTextField
 import com.uoa.driverprofile.presentation.viewmodel.DriverProfileViewModel
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.driverprofile.presentation.ui.navigation.navigateToHomeScreen
+//import com.uoa.sensor.services.VehicleMovementServiceUpdate.Companion.TAG
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -98,11 +102,21 @@ fun DriverProfileCreationRoute(
                 null
             }
             if (profileId != null) {
+                Log.e("ProfileID"," $profileId")
                 navController.navigateToHomeScreen(profileId)
             } else {
                 // Handle invalid saved profile ID
                 prefs.edit().remove(DRIVER_PROFILE_ID).apply()
+                prefs.edit().remove(DRIVER_EMAIL_ID).apply()
             }
+        }
+    }
+
+    val uploadSuccess by driverProfileViewModel.driverProfileUploadSuccess.collectAsState()
+
+    LaunchedEffect(uploadSuccess) {
+        if (uploadSuccess) {
+            onShowSnackbar("Driver Profile successfully uploaded!", null)
         }
     }
 
@@ -115,6 +129,9 @@ fun DriverProfileCreationRoute(
             driverProfileViewModel.insertDriverProfile(newProfileId, emailState) { success ->
                 if (success) {
                     prefs.edit().putString(DRIVER_PROFILE_ID, newProfileId.toString()).apply()
+                    prefs.edit().putString(DRIVER_EMAIL_ID, emailState.toString()).apply()
+                    val profId=prefs.getString(DRIVER_PROFILE_ID, null)
+                    Log.e("ProfileID"," $profId")
                     navController.navigateToHomeScreen(newProfileId)
                 } else {
                     // Show error message on the main thread

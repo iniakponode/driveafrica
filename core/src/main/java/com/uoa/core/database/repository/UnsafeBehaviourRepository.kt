@@ -19,6 +19,7 @@ interface UnsafeBehaviourRepository {
     )
     suspend fun insertUnsafeBehaviourBatch(unsafeBehaviours: List<UnsafeBehaviourModel>)
 
+    suspend fun getUnsafeBehavioursByLocationIdAndSyncStatus(locationId: UUID, synced: Boolean, processed: Boolean): List<UnsafeBehaviourModel>
     suspend fun updateUnsafeBehaviour(unsafeBehaviour: UnsafeBehaviourModel)
 
     suspend fun deleteUnsafeBehaviour(unsafeBehaviour: UnsafeBehaviourModel)
@@ -31,9 +32,12 @@ interface UnsafeBehaviourRepository {
 
     suspend fun getUnsafeBehavioursBySyncStatus(synced: Boolean): List<UnsafeBehaviourEntity>
 
+    suspend fun getUnsafeBehaviourBySyncAndProcessedStatus(synced: Boolean, processed: Boolean): List<UnsafeBehaviourEntity>
+
     suspend fun deleteAllUnsafeBehavioursBySyncStatus(synced: Boolean)
 
     suspend fun deleteAllUnsafeBehaviours()
+    suspend fun deleteUnsafeBehavioursByIds(ids: List<UUID>)
 
     suspend fun getUnsafeBehaviourCountByTypeAndTime(
         behaviorType: String,
@@ -54,14 +58,14 @@ interface UnsafeBehaviourRepository {
 
     fun getUnsafeBehavioursForTips(): Flow<List<UnsafeBehaviourModel>>
 
-    suspend fun getSensorDataBetweenDates(
-        startDate: LocalDate,
-        endDate: LocalDate
-    ): Flow<List<RawSensorDataEntity>>
+//    suspend fun getSensorDataBetweenDates(
+//        startDate: LocalDate,
+//        endDate: LocalDate
+//    ): Flow<List<RawSensorDataEntity>>
 
-    suspend fun getSensorDataByTripId(tripId: UUID): Flow<List<RawSensorDataEntity>>
+//    suspend fun getSensorDataByTripId(tripId: UUID): Flow<List<RawSensorDataEntity>>
 
-    suspend fun getSensorDataBySyncStatus(synced: Boolean): List<RawSensorData>
+//    suspend fun getSensorDataBySyncStatus(synced: Boolean): List<RawSensorData>
 
     suspend fun getLastInsertedUnsafeBehaviour(): UnsafeBehaviourEntity?
 

@@ -43,8 +43,8 @@ class GetUnsafeBehavioursByTripIdUseCaseTest {
     fun testExecute() = runTest {
         val tripId = UUID.randomUUID()
         val unsafeBehaviours = listOf(
-            UnsafeBehaviourModel(UUID.randomUUID(), tripId, UUID.randomUUID(), "Speeding", 5.0f, System.currentTimeMillis(), Date(),  null, false),
-            UnsafeBehaviourModel(UUID.randomUUID(), tripId, UUID.randomUUID(), "Harsh Braking", 3.0f, System.currentTimeMillis(), Date(), null, false)
+            UnsafeBehaviourModel(UUID.randomUUID(), tripId, UUID.randomUUID(), UUID.randomUUID(),"Speeding", 5.0f, System.currentTimeMillis(), Date(),  null, false),
+            UnsafeBehaviourModel(UUID.randomUUID(), tripId, UUID.randomUUID(), UUID.randomUUID(),"Harsh Braking", 3.0f, System.currentTimeMillis(), Date(), null, false)
         )
         whenever(repository.getUnsafeBehavioursByTripId(tripId)).thenReturn(flowOf(unsafeBehaviours))
 

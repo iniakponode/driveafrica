@@ -2,97 +2,122 @@ package com.uoa.ml.domain
 
 import android.util.Log
 import com.uoa.core.database.entities.CauseEntity
-import com.uoa.core.database.entities.RawSensorDataEntity
 import com.uoa.core.database.entities.UnsafeBehaviourEntity
+import com.uoa.core.database.repository.AIModelInputRepository
 import com.uoa.core.database.repository.CauseRepository
-import com.uoa.core.database.repository.LocationRepository
 import com.uoa.core.database.repository.RawSensorDataRepository
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
+import com.uoa.core.mlclassifier.MinMaxValuesLoader
 import com.uoa.core.mlclassifier.OnnxModelRunner
 import com.uoa.core.utils.toEntity
-import com.uoa.ml.Utils
+import com.uoa.core.mlclassifier.data.InferenceResult
+import com.uoa.core.mlclassifier.data.TripFeatures
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.sql.Timestamp
-import java.text.SimpleDateFormat
 import java.time.Instant
 import java.util.Date
-import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.withContext
 
-class RunClassificationUseCase @Inject constructor(val utils: Utils,
-                                                   private val rawSensorDataRepository: RawSensorDataRepository,
-                                                   private val locationRepo: LocationRepository,
-                                                   private val onnxModelRunner: OnnxModelRunner) {
+// RunClassificationUseCase.kt
+import kotlinx.coroutines.Dispatchers
 
-    fun invoke(tripId: UUID): Boolean{
+class RunClassificationUseCase @Inject constructor(
+    private val onnxModelRunner: OnnxModelRunner,
+    private val aiModelInputRepository: AIModelInputRepository
+) {
 
-        var alcoholInfluence = false
-        CoroutineScope(Dispatchers.IO).launch {
+    suspend fun invoke(tripId: UUID): InferenceResult {
+        Log.i("Trip", "Classifier invoked for tripId: $tripId")
 
-            val rawSensorDataList = rawSensorDataRepository.getSensorDataByTripId(tripId)
-            // Extract timestamps and convert to Timestamp objects
-            val timestamps = mutableListOf<Timestamp>()
-            rawSensorDataList.collect { rawSensorData ->
-                rawSensorData.forEach() {
-                    if (it.locationId!=null)
-                        timestamps.add(Timestamp(it.timestamp))
-                }
+        return withContext(Dispatchers.IO) {
+            val intermediateStats = aiModelInputRepository.getAiModelInputInputByTripId(tripId)
+
+            // Mark them as processed
+            val intermediateStatsCopy = intermediateStats.map { aiModelInput ->
+                aiModelInput.copy(processed = true)
             }
-            val speeds= mutableListOf<Float>()
-            rawSensorDataList.collect { rawSensorData ->
-                rawSensorData.forEach() {
-                    if (it.locationId!=null)
-                        speeds.add(it.values[0])
-                }
+            intermediateStatsCopy.forEach {
+                aiModelInputRepository.updateAiModelInput(it.toEntity())
             }
 
-            val collectedRawSensorDataList= mutableListOf<RawSensorDataEntity>()
-
-            rawSensorDataList.collect { rawSensorData ->
-                rawSensorData.forEach() {
-                    if (it.locationId!=null)
-                        collectedRawSensorDataList.add(it)
-                }
+            // If there's no data, bail out
+            if (intermediateStats.isEmpty()) {
+                return@withContext InferenceResult.NotEnoughData
             }
 
-            val listOfAccelerationY= mutableListOf<Float>()
-            rawSensorDataList.collect { rawSensorData ->
-                rawSensorData.forEach() {
-                    if (it.sensorType==1 && it.locationId!=null)
-                        listOfAccelerationY.add(it.values[1])
-                }
+            val totalDuration = intermediateStats.sumOf { it.endTimestamp - it.startTimestamp }
+            if (totalDuration <= 0) {
+                // If durations are zero or negative, also bail out
+                return@withContext InferenceResult.NotEnoughData
             }
 
-            val locations = locationRepo.getLocationDataByTripId(tripId)
+            // Weighted calculations
+            val weightedHourOfDayMean =
+                intermediateStats.sumOf {
+                    it.hourOfDayMean * (it.endTimestamp - it.startTimestamp)
+                } / totalDuration
 
+            val weightedDayOfWeekMean =
+                intermediateStats.sumOf {
+                    // Force a Double so sumOf { Double } is used
+                    (it.dayOfWeekMean.toDouble() * (it.endTimestamp - it.startTimestamp))
+                } / totalDuration.toDouble()
 
-            if (timestamps.isNotEmpty()){
-                val hourOfDayMean = utils.extractHourOfDayMean(timestamps)
-                val dayOfWeekMean = utils.extractDayOfWeekMean(timestamps)
+            val weightedSpeedStd =
+                intermediateStats.sumOf {
+                    (it.speedStd.toDouble() * (it.endTimestamp - it.startTimestamp))
+                } / totalDuration.toDouble()
 
-                // Assuming utils functions take Timestamp objects
-                val speedStd = utils.extractSpeedStd(speeds)
-                val courseStd = utils.computeStandardDeviationOfCourses(
-                    collectedRawSensorDataList,
-                    locations[0],
-                    locations[1],
-                    locations[2]
-                )
-                val accelerationYOriginalMean = utils.extractAccelerationYOriginalMean(listOfAccelerationY)
+            val weightedAccelerationYMean =
+                intermediateStats.sumOf {
+                    (it.accelerationYOriginalMean.toDouble() * (it.endTimestamp - it.startTimestamp))
+                } / totalDuration.toDouble()
+            val weightedCourseStd =
+                intermediateStats.sumOf {
+                    it.courseStd.toDouble() * (it.endTimestamp - it.startTimestamp)
+                } / totalDuration.toDouble()
 
-                alcoholInfluence=onnxModelRunner.runInference(hourOfDayMean, dayOfWeekMean, speedStd, courseStd, accelerationYOriginalMean)
-            } else {
-                // Handle the case where no timestamps are available
-                Log.d("Alcohol TimeStamps", "No timestamps available")
+            // Build the TripFeatures
+            val tripFeatures = TripFeatures(
+                hourOfDayMean = weightedHourOfDayMean.toFloat(),
+                dayOfWeekMean = weightedDayOfWeekMean.toFloat(),
+                speedStd = weightedSpeedStd.toFloat(),
+                courseStd = weightedCourseStd.toFloat(),
+                accelerationYOriginalMean = weightedAccelerationYMean.toFloat()
+            )
+
+            Log.d("Trip", "Extracted Features: $tripFeatures")
+
+            // If any feature is NaN, we consider it "not enough data" scenario
+            if (
+                tripFeatures.hourOfDayMean.isNaN() ||
+                tripFeatures.dayOfWeekMean.isNaN() ||
+                tripFeatures.speedStd.isNaN()      ||
+                tripFeatures.courseStd.isNaN()     ||
+                tripFeatures.accelerationYOriginalMean.isNaN()
+            ) {
+                return@withContext InferenceResult.NotEnoughData
+            }
+
+            // Attempt model inference
+            try {
+                val isAlcoholInfluenced = onnxModelRunner.runInference(tripFeatures)
+                Log.i("Trip", "Inference result (boolean): $isAlcoholInfluenced")
+
+                // If model returns `true` => alcohol, else => no alcohol
+                InferenceResult.Success(isAlcoholInfluenced)
+            } catch (e: Exception) {
+                Log.e("Trip", "Error during model inference: ${e.message}", e)
+                InferenceResult.Failure(e)
             }
         }
-        Log.d("Alcohol Infl", alcoholInfluence.toString())
-        return alcoholInfluence
     }
+
 }
+
+
 
 class UpDateUnsafeBehaviourCauseUseCase @Inject constructor(
     private val unsafeBehaviourRepository: UnsafeBehaviourRepository

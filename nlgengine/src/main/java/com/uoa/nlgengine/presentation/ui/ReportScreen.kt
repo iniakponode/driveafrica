@@ -10,11 +10,8 @@ import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 //import androidx.compose.foundation.layout.FlowColumnScopeInstance.align
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,33 +32,35 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.uoa.core.ui.DAAppTopNavBar
-import com.uoa.nlgengine.data.model.UnsafeBehaviorChartEntry
+import com.uoa.core.utils.DateUtils
 import com.uoa.nlgengine.presentation.ui.theme.NLGEngineTheme
 import com.uoa.nlgengine.presentation.viewmodel.LocalUnsafeBehavioursViewModel
-import com.uoa.nlgengine.presentation.viewmodel.LocationRoadViewModel
+import com.uoa.nlgengine.presentation.viewmodel.NLGEngineViewModel
 import com.uoa.nlgengine.presentation.viewmodel.chatgpt.ChatGPTViewModel
-import com.uoa.nlgengine.util.PeriodType
-import java.time.Instant
+import com.uoa.core.utils.PeriodType
+import com.uoa.core.utils.PreferenceUtils
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import com.uoa.nlgengine.R
+import kotlinx.datetime.toKotlinLocalDate
+
 @Composable
 fun ReportScreen(
     navController: NavController,
     reportContent: String,
     reportPeriod: Pair<LocalDate, LocalDate>? = null,
     periodType: PeriodType,
-    chartData: List<UnsafeBehaviorChartEntry> = emptyList(),
+//    tripId: UUID?,
+//    chartData: List<UnsafeBehaviorChartEntry> = emptyList(),
 ) {
+
+
     NLGEngineTheme {
         Scaffold(
             topBar = {
@@ -211,14 +210,15 @@ fun ReportScreenRoute(
     endDate: Long,
     chatGPTViewModel: ChatGPTViewModel = hiltViewModel(),
     unsafeBehavioursViewModel: LocalUnsafeBehavioursViewModel = hiltViewModel(),
-    locationAddressViewModel: LocationRoadViewModel = hiltViewModel(),
+//    trip: Trip
+    nlgEngineViewModel: NLGEngineViewModel = hiltViewModel(),
 ) {
     // Convert the start and end date to LocalDate
     val context = LocalContext
     val appContext= context.current.applicationContext
-    val zoneId = ZoneId.systemDefault()
-    val sDate = Instant.ofEpochMilli(startDate).atZone(zoneId).toLocalDate()
-    val eDate = Instant.ofEpochMilli(endDate).atZone(zoneId).toLocalDate()
+
+   val sDate= DateUtils.convertToLocalDate(startDate)
+    val eDate = DateUtils.convertToLocalDate(endDate)
 
     // Observe the unsafe behaviours and other data from the view model
     val unsafeBehaviours by unsafeBehavioursViewModel.unsafeBehaviours.collectAsState()
@@ -227,21 +227,22 @@ fun ReportScreenRoute(
     val lastTripId by unsafeBehavioursViewModel.lastTripId.observeAsState()
     val isGeneratingSummary by chatGPTViewModel.isLoading.collectAsState()
     val isLoadingBehaviours by unsafeBehavioursViewModel.isLoading.collectAsState()
-    val isGeneratingPrompt by locationAddressViewModel.isLoading.collectAsState()
+    val isGeneratingPrompt by nlgEngineViewModel.isLoading.collectAsState()
 
     // Combined loading state
     val isLoading = isGeneratingSummary && isLoadingBehaviours && isGeneratingPrompt
 
     // Collect the summary data
-    val summaryDataByDateHour by locationAddressViewModel.summaryDataByDateHour.collectAsState()
+    val summaryDataByDateHour by nlgEngineViewModel.summaryDataByDateHour.collectAsState()
 
     // Prepare chart data
     val chartData = remember(summaryDataByDateHour) {
-        locationAddressViewModel.prepareChartData(summaryDataByDateHour)
+        nlgEngineViewModel.prepareChartData(summaryDataByDateHour)
     }
 
     // Fetch the unsafe behaviours when the screen loads
     LaunchedEffect(periodType, startDate, endDate) {
+        unsafeBehavioursViewModel.fetchLastInsertedUnsafeBehaviour()
         when (periodType) {
             PeriodType.TODAY, PeriodType.THIS_WEEK, PeriodType.LAST_WEEK, PeriodType.CUSTOM_PERIOD -> {
 //                Log.d("ReportScreen", "Fetching unsafe behaviours between $sDate and $eDate")
@@ -249,8 +250,9 @@ fun ReportScreenRoute(
             }
 
             PeriodType.LAST_TRIP -> {
+
                 Log.d("ReportScreen", "Fetching unsafe behaviours for the last trip")
-                unsafeBehavioursViewModel.getUnsafeBehaviourByTripId()
+                unsafeBehavioursViewModel.getUnsafeBehavioursForLastTrip()
             }
 
             else -> {
@@ -265,18 +267,25 @@ fun ReportScreenRoute(
 //            Log.d("ReportScreen", "Unsafe behaviours retrieved: ${unsafeBehaviours.size} records")
 
             // Call the ViewModel function to generate the prompt
-            locationAddressViewModel.generatePromptForBehaviours(appContext,unsafeBehaviours, periodType)
+
+            // Convert to kotlinx.datetime.LocalDate
+
+
+
+            nlgEngineViewModel.generatePromptForBehaviours(appContext,unsafeBehaviours, periodType, sDate,eDate)
         } else {
             Log.i("ReportScreen", "No unsafe behaviours found for the given criteria.")
         }
     }
 
     // Observe the generated prompt and send it to chatGPTViewModel
-    val generatedPrompt by locationAddressViewModel.generatedPrompt.collectAsState()
+    val generatedPrompt by nlgEngineViewModel.generatedPrompt.collectAsState()
     LaunchedEffect(generatedPrompt) {
         if (generatedPrompt.isNotEmpty()) {
 //            Log.d("ReportScreen", "Generated Prompt: $generatedPrompt")
-            chatGPTViewModel.getChatGPTPrompt(generatedPrompt)
+            PreferenceUtils.getDriverProfileId(appContext)?.let { profileId ->
+                chatGPTViewModel.promptChatGPTForResponse(generatedPrompt, periodType, profileId)
+            }
         }
     }
 
@@ -305,7 +314,7 @@ fun ReportScreenRoute(
             reportPeriod = reportPeriod,
 //            tripId = lastTripId?.toString(),
             periodType = periodType,
-            chartData = chartData
+//            chartData = chartData
         )
     }
     else if (periodType!=PeriodType.TODAY && periodType!=PeriodType.THIS_WEEK && periodType!=PeriodType.LAST_WEEK && periodType!=PeriodType.CUSTOM_PERIOD && periodType!=PeriodType.LAST_TRIP) {
@@ -315,20 +324,20 @@ fun ReportScreenRoute(
             reportContent = "Please click on a period, last trip or enter custom date period to generate a report",
             reportPeriod = reportPeriod,
             periodType = periodType,
-            chartData = chartData
+//            chartData = chartData
         )
     }
     else if (isNoDataAndNoReport) {
         Log.d("ReportScreen", "${periodType}.")
-            ReportScreen(
-                navController = navController,
-                reportContent = "You have no trips recorded that matches your selection at the moment.",
-                reportPeriod = reportPeriod,
+        ReportScreen(
+            navController = navController,
+            reportContent = "You have no trips recorded that matches your selection at the moment.",
+            reportPeriod = reportPeriod,
 //                tripId = lastTripId?.toString(),
-                periodType = periodType,
-                chartData = chartData
-            )
-        }
+            periodType = periodType,
+//            chartData = chartData
+        )
+    }
     else {
         // Show loading indicator
         Text(
@@ -352,6 +361,7 @@ fun ReportScreenRoute(
 
         }
     }
+
 }
 
 

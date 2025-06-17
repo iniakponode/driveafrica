@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.uoa.core.ui.DAAppTopNavBar
-import com.uoa.nlgengine.util.PeriodType
+import com.uoa.core.utils.PeriodType
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -189,6 +189,8 @@ fun FilterScreen(
                     endDate = null
                     periodType = PeriodType.NONE
                 }
+
+//                To be activate in second phase
                 ActionButton("Generate Report") {
                     val selectedStartDate = startDate
                     val selectedEndDate = endDate

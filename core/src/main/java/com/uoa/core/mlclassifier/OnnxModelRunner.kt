@@ -2,51 +2,136 @@ package com.uoa.core.mlclassifier
 
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtSession
-import android.content.Context
-import android.util.Log
-import java.nio.ByteBuffer
+import com.uoa.core.mlclassifier.data.TripFeatures
 import java.io.FileInputStream
 
-class OnnxModelRunner(private val context: Context, private val ortEnvironmentWrapper: OrtEnvironmentWrapper) {
+import android.content.Context
+import android.util.Log
+import ai.onnxruntime.*
+import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
+import java.io.FileOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import javax.inject.Inject
+import javax.inject.Singleton
 
-    private lateinit var session: OrtSession
+@Singleton
+class OnnxModelRunner @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val ortEnvironmentWrapper: OrtEnvironmentWrapper
+) : AutoCloseable {
+
+    private val session: OrtSession
 
     init {
-        try {
-            // Load the ONNX model
-            val modelBytes = "decision_tree_model.ort".loadModelFile()
-            session = ortEnvironmentWrapper.createSession(modelBytes.array())
+        session = try {
+            // Copy the model file from assets to internal storage
+            val modelFileName = "pruned_decision_tree_model.with_runtime_opt.ort"
+            val modelFile = copyAssetToFile(modelFileName)
+            // Create the session using the model file path
+            ortEnvironmentWrapper.createSession(modelFile.absolutePath)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("OnnxModelRunner", "Failed to initialize ONNX session: ${e.message}", e)
+            throw e
         }
     }
 
-    // Load the model file from assets
-    private fun String.loadModelFile(): ByteBuffer {
-        val assetManager = context.assets
-        val inputStream = assetManager.open(this)
-        val fileChannel = (inputStream as FileInputStream).channel
-        val buffer = ByteBuffer.allocateDirect(fileChannel.size().toInt())
-        fileChannel.read(buffer)
-        buffer.flip()
-        return buffer
+    // Copy the model file from assets to a file in internal storage
+    private fun copyAssetToFile(assetFileName: String): File {
+        val file = File(context.filesDir, assetFileName)
+        if (!file.exists()) {
+            context.assets.open(assetFileName).use { inputStream ->
+                FileOutputStream(file).use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }
+        }
+        return file
     }
 
-    // Function to run inference on the model
-    fun runInference(hourOfDayMean: Float, dayOfWeekMean: Float, speedStd: Float, courseStd: Float, accelerationYOriginalMean: Float): Boolean {
-        // Prepare the input data as a FloatArray with correct input shape
-        val inputData = floatArrayOf(hourOfDayMean, dayOfWeekMean, speedStd, courseStd, accelerationYOriginalMean)
+//    // Load the model file from assets
+//    private fun String.loadModelFile(): ByteBuffer {
+//        val assetManager = context.assets
+//        return assetManager.openFd(this).use { assetFileDescriptor ->
+//            val inputStream = assetFileDescriptor.createInputStream()
+//            val length = assetFileDescriptor.length
+//            val buffer = ByteBuffer.allocateDirect(length.toInt()).order(ByteOrder.nativeOrder())
+//            val bytesRead = inputStream.channel.read(buffer)
+//            if (bytesRead.toLong() != length) {
+//                throw IllegalStateException("Failed to read the entire model file")
+//            }
+//            buffer.flip()
+//            buffer
+//        }
+//    }
 
-        // Prepare the input tensor
-        val inputTensor = OnnxTensor.createTensor(ortEnvironmentWrapper.ortEnvironment, inputData)
+    fun runInference(features: TripFeatures): Boolean {
+        try {
+            // Prepare the input data as a 2D FloatArray (assuming model expects shape [1, 5])
+            val inputData = arrayOf(
+                floatArrayOf(
+                    features.hourOfDayMean,
+                    features.dayOfWeekMean,
+                    features.speedStd,
+                    features.courseStd,
+                    features.accelerationYOriginalMean
+                )
+            )
 
-        // Run inference
-        val output = session.run(mapOf("input" to inputTensor))
-        val result = output[0].value as Array<FloatArray> // Assuming the model output is a 2D array
+            // Retrieve input and output names from the session
+            val inputName = session.inputNames.firstOrNull()
+                ?: throw IllegalStateException("Model has no input names")
+            val outputName = session.outputNames.firstOrNull()
+                ?: throw IllegalStateException("Model has no output names")
 
-        // Since it's a binary classification model, convert output to true/false
-        val isAlcoholInfluenced = result[0][0] > 0.5 // Adjust threshold if needed
-        Log.d("alcoho", "isAlcoholInfluenced: $isAlcoholInfluenced")
-        return isAlcoholInfluenced
+            // Prepare the input tensor
+            val inputTensor = OnnxTensor.createTensor(
+                ortEnvironmentWrapper.ortEnvironment,
+                inputData
+            )
+
+            // Run inference
+            inputTensor.use { tensor ->
+                val output = session.run(mapOf(inputName to tensor))
+
+                // Get the output result
+                val result = output[outputName]
+                    ?: throw IllegalStateException("Output not found: $outputName")
+
+                // Determine the data type and handle accordingly
+                val isAlcoholInfluenced = when (val outputValue = result.get().value) {
+                    is FloatArray -> {
+                        val prediction = outputValue[0]
+                        Log.d("OnnxModelRunner", "Model Output (FloatArray): $prediction")
+                        prediction > 0.5f
+                    }
+                    is LongArray -> {
+                        val prediction = outputValue[0]
+                        Log.d("OnnxModelRunner", "Model Output (LongArray): $prediction")
+                        prediction == 1L
+                    }
+                    else -> {
+                        throw IllegalStateException("Unexpected output type: ${outputValue::class.java.name}")
+                    }
+                }
+
+                Log.d("OnnxModelRunner", "Is Alcohol Influenced: $isAlcoholInfluenced")
+                return isAlcoholInfluenced
+            }
+        } catch (e: Exception) {
+            Log.e("OnnxModelRunner", "Error during inference: ${e.message}", e)
+            throw e
+        }
+    }
+
+    override fun close() {
+        try {
+            session.close()
+            // Do not close ortEnvironment here
+        } catch (e: Exception) {
+            Log.e("OnnxModelRunner", "Error during closure: ${e.message}", e)
+        }
     }
 }
+

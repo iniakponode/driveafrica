@@ -32,11 +32,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "11"
     }
 
     buildFeatures { // Enables Jetpack Compose for this module
@@ -74,6 +74,10 @@ dependencies {
     implementation(libs.androidx.lifecycle.licycle.viewmodel.ktx)
     implementation(libs.androidx.work.ktx)
 
+//    implementation(libs.play.services.activity)
+
+    implementation(libs.map.osmdroid)
+
     implementation(libs.guava)
 
     implementation(libs.request.permisions)
@@ -81,7 +85,7 @@ dependencies {
     implementation(libs.play.services.location)
 
     implementation(libs.gson)
-    
+
     implementation(libs.hilt.android)
     implementation(libs.androidx.hilt.common)
     implementation(libs.hilt.ext.work)
@@ -91,9 +95,13 @@ dependencies {
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.room.runtime)
     implementation(libs.firebase.dataconnect)
+    implementation(project(":driverprofile"))
     ksp(libs.hilt.compiler)
     ksp(libs.hilt.ext.compiler)
     implementation(libs.hilt.android)
+
+    implementation(libs.lifecycle.runtime.ktx)
+    implementation(libs.lifecycle.service)
 
     implementation(libs.mapper)
 

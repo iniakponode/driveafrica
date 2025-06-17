@@ -47,11 +47,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "11"
     }
 
     packaging {
@@ -88,6 +88,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtimeCompose)
     implementation(libs.androidx.lifecycle.viewModelCompose)
     implementation(libs.androidx.lifecycle.licycle.viewmodel.ktx)
+    implementation(libs.map.osmdroid)
 
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.kotlin.serialization)
@@ -112,6 +113,7 @@ dependencies {
     implementation(project(":core"))
     implementation(libs.generative.ai)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(project(":dbda"))
     ksp(libs.hilt.compiler)
     ksp(libs.hilt.ext.compiler)
     implementation(libs.hilt.android)

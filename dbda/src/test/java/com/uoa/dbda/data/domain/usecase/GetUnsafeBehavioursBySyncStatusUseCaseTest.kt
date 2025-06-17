@@ -38,13 +38,14 @@ class GetUnsafeBehavioursBySyncStatusUseCaseTest {
                 id = UUID.randomUUID(),
                 tripId = UUID.randomUUID(),
                 locationId = UUID.randomUUID(),
+                driverProfileId = UUID.randomUUID(),
                 behaviorType = "Speeding",
                 severity = 5.0f,
                 timestamp = System.currentTimeMillis(),
                 date = Date(),
                 updatedAt = null,
                 updated = false,
-                synced = false,
+                sync = false,
 
             )
         )

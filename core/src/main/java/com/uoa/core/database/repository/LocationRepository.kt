@@ -16,10 +16,15 @@ interface LocationRepository {
 
     suspend fun getLocationById(id: UUID): LocationEntity?
 
+    suspend fun getSensorDataBySyncAndProcessedStatus(syncstatus: Boolean, procStatus: Boolean): List<LocationEntity>
+
     fun getLocationBySynced(syncStat: Boolean): Flow<List<LocationEntity>>
 
     suspend fun updateLocation(location: LocationEntity)
 
+    suspend fun updateLocations(locations: List<LocationEntity>)
+
     suspend fun deleteAllLocations()
-    suspend fun getLocationDataByTripId(tripId: UUID): List<Double>
+    suspend fun deleteLocationsByIds(ids: List<UUID>)
+    suspend fun getLocationDataByTripId(tripId: UUID): List<LocationData>
 }

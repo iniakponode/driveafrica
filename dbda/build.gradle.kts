@@ -1,4 +1,3 @@
-
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.jetbrains.kotlin.android)
@@ -40,11 +39,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "11"
     }
     buildFeatures { // Enables Jetpack Compose for this module
         compose = true
@@ -96,6 +95,10 @@ dependencies {
     ksp(libs.hilt.ext.compiler)
     implementation(libs.hilt.android)
     implementation(libs.androidx.test.runner)
+
+//    implementation(libs.room.ktx)
+//    implementation(libs.room.compiler)
+//    implementation(libs.room.runtime)
 
     implementation(project(":core"))
 

@@ -1,0 +1,156 @@
+package com.uoa.sensor.hardware
+
+import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
+import com.uoa.core.behaviouranalysis.NewUnsafeDrivingBehaviourAnalyser
+import com.uoa.core.database.repository.RawSensorDataRepository
+import com.uoa.core.database.repository.UnsafeBehaviourRepository
+import com.uoa.core.model.RawSensorData
+import com.uoa.core.utils.toEntity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.map
+//import kotlinx.coroutines.flow.asFlow
+//import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class SensorDataBufferManager @Inject constructor(
+    private val rawSensorDataRepository: RawSensorDataRepository,
+) {
+
+    private val sensorDataBuffer = mutableListOf<RawSensorData>()
+    private val bufferInsertInterval: Long = 5000  // Time interval to process the buffer (e.g., every 5 seconds)
+    private val bufferLimit = 500  // Threshold limit for batch size
+
+    private val bufferHandler = Handler(Looper.getMainLooper())
+
+    init {
+        startBufferFlushHandler()
+    }
+
+    /**
+     * Adds sensor data to the in-memory buffer.
+     * If it exceeds the bufferLimit, it triggers immediate processing.
+     */
+    fun addToSensorBuffer(rawSensorData: RawSensorData) {
+        synchronized(sensorDataBuffer) {
+            sensorDataBuffer.add(rawSensorData)
+//            Log.d("BufferManager", "Successfully added new data to the buffer ${sensorDataBuffer.last()}.")
+            if (sensorDataBuffer.size >= bufferLimit) {
+                processAndStoreSensorData()
+            }
+        }
+    }
+
+    /**
+     * Periodic flush: every bufferInsertInterval ms, we call processAndStoreSensorData().
+     * This ensures we eventually write data even if the buffer doesn't reach bufferLimit.
+     */
+    private fun startBufferFlushHandler() {
+        bufferHandler.postDelayed(object : Runnable {
+            override fun run() {
+                processAndStoreSensorData()
+                bufferHandler.postDelayed(this, bufferInsertInterval)
+            }
+        }, bufferInsertInterval)
+    }
+
+    /**
+     * Asynchronous flush:
+     *  - Copies the buffer contents,
+     *  - Clears the buffer,
+     *  - Launches a coroutine to insert data in the background.
+     *
+     * IMPORTANT: Because this uses 'launch', the calling thread won't block.
+     *            If you want to *wait* until insertion finishes, see flushBufferToDatabase().
+     */
+    fun processAndStoreSensorData() {
+        val bufferCopy: List<RawSensorData>
+        synchronized(sensorDataBuffer) {
+            if (sensorDataBuffer.isEmpty()) return
+            bufferCopy = sensorDataBuffer.toList()
+            sensorDataBuffer.clear()
+        }
+
+        CoroutineScope(Dispatchers.IO).launch(){
+            try {
+                // Just call the repository method (transaction logic is inside the repository)
+                Log.d("SensorBufferManager", "Data bufferCopy: $bufferCopy")
+                rawSensorDataRepository.processAndStoreSensorData(bufferCopy)
+                Log.d("SensorBufferManager", "Data processed successfully:.")
+            } catch (e: Exception) {
+                Log.e("SensorBufferManager", "Error in processAndStoreSensorData", e)
+            }
+
+        }
+    }
+
+    /**
+     * A SUSPENDING version that ensures the buffer is fully written before returning.
+     * Useful when you want to finalize or guarantee data is persisted (e.g. end of a trip).
+     */
+    private suspend fun processAndStoreSensorDataSynchronous() {
+        val bufferCopy: List<RawSensorData>
+        // Copy & clear the buffer
+        synchronized(sensorDataBuffer) {
+            if (sensorDataBuffer.isEmpty()) return
+            bufferCopy = sensorDataBuffer.toList()
+            sensorDataBuffer.clear()
+        }
+
+        // Insert data on IO dispatcher *and wait* for completion
+        withContext(Dispatchers.IO) {
+            try {
+                rawSensorDataRepository.processAndStoreSensorData(bufferCopy)
+                Log.d("SensorBufferManager", "Data processed successfully (sync).")
+            } catch (e: Exception) {
+                Log.e("SensorBufferManager", "Error in processAndStoreSensorDataSync", e)
+            }
+        }
+    }
+
+    /**
+     * Forces an immediate, synchronous flush of any remaining data in the buffer
+     * and waits for it to finish before returning.
+     */
+    suspend fun flushBufferToDatabase() {
+        processAndStoreSensorDataSynchronous()
+    }
+
+    /**
+     * Called at the end of a trip or other scenario where you want to ensure
+     * all sensor data is permanently stored, plus any additional "finalization" tasks.
+     */
+    suspend fun finalizeCurrentTrip(tripId: UUID) {
+        // 1) Flush remaining buffer data to the database
+        flushBufferToDatabase()
+
+        // 2) Perform any other final tasks, such as marking the trip completed:
+        withContext(Dispatchers.IO) {
+            try {
+                // If you have a repository method to finalize a trip, call it here:
+                // e.g.: rawSensorDataRepository.markTripAsFinished(tripId)
+                Log.d("SensorDataBufferManager", "Trip $tripId finalized successfully.")
+            } catch (e: Exception) {
+                Log.e("SensorDataBufferManager", "Error finalizing trip $tripId", e)
+            }
+        }
+    }
+
+
+
+    /**
+     * Used to stop the buffer's background flushing if necessary (e.g. shutting down).
+     */
+    fun clear() {
+        bufferHandler.removeCallbacksAndMessages(null)
+    }
+}

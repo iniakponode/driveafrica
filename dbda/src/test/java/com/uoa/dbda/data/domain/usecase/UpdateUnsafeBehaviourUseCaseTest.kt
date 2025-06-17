@@ -30,6 +30,7 @@ class UpdateUnsafeBehaviourUseCaseTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             UUID.randomUUID(),
+            UUID.randomUUID(),
             "Speeding",
             5.0f,
             System.currentTimeMillis(),

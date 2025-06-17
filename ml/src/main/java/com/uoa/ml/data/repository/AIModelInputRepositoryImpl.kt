@@ -88,7 +88,9 @@ class AIModelInputRepositoryImpl @Inject constructor(
             // Update incremental calculators
             incrementalHourOfDayMeanProvider.addTimestamp(sensorData.timestamp)
             incrementalDayOfWeekMeanProvider.addTimestamp(sensorData.timestamp)
-            incrementalSpeedStdProvider.addSpeed(location.speed!!.toFloat())
+            location.speed?.toFloat()?.let { speed ->
+                incrementalSpeedStdProvider.addSpeed(speed)
+            }
 
             if (sensorData.sensorType == Sensor.TYPE_ACCELEROMETER) {
                 val accelerationY = sensorData.values.getOrNull(1) ?: return
@@ -112,10 +114,11 @@ class AIModelInputRepositoryImpl @Inject constructor(
 
                 // Store trip features in the database
                 val timestamp = Instant.now().toEpochMilli()
+                val driverId = PreferenceUtils.getDriverProfileId(context) ?: return
                 val aiModelInputs= AIModelInputsEntity(
                     id= UUID.randomUUID(),
                     tripId= tripId,
-                    driverProfileId =PreferenceUtils.getDriverProfileId(context)!!,
+                    driverProfileId = driverId,
                     timestamp=System.currentTimeMillis().toLong(),
                     startTimestamp=System.currentTimeMillis().toLong(),
                     endTimestamp=System.currentTimeMillis().toLong(),

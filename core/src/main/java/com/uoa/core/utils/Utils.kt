@@ -47,23 +47,25 @@ fun dateToLocalDate(date: Date): LocalDate {
 }
 
 
-fun scheduleNextUploadWork(context: Context) {
-    val uploadWork = OneTimeWorkRequestBuilder<UploadAllDataWorker>()
-        .setInitialDelay(3, TimeUnit.MINUTES)
-        .build()
-
-    WorkManager.getInstance(context).enqueue(uploadWork)
-
-    // Observe work completion and schedule next
-    WorkManager.getInstance(context)
-        .getWorkInfoByIdLiveData(uploadWork.id)
-        .observeForever { workInfo ->
-            if (workInfo != null && workInfo.state == WorkInfo.State.SUCCEEDED) {
-                // Schedule the next upload after a 3 minute delay
-                scheduleNextUploadWork(context)
-            }
-        }
-}
+//fun scheduleNextUploadWork(context: Context) {
+//    val uploadWork = OneTimeWorkRequestBuilder<UploadAllDataWorker>()
+//        .setInitialDelay(3, TimeUnit.MINUTES)
+//        .build()
+//
+//    WorkManager.getInstance(context).
+//    enqueue(
+//        uploadWork)
+//
+//    // Observe work completion and schedule next
+//    WorkManager.getInstance(context)
+//        .getWorkInfoByIdLiveData(uploadWork.id)
+//        .observeForever { workInfo ->
+//            if (workInfo != null && workInfo.state == WorkInfo.State.SUCCEEDED) {
+//                // Schedule the next upload after a 3 minute delay
+////                scheduleNextUploadWork(context)
+//            }
+//        }
+//}
 
 /**
  * Checks if the device is connected to the internet.

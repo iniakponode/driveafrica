@@ -263,7 +263,7 @@ class UploadAllDataWorker @AssistedInject constructor(
             Log.d("UploadInBatches", "Uploading batch ${index + 1} of ${chunks.size} for $notificationTitle.")
 
             when (val result = batchUploadAction(mappedChunk)) {
-                is Resource.Success -> {
+                is Success -> {
                     // Mark the original data as synced
                     markAsSynced(originalChunk)
                     Log.d("UploadInBatches", "Batch ${index + 1} for $notificationTitle uploaded successfully.")
@@ -291,6 +291,7 @@ class UploadAllDataWorker @AssistedInject constructor(
                         "Uploading..."
                     )
                     Log.d("UploadInBatches", "$notificationTitle: Uploading batch ${index + 1}.")
+                    break
                 }
             }
         }

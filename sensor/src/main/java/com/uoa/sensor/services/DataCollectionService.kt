@@ -46,8 +46,8 @@ class DataCollectionService : Service() {
         startForeground(
             NOTIFICATION_ID,
             notificationManager.buildForegroundNotification(
-                title = "Data Collection Service",
-                message = "Data collection service is started"
+                title = "Sensor and Location Data Collection Service",
+                message = "Sensors and Location Data collection is started and ongoing"
             )
         )
         return START_STICKY
@@ -65,8 +65,8 @@ class DataCollectionService : Service() {
         try {
             hardwareModule.startDataCollection(tripId)
             notificationManager.displayNotification(
-                "Data Collection Service",
-                "Collecting sensor data for trip: $tripId"
+                "Sensors and Location Data Collection Service",
+                "Collecting Sensors and Location Data for trip: $tripId"
             )
         } catch (e: Exception) {
             Log.e("DataCollectionService", "Error starting data collection for trip $tripId", e)

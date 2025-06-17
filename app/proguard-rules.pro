@@ -22,3 +22,9 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Preserve project classes used via reflection or serialization to prevent
+# ClassCastException when code is minified.
+-keep class com.uoa.** { *; }
+-keepclassmembers class com.uoa.** { *; }
+-keepattributes Signature,InnerClasses,EnclosingMethod

@@ -129,7 +129,7 @@ fun SensorControlScreenUpdate(
             }
             movementType == "stationary" && tripStarted && collecting -> {
                 Text(
-                    "Ending Trip...\nBecause vehicle has stopped.\nProcessing last collected Data.",
+                    "Trip Ended\nBecause vehicle has stopped.\n",
                     Modifier.align(Alignment.CenterHorizontally),
                     )
             }

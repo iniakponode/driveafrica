@@ -74,7 +74,7 @@ interface RoadApiService {
      * @return A map containing the status of each creation.
      */
     @POST("/api/roads/batch_create")
-    suspend fun batchCreateRoads(@Body roadList: List<RoadCreate>): Map<String, String>
+    suspend fun batchCreateRoads(@Body roadList: List<RoadCreate>): List<RoadResponse>
 
     /**
      * Batch deletes multiple Road entries by their IDs.

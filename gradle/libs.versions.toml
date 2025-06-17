@@ -1,5 +1,5 @@
 [versions]
-agp = "8.4.2"
+agp = "8.5.1"
 activity = "1.9.2"
 androidGradlePlugin = "8.4.2"
 androidTools = "31.6.0"

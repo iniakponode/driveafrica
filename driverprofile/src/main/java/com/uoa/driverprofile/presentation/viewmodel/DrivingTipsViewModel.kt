@@ -184,8 +184,9 @@ class DrivingTipsViewModel @Inject constructor(
                 val contextText = compressAndEncodeJson(context)
                 val prompt = createAIPromptFromChunks(unsafeBehavior, contextText, context)
                 Log.d("DrivingTipsViewModel", "Generated prompt for AI models")
-                val geminiResponse = geminiCaller.generateContent(prompt)
-                val geminiTipContent = geminiResponse.text?.let { parseTipContent(it, "gemini", profileId) }
+                val geminiTipContent = runCatching {
+                    geminiCaller.generateContent(prompt)
+                }.getOrNull()?.text?.let { parseTipContent(it, "gemini", profileId) }
                 val requestBody = RequestBody(
                     model = "gpt-3.5-turbo",
                     messages = listOf(Message(role = "user", content = prompt)),

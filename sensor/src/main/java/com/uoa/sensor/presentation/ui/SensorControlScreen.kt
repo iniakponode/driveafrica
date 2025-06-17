@@ -308,8 +308,10 @@ import com.uoa.core.apiServices.workManager.UploadAllDataWorker
                                     if (isVehicleMoving) {
                                         tripID = UUID.randomUUID()
                                         prefs.edit().putString(TRIP_ID, tripID.toString()).apply()
-                                        tripViewModel.updateTripId(tripID!!)
-                                        tripViewModel.startTrip(driverProfileId, tripID!!)
+                                        tripID?.let { id ->
+                                            tripViewModel.updateTripId(id)
+                                            tripViewModel.startTrip(driverProfileId, id)
+                                        }
 
                                         // Start DataCollectionService
                                         val sensorIntent = Intent(context, DataCollectionService::class.java).apply {
@@ -330,8 +332,8 @@ import com.uoa.core.apiServices.workManager.UploadAllDataWorker
                                     // End trip and data collection
                                     val tripIdString = prefs.getString(TRIP_ID, null)
                                     tripID = tripIdString?.let { UUID.fromString(it) }
-                                    if (tripID != null) {
-                                        tripViewModel.endTrip(tripID!!)
+                                    tripID?.let { id ->
+                                        tripViewModel.endTrip(id)
                                         prefs.edit().remove("TRIP_ID").apply()
                                         tripViewModel.clearTripID()
 
@@ -339,9 +341,8 @@ import com.uoa.core.apiServices.workManager.UploadAllDataWorker
                                         val sensorDataCollectionIntent = Intent(context, DataCollectionService::class.java)
                                         context.stopService(sensorDataCollectionIntent)
                                         Toast.makeText(context, "Trip Ended Successfully.", Toast.LENGTH_LONG).show()
-
                                         tripID = null
-                                    } else {
+                                    } ?: run {
                                         Toast.makeText(context, "Trip Ended Successfully.", Toast.LENGTH_LONG).show()
                                     }
                                 }

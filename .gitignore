@@ -20,3 +20,4 @@ app/release/
 app/debug/
 *.aab
 *.apkgit-filter-repo.exe
+.kotlin/

@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ListItem
@@ -41,6 +42,8 @@ import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.driverprofile.presentation.ui.composables.TipList
 import com.uoa.driverprofile.presentation.ui.navigation.navigateToDrivingTipDetailsScreen
 import com.uoa.driverprofile.presentation.viewmodel.DrivingTipsViewModel
+import com.uoa.sensor.presentation.ui.sensornavigation.SENSOR_CONTROL_SCREEN_ROUTE
+import com.uoa.nlgengine.presentation.ui.reportNavigation.FILTER_SCREEN_ROUTE
 import java.util.UUID
 
 
@@ -48,7 +51,9 @@ import java.util.UUID
 fun HomeScreen(
     gptDrivingTips: List<DrivingTip>,
     geminiDrivingTips: List<DrivingTip>,
-    onDrivingTipClick: (UUID) -> Unit
+    onDrivingTipClick: (UUID) -> Unit,
+    onRecordTripClick: () -> Unit,
+    onViewReportsClick: () -> Unit
 ) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -92,6 +97,15 @@ fun HomeScreen(
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(onClick = onRecordTripClick, modifier = Modifier.fillMaxWidth()) {
+            Text(text = "Record Trip")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(onClick = onViewReportsClick, modifier = Modifier.fillMaxWidth()) {
+            Text(text = "View Reports")
+        }
     }
 }
 
@@ -119,6 +133,8 @@ fun HomeScreenRoute(
     HomeScreen(
         gptDrivingTips = gpt_drivingTips,
         geminiDrivingTips = gemini_tips,
-        onDrivingTipClick = onDrivingTipClick
+        onDrivingTipClick = onDrivingTipClick,
+        onRecordTripClick = { navController.navigate(SENSOR_CONTROL_SCREEN_ROUTE) },
+        onViewReportsClick = { navController.navigate(FILTER_SCREEN_ROUTE) }
     )
 }

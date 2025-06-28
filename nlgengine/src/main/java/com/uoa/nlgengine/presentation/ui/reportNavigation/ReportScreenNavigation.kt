@@ -8,8 +8,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.uoa.nlgengine.presentation.ui.ReportScreenRoute
 import com.uoa.core.utils.PeriodType
+import com.uoa.core.utils.REPORT_SCREEN_ROUTE
 
-const val REPORT_SCREEN_ROUTE = "reportScreen"
 
 
 fun NavGraphBuilder.reportScreen(navController: NavController) {

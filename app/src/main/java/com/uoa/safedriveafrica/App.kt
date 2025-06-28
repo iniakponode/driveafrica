@@ -1,4 +1,4 @@
-package com.uoa.driveafrica
+package com.uoa.safedriveafrica
 
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory

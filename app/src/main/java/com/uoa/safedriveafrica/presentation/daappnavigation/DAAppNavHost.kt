@@ -1,4 +1,4 @@
-package com.uoa.driveafrica.presentation.daappnavigation
+package com.uoa.safedriveafrica.presentation.daappnavigation
 
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -9,9 +9,9 @@ import com.uoa.alcoholquestionnaire.presentation.ui.questionnairenavigation.alco
 import com.uoa.core.utils.ENTRYPOINT_ROUTE
 import com.uoa.core.utils.ONBOARDING_SCREEN_ROUTE
 import com.uoa.core.utils.WELCOME_ROUTE
-import com.uoa.driveafrica.DAAppState
-import com.uoa.driveafrica.ui.splashscreens.disclaimerScreen
-import com.uoa.driveafrica.ui.splashscreens.welcomeScreen
+import com.uoa.safedriveafrica.DAAppState
+import com.uoa.safedriveafrica.ui.splashscreens.disclaimerScreen
+import com.uoa.safedriveafrica.ui.splashscreens.welcomeScreen
 import com.uoa.driverprofile.presentation.ui.navigation.drivingTipDetailsScreen
 import com.uoa.driverprofile.presentation.ui.navigation.homeScreen
 

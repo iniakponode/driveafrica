@@ -1,4 +1,4 @@
-package com.uoa.driveafrica
+package com.uoa.safedriveafrica
 
 import android.content.Context
 import androidx.compose.runtime.Composable
@@ -22,7 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import com.uoa.driveafrica.presentation.daappnavigation.TopLevelDestinations
+import com.uoa.safedriveafrica.presentation.daappnavigation.TopLevelDestinations
 import com.uoa.nlgengine.presentation.ui.reportNavigation.FILTER_SCREEN_ROUTE
 import com.uoa.nlgengine.presentation.ui.reportNavigation.REPORT_SCREEN_ROUTE
 import com.uoa.sensor.presentation.ui.sensornavigation.SENSOR_CONTROL_SCREEN_ROUTE

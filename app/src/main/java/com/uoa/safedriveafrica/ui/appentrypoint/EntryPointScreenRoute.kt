@@ -1,4 +1,4 @@
-package com.uoa.driveafrica.ui.appentrypoint
+package com.uoa.safedriveafrica.ui.appentrypoint
 
 import android.content.Context
 import androidx.compose.runtime.Composable

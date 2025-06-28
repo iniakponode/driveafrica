@@ -1,4 +1,4 @@
-package com.uoa.driveafrica.presentation.daappnavigation
+package com.uoa.safedriveafrica.presentation.daappnavigation
 
 import android.content.Context
 import androidx.compose.foundation.layout.Box

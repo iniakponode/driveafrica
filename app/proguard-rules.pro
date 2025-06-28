@@ -16,7 +16,7 @@
 # debugging stack traces.
 #-keepattributes SourceFile,LineNumberTable
 
--keep class com.uoa.driveafrica.core.model.** { public *; }
+-keep class com.uoa.safedriveafrica.core.model.** { public *; }
 -keepattributes Signature
 
 # If you keep the line number information, uncomment this to

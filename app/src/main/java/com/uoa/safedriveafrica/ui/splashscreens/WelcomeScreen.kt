@@ -1,4 +1,4 @@
-package com.uoa.driveafrica.ui.splashscreens
+package com.uoa.safedriveafrica.ui.splashscreens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState

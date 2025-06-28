@@ -1,4 +1,4 @@
-package com.uoa.driveafrica
+package com.uoa.safedriveafrica
 
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -28,9 +28,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
-import com.uoa.driveafrica.presentation.daappnavigation.DAAppNavHost
-import com.uoa.driveafrica.presentation.daappnavigation.TopLevelDestinations
-import com.uoa.driveafrica.presentation.daappnavigation.DaAppNavigationBarItem
+import com.uoa.safedriveafrica.presentation.daappnavigation.DAAppNavHost
+import com.uoa.safedriveafrica.presentation.daappnavigation.TopLevelDestinations
+import com.uoa.safedriveafrica.presentation.daappnavigation.DaAppNavigationBarItem
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable

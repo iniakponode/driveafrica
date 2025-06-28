@@ -1,4 +1,4 @@
-package com.uoa.driveafrica
+package com.uoa.safedriveafrica
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,7 +10,7 @@ import androidx.work.WorkManager
 import com.uoa.core.apiServices.workManager.UploadAllDataWorker
 //import com.uoa.core.utils.TimeZoneMonitor
 import com.uoa.core.utils.internetconnectivity.NetworkMonitor
-//import com.uoa.driveafrica.ui.daappnavigation.AppNavigation
+//import com.uoa.safedriveafrica.ui.daappnavigation.AppNavigation
 //import com.uoa.sensor.presentation.ui.SensorActivity
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.concurrent.TimeUnit

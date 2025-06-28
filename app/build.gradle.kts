@@ -9,11 +9,11 @@ plugins {
 }
 
 android {
-    namespace = "com.uoa.driveafrica"
+    namespace = "com.uoa.safedriveafrica"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.uoa.driveafrica"
+        applicationId = "com.uoa.safedriveafrica"
         minSdk = 26
         targetSdk = 34
         versionCode = 11

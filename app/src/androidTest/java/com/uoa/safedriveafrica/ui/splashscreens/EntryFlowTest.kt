@@ -1,11 +1,11 @@
-package com.uoa.driveafrica.ui.splashscreens
+package com.uoa.safedriveafrica.ui.splashscreens
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.uoa.driveafrica.MainActivity
+import com.uoa.safedriveafrica.MainActivity
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith

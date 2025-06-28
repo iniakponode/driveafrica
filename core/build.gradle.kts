@@ -22,15 +22,19 @@ android {
             arg("room.schemaLocation", "$projectDir/schemas")
         }
 
-        // Get the API key from local.properties
+        // Load API keys from local.properties or environment variables
         val localProperties = Properties().apply {
             val localPropertiesFile = rootProject.file("local.properties")
             if (localPropertiesFile.exists()) {
                 localPropertiesFile.inputStream().use { load(it) }
             }
         }
-        buildConfigField("String", "CHAT_GPT_API_KEY", "\"${localProperties["CHAT_GPT_API_KEY"]}\"")
-        buildConfigField("String", "GEMINI_API_KEY", "\"${localProperties["GEMINI_API_KEY"]}\"")
+
+        val chatGptKey = (localProperties["CHAT_GPT_API_KEY"] ?: System.getenv("CHAT_GPT_API_KEY")) as String? ?: ""
+        val geminiKey = (localProperties["GEMINI_API_KEY"] ?: System.getenv("GEMINI_API_KEY")) as String? ?: ""
+
+        buildConfigField("String", "CHAT_GPT_API_KEY", "\"$chatGptKey\"")
+        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
     }
 
     buildTypes {

@@ -19,6 +19,7 @@ import com.google.accompanist.permissions.*
 import com.uoa.core.utils.DRIVER_PROFILE_ID
 import com.uoa.sensor.presentation.viewModel.SensorViewModel
 import com.uoa.sensor.presentation.viewModel.TripViewModel
+import com.uoa.sensor.presentation.viewModel.RoadViewModel
 import com.uoa.sensor.services.VehicleMovementService
 import com.uoa.sensor.services.VehicleMovementServiceUpdate
 
@@ -34,7 +35,8 @@ import java.util.UUID
 fun SensorControlScreenUpdate(
     driverProfileId: UUID,
     sensorViewModel: SensorViewModel = hiltViewModel(),
-    tripViewModel: TripViewModel = hiltViewModel()
+    tripViewModel: TripViewModel = hiltViewModel(),
+    roadViewModel: RoadViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
 
@@ -77,6 +79,14 @@ fun SensorControlScreenUpdate(
     val collecting by sensorViewModel.collectionStatus.collectAsState()
     val readableAccel by sensorViewModel.readableAcceleration
     val movementType by sensorViewModel.movementType
+
+    // Sample coordinates used to preview nearby roads on the map
+    val sampleLatitude = 6.5244
+    val sampleLongitude = 3.3792
+    val roads by roadViewModel.nearbyRoads.collectAsState()
+    LaunchedEffect(Unit) {
+        roadViewModel.fetchNearbyRoads(sampleLatitude, sampleLongitude, 0.05)
+    }
 
     Column(
         modifier = Modifier
@@ -187,5 +197,13 @@ fun SensorControlScreenUpdate(
                 Text("Stop Monitoring")
             }
         }
+
+        Spacer(Modifier.height(16.dp))
+        MapComposable(
+            context = context,
+            latitude = sampleLatitude,
+            longitude = sampleLongitude,
+            roads = roads
+        )
     }
 }

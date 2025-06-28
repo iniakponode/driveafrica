@@ -1,4 +1,4 @@
-package com.uoa.driveafrica.presentation.daappnavigation
+package com.uoa.safedriveafrica.presentation.daappnavigation
 
 import android.content.Context
 import androidx.compose.foundation.layout.Box
@@ -13,9 +13,13 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.uoa.alcoholquestionnaire.presentation.ui.questionnairenavigation.navigateToQuestionnaire
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
+import com.uoa.core.utils.Constants.Companion.LAST_QUESTIONNAIRE_DAY
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.ENTRYPOINT_ROUTE
 import com.uoa.driverprofile.presentation.ui.navigation.navigateToOnboardingScreen
+import com.uoa.driverprofile.presentation.ui.navigation.navigateToHomeScreen
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 fun NavGraphBuilder.entryPointScreen(
     navController: NavController
@@ -24,6 +28,8 @@ fun NavGraphBuilder.entryPointScreen(
         val context = LocalContext.current
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val savedProfileId = prefs.getString(DRIVER_PROFILE_ID, null)
+        val lastDay = prefs.getString(LAST_QUESTIONNAIRE_DAY, null)
+        val today = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
 
         // We only run this logic once
         LaunchedEffect(Unit) {
@@ -33,9 +39,27 @@ fun NavGraphBuilder.entryPointScreen(
                     popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
                 }
             } else {
-                // Profile exists => go to questionnaire every time
-                navController.navigateToQuestionnaire {
-                    popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
+                val shouldShowQuestionnaire = lastDay != today
+                if (shouldShowQuestionnaire) {
+                    prefs.edit().putString(LAST_QUESTIONNAIRE_DAY, today).apply()
+                    navController.navigateToQuestionnaire {
+                        popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
+                    }
+                } else {
+                    val profileUuid = try {
+                        java.util.UUID.fromString(savedProfileId)
+                    } catch (e: IllegalArgumentException) {
+                        null
+                    }
+                    if (profileUuid != null) {
+                        navController.navigateToHomeScreen(profileUuid) {
+                            popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
+                        }
+                    } else {
+                        navController.navigateToQuestionnaire {
+                            popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
+                        }
+                    }
                 }
             }
         }

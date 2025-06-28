@@ -1,6 +1,6 @@
-package com.uoa.driveafrica.presentation.daappnavigation
+package com.uoa.safedriveafrica.presentation.daappnavigation
 
-import com.uoa.driveafrica.R
+import com.uoa.safedriveafrica.R
 
 // Define the top level destinations for the app
 enum class TopLevelDestinations(

@@ -1,4 +1,4 @@
-package com.uoa.driveafrica.presentation.daappnavigation
+package com.uoa.safedriveafrica.presentation.daappnavigation
 
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material3.MaterialTheme

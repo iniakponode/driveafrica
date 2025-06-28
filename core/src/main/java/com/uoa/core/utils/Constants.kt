@@ -7,5 +7,6 @@ class Constants {
         const val DRIVER_EMAIL_ID = "driver_email_id"
         const val TRIP_ID = "trip_id"
         const val QUESTIONNAIRE_COMPLETED = "questionnaireCompleted"
+        const val LAST_QUESTIONNAIRE_DAY = "lastQuestionnaireDay"
     }
 }

@@ -42,6 +42,7 @@ Alternatively, you can export the environment variables `GEMINI_API_KEY` and `CH
 - Periodically uploads sensor and location data to the Safe Drive Africa backend via `UploadAllDataWorker`.
 - Uses a generative model (ChatGPT or Gemini) to craft custom feedback reports.
 - Includes an alcohol questionnaire and driver profiling to enrich the data set.
+- The alcohol questionnaire appears at most once per day when you open the app.
 - Part of a PhD project at the University of Aberdeen, Scotland, as introduced on the welcome screen.
 
 ## Privacy and data usage

@@ -52,7 +52,7 @@ fun NavGraphBuilder.entryPointScreen(
                         null
                     }
                     if (profileUuid != null) {
-                        navController.navigateToHomeScreen(profileUuid) {
+                        navController.navigate("homeScreen/$profileUuid") {
                             popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
                         }
                     } else {

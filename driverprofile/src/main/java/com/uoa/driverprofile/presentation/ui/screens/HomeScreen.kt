@@ -42,8 +42,8 @@ import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.driverprofile.presentation.ui.composables.TipList
 import com.uoa.driverprofile.presentation.ui.navigation.navigateToDrivingTipDetailsScreen
 import com.uoa.driverprofile.presentation.viewmodel.DrivingTipsViewModel
-import com.uoa.sensor.presentation.ui.sensornavigation.SENSOR_CONTROL_SCREEN_ROUTE
-import com.uoa.nlgengine.presentation.ui.reportNavigation.FILTER_SCREEN_ROUTE
+import com.uoa.core.utils.SENSOR_CONTROL_SCREEN_ROUTE
+import com.uoa.core.utils.FILTER_SCREEN_ROUTE
 import java.util.UUID
 
 

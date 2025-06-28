@@ -23,9 +23,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import com.uoa.safedriveafrica.presentation.daappnavigation.TopLevelDestinations
-import com.uoa.nlgengine.presentation.ui.reportNavigation.FILTER_SCREEN_ROUTE
-import com.uoa.nlgengine.presentation.ui.reportNavigation.REPORT_SCREEN_ROUTE
-import com.uoa.sensor.presentation.ui.sensornavigation.SENSOR_CONTROL_SCREEN_ROUTE
+import com.uoa.core.utils.FILTER_SCREEN_ROUTE
+import com.uoa.core.utils.REPORT_SCREEN_ROUTE
+import com.uoa.core.utils.SENSOR_CONTROL_SCREEN_ROUTE
 import android.app.Application
 import androidx.compose.ui.platform.LocalContext
 import com.uoa.core.utils.ENTRYPOINT_ROUTE

@@ -72,10 +72,10 @@ class TripViewModel @Inject constructor(
             val tripCreate = TripCreate(
                 id = tripId,
                 driverProfileId = driverProfileId,
-                start_date = isoStartDate,
-                end_date = null,
-                start_time = startTime,
-                end_time = null,
+                startDate = isoStartDate,
+                endDate = null,
+                startTime = startTime,
+                endTime = null,
                 influence = "",
                 sync = true
             )
@@ -224,10 +224,10 @@ class TripViewModel @Inject constructor(
         val tripCreate = TripCreate(
             id = updatedTrip.id,
             driverProfileId = updatedTrip.driverPId,
-            start_date = isoStartDate,
-            end_date = isoEndDate,
-            start_time = updatedTrip.startTime, // BigInteger on server
-            end_time = endTime,                 // Current time as BigInteger
+            startDate = isoStartDate,
+            endDate = isoEndDate,
+            startTime = updatedTrip.startTime, // BigInteger on server
+            endTime = endTime,                 // Current time as BigInteger
             influence = influenceLabel,
             sync = true
         )

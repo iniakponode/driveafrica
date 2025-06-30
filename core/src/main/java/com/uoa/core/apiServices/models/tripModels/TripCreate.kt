@@ -7,12 +7,14 @@ import java.util.UUID
 data class TripCreate(
     val id: UUID,
     val driverProfileId: UUID?,
-    @SerializedName("start_date")
-    val start_date: String?=null, // ISO 8601 format
-    @SerializedName("end_date")
-    val end_date: String?=null, // Optional
-    val start_time: Long?=null,
-    val end_time: Long?=null, // Optional
+    @SerializedName("startDate")
+    val startDate: String? = null, // ISO 8601 format
+    @SerializedName("endDate")
+    val endDate: String? = null, // Optional
+    @SerializedName("startTime")
+    val startTime: Long? = null,
+    @SerializedName("endTime")
+    val endTime: Long? = null, // Optional
     val sync: Boolean,
     val influence: String
 )

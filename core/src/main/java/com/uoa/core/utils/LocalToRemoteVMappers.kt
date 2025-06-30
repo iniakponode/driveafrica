@@ -37,24 +37,24 @@ fun Trip.toTripCreate(): TripCreate {
     val isoStartDate = dateFormatUTC.format(startDate!!)
     val isoEndDate = endDate?.let { dateFormatUTC.format(it) }
     return TripCreate(
-        id= id,
+        id = id,
         driverProfileId = driverPId,
-        start_date = isoStartDate,
-        end_date = isoEndDate!!,
-        start_time = startTime,
-        end_time = endTime,
+        startDate = isoStartDate,
+        endDate = isoEndDate!!,
+        startTime = startTime,
+        endTime = endTime,
         sync = sync,
-        influence=influence!!
+        influence = influence!!
     )
 }
 
 fun TripCreate.toTrip(): Trip {
-    val parsedStartDate = dateFormatUTC.parse(start_date)
-    val parsedEndDate = end_date.let { dateFormatUTC.parse(it) }
+    val parsedStartDate = dateFormatUTC.parse(startDate)
+    val parsedEndDate = endDate.let { dateFormatUTC.parse(it) }
     return Trip(
         driverPId = driverProfileId,
-        startTime = start_time!!,
-        endTime = end_time,
+        startTime = startTime!!,
+        endTime = endTime,
         startDate = parsedStartDate,
         endDate = parsedEndDate,
         id = UUID.randomUUID(), // Adjust as needed if you have a way to set the ID

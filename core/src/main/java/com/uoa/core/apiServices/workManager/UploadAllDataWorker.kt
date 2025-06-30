@@ -334,10 +334,10 @@ class UploadAllDataWorker @AssistedInject constructor(
             TripCreate(
                 id = trip.id,
                 driverProfileId = trip.driverPId,
-                start_date = trip.startDate?.let { DateConversionUtils.dateToString(it) },
-                end_date = trip.endDate?.let { DateConversionUtils.dateToString(it) },
-                start_time = trip.startTime,
-                end_time = trip.endTime,
+                startDate = trip.startDate?.let { DateConversionUtils.dateToString(it) },
+                endDate = trip.endDate?.let { DateConversionUtils.dateToString(it) },
+                startTime = trip.startTime,
+                endTime = trip.endTime,
                 sync = true,
                 influence = trip.influence!!
             )
@@ -453,10 +453,10 @@ class UploadAllDataWorker @AssistedInject constructor(
             val tripUpdate = TripCreate(
                 id = trip.id,
                 driverProfileId = trip.driverPId,
-                start_date = isoStartDate,
-                end_date = isoEndDate,
-                start_time = trip.startTime,
-                end_time = trip.endTime,
+                startDate = isoStartDate,
+                endDate = isoEndDate,
+                startTime = trip.startTime,
+                endTime = trip.endTime,
                 sync = true, // Indicate that after upload, sync should be true
                 influence = trip.influence!!
             )

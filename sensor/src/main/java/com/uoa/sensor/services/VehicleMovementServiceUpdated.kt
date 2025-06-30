@@ -172,7 +172,16 @@ class VehicleMovementServiceUpdate : LifecycleService() {
 
             // Remote create
             val isoDate = utcIso(startTime)
-            val payload = TripCreate(tripId, driverProfileId, isoDate, null, startTime, null,true, "")
+            val payload = TripCreate(
+                id = tripId,
+                driverProfileId = driverProfileId,
+                startDate = isoDate,
+                endDate = null,
+                startTime = startTime,
+                endTime = null,
+                sync = true,
+                influence = ""
+            )
             tripApiRepository.createTrip(payload)
 
             // Update state flows
@@ -215,10 +224,10 @@ class VehicleMovementServiceUpdate : LifecycleService() {
             val payload = TripCreate(
                 id = tripId,
                 driverProfileId = localTrip.driverPId,
-                start_date = utcIso(localTrip.startDate!!.time),
-                end_date = utcIso(System.currentTimeMillis()),
-                start_time = localTrip.startTime,
-                end_time = System.currentTimeMillis(),
+                startDate = utcIso(localTrip.startDate!!.time),
+                endDate = utcIso(System.currentTimeMillis()),
+                startTime = localTrip.startTime,
+                endTime = System.currentTimeMillis(),
                 influence = label,
                 sync = true
             )

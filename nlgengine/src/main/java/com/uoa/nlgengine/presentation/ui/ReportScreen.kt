@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -174,10 +175,16 @@ fun ReportScreen(
                             )
                             Text(
                                 text = reportContent,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
                                 style = MaterialTheme.typography.bodyLarge.copy(
-                                    lineHeight = 24.sp,
+                                    fontSize = 16.sp,
+                                    lineHeight = 22.sp,
                                     color = Color.Black
-                                )
+                                ),
+                                textAlign = TextAlign.Justify,
+                                maxLines = Int.MAX_VALUE
                             )
                         }
                     }

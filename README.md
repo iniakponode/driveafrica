@@ -55,3 +55,12 @@ Privacy Policy link – `https://datahub.safedriveafrica.com/privacy`
 
 See `DisclaimerScreen.kt` lines 95‑101 for the implementation.
 
+## Behavioural and persuasive design
+
+The driving reports now employ culturally familiar language for Nigerian drivers while remaining accessible to Cameroonian and Ghanaian users. The report prompt integrates behaviour‑change theories to encourage safer driving:
+
+- **Theory of Planned Behavior** – emphasises attitudes toward safety, the influence of friends and family (subjective norms), and the driver's ability to change (perceived behavioural control).
+- **Cialdini's Principles** – uses social proof to show that other local drivers are improving and highlights potential losses (loss aversion) from risky habits.
+
+By weaving these elements into a concise 150–180 word narrative, the report becomes more persuasive and easier to read, helping drivers absorb the guidance without feeling overwhelmed.
+

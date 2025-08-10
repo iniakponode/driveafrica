@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Looper
+import android.annotation.SuppressLint
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
@@ -16,12 +18,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.accompanist.permissions.*
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.uoa.core.utils.DRIVER_PROFILE_ID
 import com.uoa.sensor.presentation.viewModel.SensorViewModel
 import com.uoa.sensor.presentation.viewModel.TripViewModel
 import com.uoa.sensor.presentation.viewModel.RoadViewModel
-import com.uoa.sensor.services.VehicleMovementService
 import com.uoa.sensor.services.VehicleMovementServiceUpdate
+import org.osmdroid.util.GeoPoint
 
 import java.util.UUID
 
@@ -80,12 +87,35 @@ fun SensorControlScreenUpdate(
     val readableAccel by sensorViewModel.readableAcceleration
     val movementType by sensorViewModel.movementType
 
-    // Sample coordinates used to preview nearby roads on the map
-    val sampleLatitude = 6.5244
-    val sampleLongitude = 3.3792
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+    var currentLocation by remember { mutableStateOf<GeoPoint?>(null) }
+    val pathPoints = remember { mutableStateListOf<GeoPoint>() }
     val roads by roadViewModel.nearbyRoads.collectAsState()
-    LaunchedEffect(Unit) {
-        roadViewModel.fetchNearbyRoads(sampleLatitude, sampleLongitude, 0.05)
+
+    // Listen for location updates once permissions are granted
+    @SuppressLint("MissingPermission")
+    DisposableEffect(permissionsGranted) {
+        if (permissionsGranted) {
+            val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000L).build()
+            val callback = object : LocationCallback() {
+                override fun onLocationResult(result: LocationResult) {
+                    result.lastLocation?.let { location ->
+                        val point = GeoPoint(location.latitude, location.longitude)
+                        currentLocation = point
+                        pathPoints += point
+                        roadViewModel.fetchNearbyRoads(location.latitude, location.longitude, 0.05)
+                    }
+                }
+            }
+            fusedLocationClient.requestLocationUpdates(request, callback, Looper.getMainLooper())
+            onDispose { fusedLocationClient.removeLocationUpdates(callback) }
+        } else {
+            onDispose { }
+        }
+    }
+
+    val distanceTravelled = remember(pathPoints.toList()) {
+        pathPoints.zipWithNext { a, b -> a.distanceToAsDouble(b) }.sum()
     }
 
     Column(
@@ -199,11 +229,22 @@ fun SensorControlScreenUpdate(
         }
 
         Spacer(Modifier.height(16.dp))
-        MapComposable(
-            context = context,
-            latitude = sampleLatitude,
-            longitude = sampleLongitude,
-            roads = roads
-        )
+        currentLocation?.let { location ->
+            MapComposable(
+                context = context,
+                latitude = location.latitude,
+                longitude = location.longitude,
+                roads = roads,
+                path = pathPoints,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(250.dp)
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = String.format("Distance travelled: %.2f km", distanceTravelled / 1000),
+                modifier = Modifier.align(Alignment.Start)
+            )
+        }
     }
 }

@@ -4,12 +4,14 @@ import android.content.Context
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.gson.GsonBuilder
 import com.uoa.core.network.NetworkMonitorImpl
+import com.uoa.core.network.NetworkMonitor
 import com.uoa.core.network.apiservices.OSMRoadApiService
 import com.uoa.core.network.apiservices.ChatGPTApiService
 import com.uoa.core.network.apiservices.GeminiApiService
+import com.uoa.core.network.DaDispatchers
+import com.uoa.core.network.Dispatcher
 import com.uoa.core.nlg.repository.NLGEngineRepository
 import com.uoa.core.nlg.lngrepositoryimpl.remote.nlgApiRepositoryImpl.NLGEngineRepositoryImpl
-import com.uoa.core.utils.internetconnectivity.NetworkMonitor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,6 +26,7 @@ import com.uoa.core.network.apiservices.OSMSpeedLimitApiService
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineDispatcher
 /**
  * NetworkModule: Provides Retrofit instances and API services.
  *
@@ -204,7 +207,10 @@ object NetworkModule {
     // Provide network monitor (example)
     @Provides
     @Singleton
-    fun provideNetworkMonitor(@ApplicationContext context: Context): NetworkMonitor {
-        return NetworkMonitorImpl(context)
+    fun provideNetworkMonitor(
+        @ApplicationContext context: Context,
+        @Dispatcher(DaDispatchers.IO) ioDispatcher: CoroutineDispatcher,
+    ): NetworkMonitor {
+        return NetworkMonitorImpl(context, ioDispatcher)
     }
 }

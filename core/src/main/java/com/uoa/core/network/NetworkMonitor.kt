@@ -1,4 +1,4 @@
-package com.uoa.core.utils.internetconnectivity
+package com.uoa.core.network
 
 import kotlinx.coroutines.flow.Flow
 

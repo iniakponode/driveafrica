@@ -1,5 +1,4 @@
 package com.uoa.sensor.presentation.viewModel
-import android.content.Context
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -11,16 +10,13 @@ import com.uoa.core.database.repository.DriverProfileRepository
 import com.uoa.core.database.repository.TripDataRepository
 import com.uoa.core.mlclassifier.data.InferenceResult
 import com.uoa.core.model.Trip
-import com.uoa.core.notifications.VehicleNotificationManager
 import com.uoa.core.utils.Resource
-import com.uoa.core.utils.isConnectedToInternet
 import com.uoa.core.utils.toTrip
 import com.uoa.ml.domain.RunClassificationUseCase
 import com.uoa.sensor.domain.usecases.trip.GetTripByIdUseCase
 import com.uoa.sensor.domain.usecases.trip.InsertTripUseCase
 import com.uoa.sensor.domain.usecases.trip.UpdateTripUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

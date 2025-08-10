@@ -1,12 +1,9 @@
 package com.uoa.core.apiServices.workManager
 
 import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.uoa.core.apiServices.services.rawSensorApiService.RawSensorDataApiRepository
 import com.uoa.core.database.repository.AIModelInputRepository
 import com.uoa.core.database.repository.LocationRepository
 import com.uoa.core.database.repository.RawSensorDataRepository

@@ -25,8 +25,9 @@ import com.uoa.core.utils.toQuestionnaire
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.Date
 import java.util.UUID
-import com.uoa.core.utils.isConnectedToInternet
 import kotlinx.coroutines.Job
+import com.uoa.core.network.NetworkMonitor
+import kotlinx.coroutines.flow.first
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -37,7 +38,8 @@ import kotlin.coroutines.cancellation.CancellationException
 class QuestionnaireViewModel @javax.inject.Inject constructor(
     private val localRepository: QuestionnaireRepository,
     private val remoteRepository: QuestionnaireApiRepository,
-    application: Application
+    application: Application,
+    private val networkMonitor: NetworkMonitor,
 ) : ViewModel() {
 
     private val appContext = application.applicationContext
@@ -153,7 +155,7 @@ class QuestionnaireViewModel @javax.inject.Inject constructor(
                 _uploadState.value = Resource.Success(Unit)
 
                 // Attempt upload if network is available
-                if (isConnectedToInternet(appContext)) {
+                if (networkMonitor.isOnline.first()) {
                     try {
                         val originalDate: Date? = DateConversionUtils.stringToDate(response.date)
                         val formattedDate = originalDate?.let { sdf.format(it) } ?: response.date

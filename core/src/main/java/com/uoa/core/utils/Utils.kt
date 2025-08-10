@@ -1,12 +1,5 @@
 package com.uoa.core.utils
 
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkInfo
-import androidx.work.WorkManager
-import com.uoa.core.apiServices.workManager.UploadAllDataWorker
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.ZoneId
@@ -14,7 +7,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import java.util.concurrent.TimeUnit
 
 fun buildSpeedLimitQuery(lat: Double, lon: Double, radius: Double): String {
     return """
@@ -67,12 +59,3 @@ fun dateToLocalDate(date: Date): LocalDate {
 //        }
 //}
 
-/**
- * Checks if the device is connected to the internet.
- */
-fun isConnectedToInternet(context: Context): Boolean {
-    val connectivityManager =
-        context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-    val capabilities = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
-    return capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-}

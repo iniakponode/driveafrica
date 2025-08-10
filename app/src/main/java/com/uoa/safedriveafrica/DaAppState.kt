@@ -15,7 +15,7 @@ import androidx.navigation.navOptions
 import com.uoa.core.ui.TrackDisposableJank
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
-import com.uoa.core.utils.internetconnectivity.NetworkMonitor
+import com.uoa.core.network.NetworkMonitor
 //import com.uoa.core.utils.TimeZoneMonitor
 import com.uoa.core.utils.HOME_SCREEN_ROUTE
 import kotlinx.coroutines.CoroutineScope

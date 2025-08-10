@@ -340,13 +340,13 @@ class NLGEngineViewModel @Inject constructor(
 
         return buildString {
             append("$periodText\n\n")
-            append("You are a Nigerian driving safety specialist. Based on the provided data, generate a concise (150 words) personalised driving behavior report for the driver that:\n")
-            append("• Recognizes positive driving habits.\n")
-            append("• Suggests actionable safety improvements without harsh criticism.\n")
-            append("• Uses the given numeric data for offences, fines, and laws (decoded from Base64 JSON).\n")
-            append("• References specific dates and a location for the most prominent unsafe behavior.\n")
-            append("• Integrates key aspects of the Theory of Planned Behavior in plain language.\n")
-            append("• Signs off as 'Your Driving Safety Specialist Agent'.\n\n")
+            append("You are a friendly driving safety coach speaking mainly to Nigerian drivers, while remaining understandable in Cameroon and Ghana. Using the statistics below, craft a complete 150-180 word report that never ends abruptly:\n")
+            append("• Use culturally familiar terms and relatable examples from West Africa.\n")
+            append("• Praise good habits and offer actionable, persuasive tips for improvement.\n")
+            append("• Apply elements from the Theory of Planned Behavior—attitudes, subjective norms and perceived behavioural control—and Cialdini's principles like Social Proof and Loss Aversion.\n")
+            append("• Reference the exact numbers, dates and road location of the most frequent unsafe behaviour.\n")
+            append("• Keep the tone supportive and sign off as 'Your Driving Safety Specialist Agent'.\n")
+            append("• Ensure the response forms a complete narrative, not a list of bullets or an unfinished sentence.\n\n")
             append("Report Statistics:\n")
             append("Total Unsafe Behaviors: ${reportStatistics.totalIncidences}\n")
             if (reportStatistics.mostFrequentUnsafeBehaviour != null &&

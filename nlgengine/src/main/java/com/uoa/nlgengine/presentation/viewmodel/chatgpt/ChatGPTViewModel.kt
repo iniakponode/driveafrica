@@ -230,30 +230,29 @@ fun promptChatGPTForResponse(prompt: String, periodType: PeriodType, driverProfi
                     Message(role = "user", content = prompt)
                 )
 
-                // Reduce token count by using a lower `maxTokens`
                 val requestBody = RequestBody(
                     model = "gpt-4-turbo",
                     messages = messages,
-                    maxTokens = 150, // Reduced from 200
+                    maxTokens = 350,
                     temperature = 0f
                 )
 
                 val response = nlgEngineRepository.sendChatGPTPrompt(requestBody)
                 val initialReply = response.choices.firstOrNull()?.message?.content ?: ""
 
-                // Reflection Step - Use a shorter request
+                // Reflection step ensures final reply is coherent and complete
                 messages.add(Message(role = "assistant", content = initialReply))
                 messages.add(
                     Message(
                         role = "user",
-                        content = "Revise the response if needed to fully align with data. Do not exceed 200 words."
+                        content = "Revise the response to fully match the data and deliver a complete persuasive report of 150-180 words."
                     )
                 )
 
                 val reflectionRequestBody = RequestBody(
-                    model = "gpt-4o-mini", // Use a smaller model
+                    model = "gpt-4o-mini",
                     messages = messages,
-                    maxTokens = 200, // Reduced from 300
+                    maxTokens = 350,
                     temperature = 0f
                 )
 

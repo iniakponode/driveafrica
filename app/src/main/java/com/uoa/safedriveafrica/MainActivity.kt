@@ -9,7 +9,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.uoa.core.apiServices.workManager.UploadAllDataWorker
 //import com.uoa.core.utils.TimeZoneMonitor
-import com.uoa.core.utils.internetconnectivity.NetworkMonitor
+import com.uoa.core.network.NetworkMonitor
 //import com.uoa.safedriveafrica.ui.daappnavigation.AppNavigation
 //import com.uoa.sensor.presentation.ui.SensorActivity
 import dagger.hilt.android.AndroidEntryPoint

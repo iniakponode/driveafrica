@@ -1,8 +1,6 @@
 package com.uoa.core.apiServices.workManager
 
 import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
@@ -44,15 +42,16 @@ import com.uoa.core.notifications.VehicleNotificationManager
 import com.uoa.core.utils.DateConversionUtils
 import com.uoa.core.utils.PreferenceUtils
 import com.uoa.core.utils.Resource
-import com.uoa.core.utils.isConnectedToInternet
 import com.uoa.core.utils.toDomainModel
 import com.uoa.core.utils.toEntity
 import com.uoa.core.utils.toReportStatisticsCreate
 import com.uoa.core.utils.toTrip
+import com.uoa.core.network.NetworkMonitor
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -86,6 +85,7 @@ class UploadAllDataWorker @AssistedInject constructor(
     private val questionnaireLocalRepository: QuestionnaireRepository,
     private val questionnaireApiRepository: QuestionnaireApiRepository,
     private val vehicleNotificationManager: VehicleNotificationManager,
+    private val networkMonitor: NetworkMonitor,
 ) : CoroutineWorker(appContext, workerParams) {
 
     // Prepare date/time fields
@@ -102,7 +102,7 @@ class UploadAllDataWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         // Check network connectivity
-        if (!isConnectedToInternet(applicationContext)) {
+        if (!networkMonitor.isOnline.first()) {
             vehicleNotificationManager.displayNotification(
                 title = "Upload Failed",
                 message = "No internet connectivity. Please check your network."
@@ -138,18 +138,6 @@ class UploadAllDataWorker @AssistedInject constructor(
         Log.d("UploadAllDataWorker", "All data uploads succeeded.")
         Result.success()
     }
-
-//    /**
-//     * Helper function to check network connectivity
-//     */
-//    private fun isConnectedToInternet(context: Context): Boolean {
-//        val connectivityManager =
-//            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-//        val capabilities =
-//            connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
-//        return capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-//    }
-
     /****
      * Upload Single Driver Profile
      ****/

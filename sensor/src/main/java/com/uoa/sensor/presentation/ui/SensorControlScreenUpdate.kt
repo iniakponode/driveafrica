@@ -205,7 +205,7 @@ fun SensorControlScreenUpdate(
                 )
             }
             movementType !in listOf("stationary", "walking", "running", "vehicle") && collecting -> {
-                Text("Unknown movement detected so trips is stopped.\nNow processing collected data from last trip.",
+                Text("Unknown movement detected so trip is stopped.\nNow processing collected data from last trip.",
                     Modifier.align(Alignment.CenterHorizontally)
                 )
             }

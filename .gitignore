@@ -1,7 +1,7 @@
 *.iml
 .gradle
-/local.properties
-/apiKeys.properties
+local.properties
+apiKeys.properties
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml
@@ -13,11 +13,12 @@
 /captures
 .externalNativeBuild
 .cxx
-local.properties
 /api/.env
 core/src/main/assets/minilm.onnx
 app/release/
 app/debug/
+app/debug/app-debug.apk
 *.aab
-*.apkgit-filter-repo.exe
+*.apk
+git-filter-repo.exe
 .kotlin/

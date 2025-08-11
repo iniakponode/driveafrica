@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
@@ -19,6 +22,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -37,26 +42,35 @@ fun DAAppTopNavBar(
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(start = 5.dp)
+                    .padding(start = 5.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = navigateBack) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,  // Use Default if AutoMirrored is not available
+                        imageVector = Icons.Default.ArrowBack,
                         contentDescription = "Back",
                         tint = Color.White
                     )
                 }
 
-                // Making the Text clickable to navigate to the home screen
-                Text(
+                Row(
                     modifier = Modifier
                         .weight(1f)
                         .clickable { navigateHome() }
                         .padding(start = 10.dp),
-                    text = "Safe Drive Africa",
-                    color = Color.White,
-                    style = MaterialTheme.typography.headlineSmall  // Updated for consistency with Compose Material Typography
-                )
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Image(
+                        painter = painterResource(id = R.mipmap.ic_sda_ic_app),
+                        contentDescription = "App Logo"
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Safe Drive Africa",
+                        color = Color.White,
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                }
 
                 IconButton(onClick = { /*TODO: Handle user icon click*/ }) {
                     Icon(

@@ -8,6 +8,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -77,6 +80,8 @@ fun AlcoholQuestionnaireScreen(
             Text("Alcohol Consumption Questionnaire", fontSize = 18.sp)
             Spacer(modifier = Modifier.height(2.dp))
             Button(onClick = onCancel) {
+                Icon(Icons.Filled.Close, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
                 Text("Cancel")
             }
         }
@@ -215,6 +220,8 @@ fun AlcoholQuestionnaireScreen(
             },
             modifier = Modifier.align(Alignment.CenterHorizontally)
         ) {
+            Icon(Icons.Filled.Check, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
             Text("Submit")
         }
     }

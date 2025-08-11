@@ -2,11 +2,14 @@ package com.uoa.safedriveafrica
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -78,7 +82,16 @@ fun DAApp(appState: DAAppState) {
 @Composable
 fun DATopBar(appState: DAAppState) {
     TopAppBar(
-        title = { Text(stringResource(id = com.uoa.dbda.R.string.app_name)) },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(id = com.uoa.core.R.mipmap.ic_sda_ic_app),
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(id = com.uoa.dbda.R.string.app_name))
+            }
+        },
         navigationIcon = {
             if (appState.canNavigateBack()) {
                 IconButton(onClick = { appState.navController.popBackStack() }) {

@@ -1,15 +1,16 @@
 package com.uoa.core.apiServices.models.aiModelInputModels
 
+import com.google.gson.annotations.SerializedName
 import java.util.UUID
 
 // AIModelInputCreate.kt
 data class AIModelInputCreate(
     val id: UUID,
     val trip_id: UUID,
-    val driver_profile_id: UUID,
+    @SerializedName("driver_profile_id")
+    val driverProfileId: UUID,
     val timestamp: String, // ISO 8601 format
-    val startTimeStamp: String, // Iso 8601 format
-    val endTimeStamp: String,
+    val start_time: Long,
     val date: String, // ISO 8601 format
     val hour_of_day_mean: Double,
     val day_of_week_mean: Double,

@@ -61,7 +61,7 @@ fun DAAppTopNavBar(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Image(
-                        painter = painterResource(id = R.mipmap.ic_sda_ic_app),
+                        painter = painterResource(id = R.drawable.sda_2),
                         contentDescription = "App Logo"
                     )
                     Spacer(modifier = Modifier.width(8.dp))

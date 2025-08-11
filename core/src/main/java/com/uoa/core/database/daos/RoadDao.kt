@@ -28,6 +28,9 @@ interface RoadDao {
 
     @Query("SELECT * FROM roads")
     fun getAllRoads(): List<RoadEntity>
+
+    @Query("UPDATE roads SET sync = :sync WHERE id IN (:ids)")
+    suspend fun markSyncByIds(ids: List<UUID>, sync: Boolean)
 }
 
 

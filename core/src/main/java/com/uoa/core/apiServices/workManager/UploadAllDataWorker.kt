@@ -25,6 +25,7 @@ import com.uoa.core.apiServices.services.roadApiService.RoadApiRepository
 import com.uoa.core.apiServices.services.tripApiService.TripApiRepository
 import com.uoa.core.apiServices.services.unsafeBehaviourApiService.UnsafeBehaviourApiRepository
 import com.uoa.core.database.entities.DriverProfileEntity
+import com.uoa.core.database.entities.RoadEntity
 import com.uoa.core.database.entities.UnsafeBehaviourEntity
 import com.uoa.core.database.repository.AIModelInputRepository
 import com.uoa.core.database.repository.DriverProfileRepository
@@ -61,6 +62,8 @@ import com.uoa.core.database.repository.QuestionnaireRepository
 import com.uoa.core.utils.Resource.Success
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import kotlin.math.pow
+import kotlin.math.round
 
 @HiltWorker
 class UploadAllDataWorker @AssistedInject constructor(
@@ -635,43 +638,112 @@ class UploadAllDataWorker @AssistedInject constructor(
     /**
      * Upload Roads
      */
+
     private suspend fun uploadRoads(): Boolean {
-        return uploadInBatches(
-            notificationTitle = "Data Upload: Roads",
-            fetchData = { roadLocalRepository.getRoadsBySyncStatus(false) },
-            mapToCreate = { road ->
-                RoadCreate(
-                    id = road.id,
-                    driverProfileId = road.driverProfileId,
-                    name = road.name,
-                    roadType = road.roadType,
-                    speedLimit = road.speedLimit,
-                    latitude = road.latitude,
-                    longitude = road.longitude,
-                    radius = road.radius,
-                    sync = true
-                )
-            },
-            batchUploadAction = { roads ->
-                roadApiRepository.batchCreateRoads(roads)
-            },
-            markAsSynced = { batch ->
-                batch.forEach { roadCreate ->
-                    val originalRoad = roadLocalRepository.getRoadById(roadCreate.id)
-                    if (originalRoad!=null) {
-                        val updatedRoad = originalRoad.copy(sync = true)
-                        roadLocalRepository.updateRoad(updatedRoad.toEntity())
-                        Log.d("UploadRoads", "Road ${updatedRoad.id} marked as synced.")
-                    } else {
-                        Log.w(
-                            "UploadRoads",
-                            "Road with ID ${roadCreate.id} not found for syncing."
-                        )
-                    }
+
+        val roads = roadLocalRepository.getRoadsBySyncStatus(false)
+//        if (roads.isEmpty()) return true
+
+        if (roads.isEmpty()) {
+//            vehicleNotificationManager.displayNotification(
+//                "Data Upload: Roads",
+//                "No roads to upload."
+//            )
+            return true
+        }
+
+        // ✅ DEDUP HERE (before chunking / mapping)
+        val dedup = roads.distinctBy { keyForDedup(it) }
+
+        val chunked = dedup.chunked(500)
+        for ((i, chunk) in chunked.withIndex()) {
+
+            vehicleNotificationManager.displayNotification(
+                "Data Upload: Roads",
+                "Uploading batch ${i + 1}/${chunk.size} (${chunk.size} items)..."
+            )
+
+            val dtos = chunk.mapNotNull { r ->
+                try {
+                    RoadCreate(
+                        id = r.id,
+                        driverProfileId = r.driverProfileId,
+                        name = r.name,
+                        roadType = r.roadType,
+                        speedLimit = r.speedLimit,
+                        latitude = r.latitude,
+                        longitude = r.longitude,
+                        radius = r.radius,
+                        sync = true
+                    )
+                } catch (e: Exception) {
+                    Log.e("UploadRoads", "Map error for ${r.id}: ${e.message}")
+                    null
                 }
             }
+
+            when (val res = roadApiRepository.batchCreateRoads(dtos)) {
+                is Success -> {
+                    // Expecting server to return the list it actually created
+                    val created = res.data  // List<RoadResponse>
+                    val createdIds = created.map { it.id }.toSet()
+
+                    // Mark only those that were actually created
+                    roadLocalRepository.markSyncByIds(createdIds.toList(), true)
+                    Log.d("UploadRoads", "Batch ${i+1}: marked ${createdIds.size} roads as synced.")
+                }
+                is Resource.Error -> {
+                    Log.e("UploadRoads", "Batch ${i+1} failed: ${res.message}")
+                    return false
+                }
+                Resource.Loading -> { /* ignore */ }
+            }
+        }
+
+        vehicleNotificationManager.displayNotification(
+            "Data Upload: Roads",
+            "All road batches uploaded."
         )
+        return true
     }
+
+//    private suspend fun uploadRoads(): Boolean {
+//        return uploadInBatches(
+//            notificationTitle = "Data Upload: Roads",
+//            fetchData = { roadLocalRepository.getRoadsBySyncStatus(false) },
+//            mapToCreate = { road ->
+//                RoadCreate(
+//                    id = road.id,
+//                    driverProfileId = road.driverProfileId,
+//                    name = road.name,
+//                    roadType = road.roadType,
+//                    speedLimit = road.speedLimit,
+//                    latitude = road.latitude,
+//                    longitude = road.longitude,
+//                    radius = road.radius,
+//                    sync = true
+//                )
+//            },
+//            batchUploadAction = { roads ->
+//                roadApiRepository.batchCreateRoads(roads)
+//            },
+//            markAsSynced = { batch ->
+//                batch.forEach { roadCreate ->
+//                    val originalRoad = roadLocalRepository.getRoadById(roadCreate.id)
+//                    if (originalRoad!=null) {
+//                        val updatedRoad = originalRoad.copy(sync = true)
+//                        roadLocalRepository.updateRoad(updatedRoad.toEntity())
+//                        Log.d("UploadRoads", "Road ${updatedRoad.id} marked as synced.")
+//                    } else {
+//                        Log.w(
+//                            "UploadRoads",
+//                            "Road with ID ${roadCreate.id} not found for syncing."
+//                        )
+//                    }
+//                }
+//            }
+//        )
+//    }
 
     /**
      * Upload AI Model Inputs
@@ -904,3 +976,13 @@ class UploadAllDataWorker @AssistedInject constructor(
     }
 
 }
+
+private fun Double.roundDp(dp: Int): Double {
+    val f = 10.0.pow(dp)
+    return round(this * f) / f
+}
+
+private fun UploadAllDataWorker.keyForDedup(r: RoadEntity)=listOf(
+r.driverProfileId, r.name, r.roadType, r.speedLimit, r.radius,
+r.latitude.roundDp(5), r.longitude.roundDp(5)
+)

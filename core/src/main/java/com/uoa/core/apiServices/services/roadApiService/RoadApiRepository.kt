@@ -88,18 +88,22 @@ class RoadApiRepository @Inject constructor(
 
     // ----------------- Batch Operations -----------------
 
-    suspend fun batchCreateRoads(roadList: List<RoadCreate>): Resource<Unit> = withContext(Dispatchers.IO) {
-        try {
-            roadApiService.batchCreateRoads(roadList)
-            Resource.Success(Unit)
-        } catch (e: IOException) {
-            Resource.Error("Network error: Please check your internet connection.")
-        } catch (e: HttpException) {
-            Resource.Error("Server error (${e.code()}): ${e.message()}")
-        } catch (e: Exception) {
-            Resource.Error("An unexpected error occurred: ${e.localizedMessage}")
+    // RoadApiRepository.kt
+    suspend fun batchCreateRoads(roadList: List<RoadCreate>): Resource<List<RoadResponse>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val resp = roadApiService.batchCreateRoads(roadList)
+                Resource.Success(resp)
+            } catch (e: HttpException) {
+                val body = e.response()?.errorBody()?.string()
+                Resource.Error("Server error (${e.code()}): ${body ?: e.message()}")
+            } catch (e: IOException) {
+                Resource.Error("Network error: Please check your internet connection.")
+            } catch (e: Exception) {
+                Resource.Error("Unexpected error: ${e.localizedMessage}")
+            }
         }
-    }
+
 
     suspend fun batchDeleteRoads(ids: List<String>): Resource<Unit> = withContext(Dispatchers.IO) {
         try {

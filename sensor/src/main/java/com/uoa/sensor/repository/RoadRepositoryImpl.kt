@@ -113,6 +113,9 @@ class RoadRepositoryImpl @Inject constructor(private val roadDao: RoadDao, priva
         roadDao.updateRoad(road)
     }
 
+    override suspend fun markSyncByIds(ids: List<UUID>, sync: Boolean) = roadDao.markSyncByIds(ids, sync)
+
+
 
 
 }

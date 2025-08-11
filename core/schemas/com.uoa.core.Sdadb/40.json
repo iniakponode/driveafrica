@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 40,
-    "identityHash": "6da4fd6502d028ebc3e6bc5a662272e7",
+    "identityHash": "62c5f449effae39cd9f120576d1a6d99",
     "entities": [
       {
         "tableName": "raw_sensor_data",
@@ -1271,6 +1271,15 @@
             "createSql": "CREATE INDEX IF NOT EXISTS `index_roads_radius` ON `${TABLE_NAME}` (`radius`)"
           },
           {
+            "name": "index_roads_sync",
+            "unique": false,
+            "columnNames": [
+              "sync"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_roads_sync` ON `${TABLE_NAME}` (`sync`)"
+          },
+          {
             "name": "index_roads_id",
             "unique": true,
             "columnNames": [
@@ -1782,7 +1791,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6da4fd6502d028ebc3e6bc5a662272e7')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '62c5f449effae39cd9f120576d1a6d99')"
     ]
   }
 }

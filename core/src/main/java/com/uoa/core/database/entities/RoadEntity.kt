@@ -18,6 +18,7 @@ import java.util.UUID
         Index(value=["speedLimit"]),
         Index(value = ["driverProfileId"]),
         Index(value = ["radius"]),
+        Index(value = ["sync"]),
         Index(value = ["id"], unique = true)
     ]
     )

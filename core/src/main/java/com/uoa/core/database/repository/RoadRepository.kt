@@ -24,6 +24,8 @@ interface RoadRepository {
 
     fun saveOrUpdateRoad(road: Road)
 
+    suspend fun markSyncByIds(ids: List<UUID>, sync: Boolean)
+
     fun getAllRoads(): List<Road>
 //    suspend fun saveOrUpdateRoadRemotelyFirst(road: Road): Resource<Unit>
     suspend fun saveRoadLocally(road: Road): Resource<Unit>

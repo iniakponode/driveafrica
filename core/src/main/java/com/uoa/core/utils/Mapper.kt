@@ -290,7 +290,7 @@ fun Road.toEntity(): RoadEntity{
     roadType=this.roadType,
     speedLimit=this.speedLimit,
     latitude=this.latitude,
-    longitude=this.latitude,
+    longitude=this.longitude,
     radius=this.radius)
 
 }

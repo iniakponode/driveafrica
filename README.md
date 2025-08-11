@@ -57,10 +57,21 @@ See `DisclaimerScreen.kt` lines 95‑101 for the implementation.
 
 ## Behavioural and persuasive design
 
-The driving reports now employ culturally familiar language for Nigerian drivers while remaining accessible to Cameroonian and Ghanaian users. The report prompt integrates behaviour‑change theories to encourage safer driving:
+The driving reports employ culturally resonant language for Nigerian drivers while remaining accessible to Cameroonian and Ghanaian users. The prompt guiding the large‑language model blends several behaviour‑change theories:
 
-- **Theory of Planned Behavior** – emphasises attitudes toward safety, the influence of friends and family (subjective norms), and the driver's ability to change (perceived behavioural control).
-- **Cialdini's Principles** – uses social proof to show that other local drivers are improving and highlights potential losses (loss aversion) from risky habits.
+- **Theory of Planned Behavior** – emphasises attitudes toward safety, social expectations and perceived control.
+- **Social Cognitive Theory** – encourages observational learning, self‑efficacy and realistic outcome expectations.
+- **Health Belief and Protection Motivation Models** – highlight perceived risk, severity, benefits and the driver's confidence in coping, while **Deterrence Theory** underlines the certainty of consequences for violations.
+- **Nudge Theory and Behavioural Economics** – subtly steer choices through supportive cues without removing options.
+- **Cialdini's Principles** – leverage social proof and loss aversion to motivate change.
 
-By weaving these elements into a concise 150–180 word narrative, the report becomes more persuasive and easier to read, helping drivers absorb the guidance without feeling overwhelmed.
+Key localisation strategies ensure the reports feel relevant:
+
+- Use respectful English with optional Nigerian Pidgin or local languages.
+- Acknowledge traffic congestion or rough roads before offering advice.
+- Give simple, behaviour‑specific tips that build ability.
+- Incorporate local knowledge such as rainy season hazards or dealings with "area boys".
+- Reference alcohol influence results when present.
+
+By weaving these elements into a concise 150–180 word narrative, the reports remain persuasive, context‑aware and easy for drivers to act upon.
 

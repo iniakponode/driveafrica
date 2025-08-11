@@ -41,7 +41,6 @@ fun NavGraphBuilder.entryPointScreen(
             } else {
                 val shouldShowQuestionnaire = lastDay != today
                 if (shouldShowQuestionnaire) {
-                    prefs.edit().putString(LAST_QUESTIONNAIRE_DAY, today).apply()
                     navController.navigateToQuestionnaire {
                         popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
                     }

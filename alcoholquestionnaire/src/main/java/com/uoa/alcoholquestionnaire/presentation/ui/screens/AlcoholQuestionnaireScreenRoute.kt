@@ -12,8 +12,11 @@ import androidx.navigation.NavController
 import com.uoa.alcoholquestionnaire.presentation.viewmodel.QuestionnaireViewModel
 import com.uoa.core.utils.ALCOHOL_QUESTIONNAIRE_ROUTE
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
+import com.uoa.core.utils.Constants.Companion.LAST_QUESTIONNAIRE_DAY
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.Resource
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 @RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
@@ -34,6 +37,9 @@ fun AlcoholQuestionnaireScreenRoute(
                 Log.e("Navigation", uploadState.toString())
                 val savedProfileId = prefs.getString(DRIVER_PROFILE_ID, null)
                 val profileUuid = UUID.fromString(savedProfileId ?: return@LaunchedEffect)
+
+                val today = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
+                prefs.edit().putString(LAST_QUESTIONNAIRE_DAY, today).apply()
 
                 // Navigate to home screen after success
                 navController.navigate("homeScreen/${profileUuid}") {

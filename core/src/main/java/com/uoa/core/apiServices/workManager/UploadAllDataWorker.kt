@@ -687,10 +687,9 @@ class UploadAllDataWorker @AssistedInject constructor(
                 AIModelInputCreate(
                     id = input.id,
                     trip_id = input.tripId,
-                    driver_profile_id = input.driverProfileId,
+                    driverProfileId = input.driverProfileId,
                     timestamp = DateConversionUtils.longToTimestampString(input.timestamp),
-                    startTimeStamp = DateConversionUtils.longToTimestampString(input.startTimestamp),
-                    endTimeStamp = DateConversionUtils.longToTimestampString(input.endTimestamp),
+                    start_time = input.startTimestamp,
                     date = formattedDate ?: "",
                     hour_of_day_mean = input.hourOfDayMean,
                     day_of_week_mean = input.dayOfWeekMean.toDouble(),

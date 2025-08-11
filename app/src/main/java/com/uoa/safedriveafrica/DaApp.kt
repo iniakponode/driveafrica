@@ -86,7 +86,7 @@ fun DATopBar(appState: DAAppState) {
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
-                    painter = painterResource(id = com.uoa.core.R.mipmap.ic_sda_ic_app),
+                    painter = painterResource(id = com.uoa.core.R.drawable.sda_2),
                     contentDescription = null
                 )
                 Spacer(modifier = Modifier.width(8.dp))

@@ -7,7 +7,7 @@ import java.util.UUID
 data class AIModelInputCreate(
     val id: UUID,
     val trip_id: UUID,
-    @SerializedName("driver_profile_id")
+    @SerializedName("driverProfileId")
     val driverProfileId: UUID,
     val timestamp: String, // ISO 8601 format
     val start_time: Long,

@@ -658,7 +658,7 @@ class UploadAllDataWorker @AssistedInject constructor(
             markAsSynced = { batch ->
                 batch.forEach { roadCreate ->
                     val originalRoad = roadLocalRepository.getRoadById(roadCreate.id)
-                    if (true) {
+                    if (originalRoad!=null) {
                         val updatedRoad = originalRoad.copy(sync = true)
                         roadLocalRepository.updateRoad(updatedRoad.toEntity())
                         Log.d("UploadRoads", "Road ${updatedRoad.id} marked as synced.")
@@ -698,6 +698,7 @@ class UploadAllDataWorker @AssistedInject constructor(
                     acceleration_y_original_mean = input.accelerationYOriginalMean.toDouble(),
                     sync = true // Consistent sync flag
                 )
+
             },
             batchUploadAction = { aiModelInputs ->
                 aiModelInputApiRepository.batchCreateAiModelInputs(aiModelInputs)
@@ -708,10 +709,11 @@ class UploadAllDataWorker @AssistedInject constructor(
                         aiModelInputLocalRepository.getAiModelInputById(aiCreate.id)
                     if (originalInput != null) {
                         val updatedInput = originalInput.copy(sync = true)
+
                         aiModelInputLocalRepository.updateAiModelInput(updatedInput)
                         Log.d(
                             "UploadAIModelInputs",
-                            "AIModelInput ${updatedInput.id} marked as synced."
+                            "AIModelInput ${updatedInput} marked as synced."
                         )
                     } else {
                         Log.w(

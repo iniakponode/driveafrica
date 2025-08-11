@@ -340,17 +340,23 @@ class NLGEngineViewModel @Inject constructor(
 
         return buildString {
             append("$periodText\n\n")
-            append("You are a friendly driving safety coach speaking mainly to Nigerian drivers, while remaining understandable in Cameroon and Ghana. Using the statistics below, craft a complete 150-180 word report that never ends abruptly:\n")
-            append("• Use culturally resonant language; default to clear respectful English but feel free to weave in Nigerian Pidgin or major local languages when fitting.\n")
-            append("• Acknowledge local traffic realities such as congestion or rough roads before offering guidance.\n")
-            append("• Provide behaviour-specific, simple tips that focus on building the driver's ability.\n")
-            append("• Draw on local knowledge like rainy season hazards, roundabout etiquette or dealing with area boys when relevant.\n")
-            append("• Praise good habits and offer actionable, persuasive tips for improvement.\n")
-            append("• Apply ideas from behaviour-change theories—Theory of Planned Behavior, Social Cognitive Theory (observational learning, self-efficacy, outcome expectations), Health Belief and Protection Motivation models, Deterrence Theory and Nudge Theory—without naming them directly.\n")
-            append("• Explicitly mention any alcohol test results or influence found in the statistics.\n")
-            append("• Reference the exact numbers, dates and road location of the most frequent unsafe behaviour.\n")
-            append("• Keep the tone supportive and sign off as 'Your Driving Safety Specialist Agent'.\n")
-            append("• Ensure the response forms a complete narrative, not a list of bullets or an unfinished sentence.\n\n")
+            append(
+                "You are a friendly one-to-one driving safety coach for West Africa. " +
+                        "Write a complete 150–180 word report addressed to this specific driver. " +
+                        "Always use second person (“you”, “your”); do not speak to ‘drivers’ in general. " +
+                        "If a first name is available, greet them once by name; otherwise proceed without a name.\n" +
+                        "• Begin with 1–2 sincere sentences praising their strongest safe habits from the stats.\n" +
+                        "• Briefly acknowledge local realities (traffic, rough roads, rain, area boys) before guidance.\n" +
+                        "• Then give 2–3 behaviour-specific, ability-building tips tailored to their data.\n" +
+                        "• Reference exact numbers, dates, and the road/location of their most frequent unsafe behaviour.\n" +
+                        "• Explicitly state any alcohol result: if influence is true or > 0, address it clearly and empathetically " +
+                        "  (e.g., never drive after drinking, plan-ahead options, ride alternatives, commitment cues). " +
+                        "  If false/0, affirm their alcohol-free driving briefly.\n" +
+                        "• Use clear, respectful English; you may weave in light Nigerian Pidgin or regional phrases naturally.\n" +
+                        "• Apply behaviour-change ideas implicitly (motivation, self-efficacy, norms, deterrence, nudges) without naming theories.\n" +
+                        "• Keep the tone supportive, personal, and persuasive; no bullet lists in the output. " +
+                        "End with “Your Driving Safety Specialist Agent.” Ensure the narrative does not end abruptly.\n\n"
+            )
             append("Report Statistics:\n")
             append("Total Unsafe Behaviors: ${reportStatistics.totalIncidences}\n")
             if (reportStatistics.mostFrequentUnsafeBehaviour != null &&

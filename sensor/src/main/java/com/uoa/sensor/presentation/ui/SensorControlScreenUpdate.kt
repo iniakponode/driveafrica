@@ -10,7 +10,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -230,7 +230,7 @@ fun SensorControlScreenUpdate(
                 context.stopService(Intent(context, VehicleMovementServiceUpdate::class.java))
                 serviceStarted = false
             }) {
-                Icon(Icons.Filled.Stop, contentDescription = null)
+                Icon(Icons.Filled.Clear, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Stop Monitoring")
             }

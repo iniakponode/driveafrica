@@ -3,9 +3,14 @@ package com.uoa.driverprofile.presentation.ui.screens
 import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -76,6 +81,8 @@ fun DriverProfileCreationScreen(
             modifier = Modifier.padding(top = 16.dp),
             enabled = !isError
         ) {
+            Icon(Icons.Filled.PersonAdd, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
             Text("Create Profile")
         }
     }

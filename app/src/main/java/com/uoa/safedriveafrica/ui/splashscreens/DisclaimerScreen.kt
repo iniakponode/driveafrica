@@ -3,9 +3,12 @@ package com.uoa.safedriveafrica.ui.splashscreens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -88,6 +91,8 @@ fun DisclaimerScreen(
                 Spacer(modifier = Modifier.height(32.dp))
                 val context = LocalContext.current
                 Button(onClick = onContinue) {
+                    Icon(Icons.Filled.ArrowForward, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(text = "Continue")
                 }
                 Spacer(modifier = Modifier.height(8.dp))

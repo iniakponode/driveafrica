@@ -4,9 +4,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -97,6 +100,8 @@ fun WelcomeScreen(
                 )
                 Spacer(modifier = Modifier.height(5.dp))
                 Button(onClick = onContinue) {
+                    Icon(Icons.Filled.ArrowForward, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(text = "Continue")
                 }
             }

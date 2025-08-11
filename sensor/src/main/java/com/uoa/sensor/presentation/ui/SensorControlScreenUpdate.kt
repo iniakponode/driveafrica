@@ -8,7 +8,11 @@ import android.os.Looper
 import android.annotation.SuppressLint
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -132,6 +136,8 @@ fun SensorControlScreenUpdate(
                 onClick = { permissionState.launchMultiplePermissionRequest() },
                 enabled = true
             ) {
+                Icon(Icons.Filled.CheckCircle, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
                 Text("Grant Permissions")
             }
             return@Column
@@ -224,6 +230,8 @@ fun SensorControlScreenUpdate(
                 context.stopService(Intent(context, VehicleMovementServiceUpdate::class.java))
                 serviceStarted = false
             }) {
+                Icon(Icons.Filled.Stop, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
                 Text("Stop Monitoring")
             }
         }

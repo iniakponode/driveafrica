@@ -10,9 +10,14 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.listSaver
@@ -20,6 +25,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.accompanist.permissions.*
@@ -33,6 +40,7 @@ import com.uoa.sensor.presentation.viewModel.SensorViewModel
 import com.uoa.sensor.presentation.viewModel.TripViewModel
 import com.uoa.sensor.presentation.viewModel.RoadViewModel
 import com.uoa.sensor.services.VehicleMovementServiceUpdate
+import com.uoa.sensor.R
 import org.osmdroid.util.GeoPoint
 
 import java.util.UUID
@@ -259,10 +267,63 @@ fun SensorControlScreenUpdate(
                     .height(250.dp)
             )
             Spacer(Modifier.height(8.dp))
-            Column(modifier = Modifier.align(Alignment.Start)) {
-                Text(text = String.format("Distance travelled: %.2f km", distanceTravelled / 1000))
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Start)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Map,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(
+                                R.string.distance_travelled,
+                                distanceTravelled / 1000,
+                                stringResource(R.string.unit_kilometers)
+                            ),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
                 roads.firstOrNull()?.speedLimit?.let { limit ->
-                    Text(text = "Speed limit: $limit km/h")
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Speed,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(
+                                    R.string.speed_limit,
+                                    limit,
+                                    stringResource(R.string.unit_kilometers_per_hour)
+                                ),
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                 }
             }
         }

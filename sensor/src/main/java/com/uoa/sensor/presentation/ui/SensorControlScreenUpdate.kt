@@ -20,7 +20,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -103,17 +102,8 @@ fun SensorControlScreenUpdate(
 
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     var currentLocation by remember { mutableStateOf<GeoPoint?>(null) }
-    var distanceTravelled by rememberSaveable { mutableStateOf(0.0) }
-    val pathPoints = rememberSaveable(
-        saver = listSaver(
-            save = { list -> list.map { it.latitude to it.longitude } },
-            restore = { items ->
-                mutableStateListOf<GeoPoint>().apply {
-                    items.forEach { add(GeoPoint(it.first, it.second)) }
-                }
-            }
-        )
-    ) { mutableStateListOf<GeoPoint>() }
+    val distanceTravelled by sensorViewModel.distanceTravelled.collectAsState()
+    val pathPoints by sensorViewModel.pathPoints.collectAsState()
     val roads by roadViewModel.nearbyRoads.collectAsState()
 
     // Listen for location updates once permissions are granted
@@ -126,10 +116,7 @@ fun SensorControlScreenUpdate(
                     result.lastLocation?.let { location ->
                         val point = GeoPoint(location.latitude, location.longitude)
                         currentLocation = point
-                        if (pathPoints.isNotEmpty()) {
-                            distanceTravelled += pathPoints.last().distanceToAsDouble(point)
-                        }
-                        pathPoints += point
+                        sensorViewModel.addLocation(point)
                         roadViewModel.fetchNearbyRoads(location.latitude, location.longitude, 0.05)
                     }
                 }

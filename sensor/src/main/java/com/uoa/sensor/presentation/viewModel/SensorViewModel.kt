@@ -1,25 +1,26 @@
 package com.uoa.sensor.presentation.viewModel
 
 import android.content.Context
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uoa.sensor.repository.SensorDataColStateRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import org.osmdroid.util.GeoPoint
 import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
 class SensorViewModel @Inject constructor(
     private val sensorDataColStateRepository: SensorDataColStateRepository,
-    @ApplicationContext val context: Context
+    @ApplicationContext val context: Context,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     // Flows exposed to the UI:
@@ -40,6 +41,18 @@ class SensorViewModel @Inject constructor(
 
     val movementType=sensorDataColStateRepository.movementLabel
 
+    // Distance travelled in meters across the current path
+    private val _distanceTravelled = MutableStateFlow(
+        savedStateHandle.get<Double>("distanceTravelled") ?: 0.0
+    )
+    val distanceTravelled: StateFlow<Double> = _distanceTravelled
+
+    // List of recorded path points
+    private val _pathPoints = MutableStateFlow(
+        savedStateHandle.get<ArrayList<GeoPoint>>("pathPoints")?.toList() ?: emptyList()
+    )
+    val pathPoints: StateFlow<List<GeoPoint>> = _pathPoints
+
 
     // Expose one‐off “start trip” and “stop trip” events
     private val _startTripEvent = MutableSharedFlow<UUID>(replay = 0)
@@ -59,5 +72,20 @@ class SensorViewModel @Inject constructor(
         viewModelScope.launch {
             _stopTripEvent.emit(tripId)
         }
+    }
+
+    fun addLocation(point: GeoPoint) {
+        val currentPath = _pathPoints.value
+        if (currentPath.isNotEmpty()) {
+            val lastPoint = currentPath.last()
+            _distanceTravelled.value = _distanceTravelled.value + lastPoint.distanceToAsDouble(point)
+        }
+        _pathPoints.value = currentPath + point
+    }
+
+    override fun onCleared() {
+        savedStateHandle["distanceTravelled"] = _distanceTravelled.value
+        savedStateHandle["pathPoints"] = ArrayList(_pathPoints.value)
+        super.onCleared()
     }
 }

@@ -2,7 +2,7 @@ package com.uoa.driverprofile.presentation.ui.navigation
 
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
-import androidx.navigation.NavOptions
+import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.NavType
@@ -16,8 +16,11 @@ import java.util.UUID
 //const val DRIVER_PROFILE_ID = "profileId"
 //const val HOME_SCREEN_ROUTE = "homeScreen/{$DRIVER_PROFILE_ID}"
 
-// Navigation function to home screen
-fun NavController.navigateToHomeScreen(profileId: UUID, navOptions: NavOptions? = null) {
+// Navigation function to home screen using NavOptionsBuilder for DSL-style configuration
+fun NavController.navigateToHomeScreen(
+    profileId: UUID,
+    navOptions: NavOptionsBuilder.() -> Unit = {}
+) {
     navigate("homeScreen/$profileId", navOptions)
 }
 

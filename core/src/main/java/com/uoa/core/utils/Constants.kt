@@ -8,5 +8,6 @@ class Constants {
         const val TRIP_ID = "trip_id"
         const val QUESTIONNAIRE_COMPLETED = "questionnaireCompleted"
         const val LAST_QUESTIONNAIRE_DAY = "lastQuestionnaireDay"
+        const val ALLOW_METERED_UPLOADS = "allow_metered_uploads"
     }
 }

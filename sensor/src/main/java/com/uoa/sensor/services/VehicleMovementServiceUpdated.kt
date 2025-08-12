@@ -56,8 +56,8 @@ class VehicleMovementServiceUpdate : LifecycleService() {
     private var stopJob: Job? = null
 
     // Debounce windows
-    private val MOVEMENT_START_DELAY = 10_000L
-    private val MOVEMENT_STOP_DELAY = 30_000L
+    internal var movementStartDelay = 10_000L
+    internal var movementStopDelay = 30_000L
 
     private lateinit var notificationManager: VehicleNotificationManager
 
@@ -122,38 +122,39 @@ class VehicleMovementServiceUpdate : LifecycleService() {
         return null
     }
 
-    private fun observeMovement() {
+    internal fun observeMovement() {
         serviceScope.launch {
-            sensorRepo.movementStatus
+            sensorRepo.isVehicleMoving
+                .distinctUntilChanged()
                 .collect { moving ->
                     if (moving) handlePossibleStart() else handlePossibleStop()
                 }
         }
     }
 
-    private fun handlePossibleStart() {
+    internal fun handlePossibleStart() {
         stopJob?.cancel()
         if (currentTripId == null) {
             startJob?.cancel()
             startJob = serviceScope.launch {
-                delay(MOVEMENT_START_DELAY)
+                delay(movementStartDelay)
                 if (sensorRepo.isVehicleMoving.value) safeAutoStart()
             }
         }
     }
 
-    private fun handlePossibleStop() {
+    internal fun handlePossibleStop() {
         startJob?.cancel()
         if (currentTripId != null) {
             stopJob?.cancel()
             stopJob = serviceScope.launch {
-                delay(MOVEMENT_STOP_DELAY)
+                delay(movementStopDelay)
                 if (!sensorRepo.isVehicleMoving.value) safeAutoStop()
             }
         }
     }
 
-    private suspend fun safeAutoStart() {
+    protected open suspend fun safeAutoStart() {
         val tripId = UUID.randomUUID().also { currentTripId = it }
         val startTime = System.currentTimeMillis()
         try {
@@ -203,7 +204,7 @@ class VehicleMovementServiceUpdate : LifecycleService() {
         }
     }
 
-    private suspend fun safeAutoStop() {
+    protected open suspend fun safeAutoStop() {
         val tripId = currentTripId ?: return
         try {
             stopService(Intent(this@VehicleMovementServiceUpdate, DataCollectionService::class.java))

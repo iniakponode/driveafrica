@@ -103,6 +103,8 @@ dependencies {
 //    implementation(libs.androidx.pagination)
 //    implementation(libs.androidx.ui.desktop)
     implementation(libs.navigation.compose)
+    // Material icons extended for additional icon assets
+    implementation(libs.androidx.compose.material.iconsExtended)
     implementation(libs.firebase.dataconnect)
     implementation(libs.generative.ai)
     implementation(libs.pdfBox)

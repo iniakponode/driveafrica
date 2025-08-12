@@ -15,8 +15,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -132,7 +132,7 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(8.dp))
         Button(onClick = onRecordTripClick, modifier = Modifier.fillMaxWidth()) {
             Icon(
-                Icons.Filled.PlayArrow,
+                Icons.Filled.DirectionsCar,
                 contentDescription = "Record trip icon"
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -141,7 +141,7 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(8.dp))
         Button(onClick = onViewReportsClick, modifier = Modifier.fillMaxWidth()) {
             Icon(
-                Icons.Filled.Info,
+                Icons.Filled.BarChart,
                 contentDescription = "View reports icon"
             )
             Spacer(modifier = Modifier.width(8.dp))

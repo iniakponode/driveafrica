@@ -1,6 +1,7 @@
 package com.uoa.sensor.hardware
 
 import com.uoa.core.database.entities.FFTFeatureDao
+import com.uoa.sensor.hardware.base.SignificantMotionSensor
 import com.uoa.sensor.repository.SensorDataColStateRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking

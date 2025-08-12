@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -121,19 +122,28 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
         Button(onClick = onQuestionnaireClick, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Filled.Assessment, contentDescription = null)
+            Icon(
+                Icons.Filled.Assessment,
+                contentDescription = "Daily questionnaire icon"
+            )
             Spacer(modifier = Modifier.width(8.dp))
             Text(text = "Daily Alcohol Questionnaire")
         }
         Spacer(modifier = Modifier.height(8.dp))
         Button(onClick = onRecordTripClick, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Filled.PlayArrow, contentDescription = null)
+            Icon(
+                Icons.Filled.PlayArrow,
+                contentDescription = "Record trip icon"
+            )
             Spacer(modifier = Modifier.width(8.dp))
             Text(text = "Record Trip")
         }
         Spacer(modifier = Modifier.height(8.dp))
         Button(onClick = onViewReportsClick, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Filled.Info, contentDescription = null)
+            Icon(
+                Icons.Filled.Info,
+                contentDescription = "View reports icon"
+            )
             Spacer(modifier = Modifier.width(8.dp))
             Text(text = "View Reports")
         }

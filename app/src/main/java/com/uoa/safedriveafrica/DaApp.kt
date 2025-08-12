@@ -141,7 +141,7 @@ fun DABottomBar(destinations:List<TopLevelDestinations>,
 }
 
 
-@RequiresApi(Build.VERSION_CODES.O)
+
 @Composable
 fun DAContent(padding: PaddingValues, appState: DAAppState, snackbarHostState: SnackbarHostState) {
     Box(modifier = Modifier.padding(padding)) {

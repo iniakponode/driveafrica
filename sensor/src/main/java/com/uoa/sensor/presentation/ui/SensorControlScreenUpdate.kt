@@ -10,11 +10,12 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,7 +94,17 @@ fun SensorControlScreenUpdate(
 
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     var currentLocation by remember { mutableStateOf<GeoPoint?>(null) }
-    val pathPoints = remember { mutableStateListOf<GeoPoint>() }
+    var distanceTravelled by rememberSaveable { mutableStateOf(0.0) }
+    val pathPoints = rememberSaveable(
+        saver = listSaver(
+            save = { list -> list.map { it.latitude to it.longitude } },
+            restore = { items ->
+                mutableStateListOf<GeoPoint>().apply {
+                    items.forEach { add(GeoPoint(it.first, it.second)) }
+                }
+            }
+        )
+    ) { mutableStateListOf<GeoPoint>() }
     val roads by roadViewModel.nearbyRoads.collectAsState()
 
     // Listen for location updates once permissions are granted
@@ -106,6 +117,9 @@ fun SensorControlScreenUpdate(
                     result.lastLocation?.let { location ->
                         val point = GeoPoint(location.latitude, location.longitude)
                         currentLocation = point
+                        if (pathPoints.isNotEmpty()) {
+                            distanceTravelled += pathPoints.last().distanceToAsDouble(point)
+                        }
                         pathPoints += point
                         roadViewModel.fetchNearbyRoads(location.latitude, location.longitude, 0.05)
                     }
@@ -116,10 +130,6 @@ fun SensorControlScreenUpdate(
         } else {
             onDispose { }
         }
-    }
-
-    val distanceTravelled = remember(pathPoints.toList()) {
-        pathPoints.zipWithNext { a, b -> a.distanceToAsDouble(b) }.sum()
     }
 
     Column(
@@ -230,7 +240,7 @@ fun SensorControlScreenUpdate(
                 context.stopService(Intent(context, VehicleMovementServiceUpdate::class.java))
                 serviceStarted = false
             }) {
-                Icon(Icons.Filled.Clear, contentDescription = null)
+                Icon(Icons.Filled.Stop, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Stop Monitoring")
             }
@@ -249,10 +259,12 @@ fun SensorControlScreenUpdate(
                     .height(250.dp)
             )
             Spacer(Modifier.height(8.dp))
-            Text(
-                text = String.format("Distance travelled: %.2f km", distanceTravelled / 1000),
-                modifier = Modifier.align(Alignment.Start)
-            )
+            Column(modifier = Modifier.align(Alignment.Start)) {
+                Text(text = String.format("Distance travelled: %.2f km", distanceTravelled / 1000))
+                roads.firstOrNull()?.speedLimit?.let { limit ->
+                    Text(text = "Speed limit: $limit km/h")
+                }
+            }
         }
     }
 }

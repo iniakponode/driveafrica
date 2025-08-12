@@ -11,7 +11,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
-import com.uoa.alcoholquestionnaire.presentation.ui.questionnairenavigation.navigateToQuestionnaire
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.LAST_QUESTIONNAIRE_DAY
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
@@ -30,6 +29,8 @@ fun NavGraphBuilder.entryPointScreen(
         val savedProfileId = prefs.getString(DRIVER_PROFILE_ID, null)
         val lastDay = prefs.getString(LAST_QUESTIONNAIRE_DAY, null)
         val today = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
+        // Retained for reminder checks
+        val shouldShowQuestionnaire = lastDay != today
 
         // We only run this logic once
         LaunchedEffect(Unit) {
@@ -39,25 +40,18 @@ fun NavGraphBuilder.entryPointScreen(
                     popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
                 }
             } else {
-                val shouldShowQuestionnaire = lastDay != today
-                if (shouldShowQuestionnaire) {
-                    navController.navigateToQuestionnaire {
+                val profileUuid = try {
+                    java.util.UUID.fromString(savedProfileId)
+                } catch (e: IllegalArgumentException) {
+                    null
+                }
+                if (profileUuid != null) {
+                    navController.navigateToHomeScreen(profileUuid) {
                         popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
                     }
                 } else {
-                    val profileUuid = try {
-                        java.util.UUID.fromString(savedProfileId)
-                    } catch (e: IllegalArgumentException) {
-                        null
-                    }
-                    if (profileUuid != null) {
-                        navController.navigate("homeScreen/$profileUuid") {
-                            popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
-                        }
-                    } else {
-                        navController.navigateToQuestionnaire {
-                            popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
-                        }
+                    navController.navigateToOnboardingScreen {
+                        popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
                     }
                 }
             }

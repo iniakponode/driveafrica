@@ -279,6 +279,7 @@ class MotionDetectionFFT @Inject constructor(
         SCOPE.launch {
             stateRepo.updateMovementType("walking")
             stateRepo.updateMovementStatus(true)
+            stateRepo.updateVehicleMovementStatus(false)
         }
     }
 
@@ -294,6 +295,7 @@ class MotionDetectionFFT @Inject constructor(
         SCOPE.launch {
             stateRepo.updateMovementType("running")
             stateRepo.updateMovementStatus(true)
+            stateRepo.updateVehicleMovementStatus(false)
         }
     }
     private fun transitionToVehicle(now: Long) {
@@ -322,6 +324,7 @@ class MotionDetectionFFT @Inject constructor(
         listeners.forEach { it.onMotionStopped() }
         SCOPE.launch {
             stateRepo.updateMovementStatus(false)
+            stateRepo.updateVehicleMovementStatus(false)
             stateRepo.updateMovementType("stationary") }
     }
 

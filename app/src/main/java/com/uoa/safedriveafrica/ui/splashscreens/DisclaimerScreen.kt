@@ -23,8 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
 import android.content.Intent
 import android.net.Uri
-import androidx.navigation.NavController
-import androidx.navigation.NavGraphBuilder
+import androidx.navigation.*
 import androidx.navigation.compose.composable
 import com.uoa.core.utils.DISCLAIMER_ROUTE
 import com.uoa.core.utils.ENTRYPOINT_ROUTE

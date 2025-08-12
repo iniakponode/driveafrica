@@ -55,6 +55,10 @@ composeCompiler {
 dependencies {
 
     implementation(project(":core"))
+    // Include alcohol questionnaire module for navigation utilities
+    implementation(project(":alcoholquestionnaire"))
+    // Material icons extended library for additional icon assets
+    implementation(libs.androidx.compose.material.iconsExtended)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.kotlin.coroutines.core)

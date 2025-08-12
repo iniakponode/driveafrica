@@ -68,6 +68,7 @@ dependencies {
 //    implementation(libs.androidx.compose.compiler)
     implementation(libs.androidx.lifecycle.lifecycle.scope)
     implementation(libs.androidx.material3.android)
+    implementation(libs.androidx.compose.material.iconsExtended)
     implementation(libs.androidx.lifecycle.runtimeCompose)
     implementation(libs.androidx.lifecycle.viewModelCompose)
     implementation(libs.androidx.hilt.navigation.compose)

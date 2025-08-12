@@ -59,7 +59,6 @@ fun MapComposable(
         MyLocationNewOverlay(GpsMyLocationProvider(context), mapView).apply {
             enableMyLocation()
             enableFollowLocation()
-            enableCompass()
         }
     }
     val pathOverlay = remember(mapView) { Polyline() }
@@ -126,7 +125,7 @@ fun MapComposable(
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
         ) {
-            Icon(Icons.Filled.MyLocation, contentDescription = "Recenter")
+            Icon(imageVector = Icons.Filled.MyLocation, contentDescription = "Recenter")
         }
 
         // Stop Monitoring button (also stays visible)

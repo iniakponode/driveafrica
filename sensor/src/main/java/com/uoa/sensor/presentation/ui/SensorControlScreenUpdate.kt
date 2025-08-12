@@ -19,6 +19,7 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -233,31 +234,38 @@ fun SensorControlScreenUpdate(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-
-        // Manual stop monitoring
-        if (serviceStarted) {
-            Button(onClick = {
-                context.stopService(Intent(context, VehicleMovementServiceUpdate::class.java))
-                serviceStarted = false
-            }) {
-                Icon(Icons.Filled.Stop, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Stop Monitoring")
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
         currentLocation?.let { location ->
-            MapComposable(
-                context = context,
-                latitude = location.latitude,
-                longitude = location.longitude,
-                roads = roads,
-                path = pathPoints,
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(250.dp)
-            )
+            ) {
+                MapComposable(
+                    context = context,
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    roads = roads,
+                    path = pathPoints,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clipToBounds()
+                )
+                if (serviceStarted) {
+                    Button(
+                        onClick = {
+                            context.stopService(Intent(context, VehicleMovementServiceUpdate::class.java))
+                            serviceStarted = false
+                        },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(16.dp)
+                    ) {
+                        Icon(Icons.Filled.Stop, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Stop Monitoring")
+                    }
+                }
+            }
             Spacer(Modifier.height(8.dp))
             Column(modifier = Modifier.align(Alignment.Start)) {
                 Text(text = String.format("Distance travelled: %.2f km", distanceTravelled / 1000))

@@ -1,8 +1,11 @@
 package com.uoa.sensor.presentation.ui
 
 import android.content.Context
+import android.view.ViewGroup
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.viewinterop.AndroidView
 import com.uoa.core.model.Road
 import org.osmdroid.config.Configuration
@@ -26,9 +29,15 @@ fun MapComposable(
     Configuration.getInstance().userAgentValue = context.packageName
 
     AndroidView(
-        modifier = modifier,
+        modifier = modifier
+            .fillMaxSize()
+            .clipToBounds(),
         factory = {
             MapView(it).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
                 setMultiTouchControls(true)
                 setBuiltInZoomControls(true)
                 controller.setZoom(15.0)

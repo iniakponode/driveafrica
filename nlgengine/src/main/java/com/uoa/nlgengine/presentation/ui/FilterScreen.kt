@@ -12,17 +12,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.DateRange
-//import androidx.compose.material.icons.filled.EditCalendar
-//import androidx.compose.material.icons.filled.Event
-//import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Send
-//import androidx.compose.material.icons.filled.Today
+import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.CalendarViewWeek
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.EditCalendar
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -109,14 +105,14 @@ fun FilterScreen(
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
             ) {
-                PeriodButton("Last Trip", Icons.Filled.CheckCircle) {
+                PeriodButton("Last Trip", Icons.Filled.DirectionsCar) {
                     periodType = PeriodType.LAST_TRIP
                     startDate = null
                     endDate = null
                     displayStartDate = ""
                     displayEndDate = ""
                 }
-                PeriodButton("Today", Icons.Filled.Check) {
+                PeriodButton("Today", Icons.Filled.Today) {
                     val todayStart = Calendar.getInstance().apply {
                         set(Calendar.HOUR_OF_DAY, 0)
                         set(Calendar.MINUTE, 0)
@@ -132,7 +128,7 @@ fun FilterScreen(
                     updateDates(todayStart, todayEnd)
                     periodType = PeriodType.TODAY
                 }
-                PeriodButton("This Week", Icons.Filled.DateRange) {
+                PeriodButton("This Week", Icons.Filled.CalendarViewWeek) {
                     val calendar = Calendar.getInstance()
                     calendar.set(Calendar.DAY_OF_WEEK, calendar.firstDayOfWeek)
                     calendar.set(Calendar.HOUR_OF_DAY, 0)
@@ -149,7 +145,7 @@ fun FilterScreen(
                     updateDates(weekStart, weekEnd)
                     periodType = PeriodType.THIS_WEEK
                 }
-                PeriodButton("Last Week", Icons.Filled.Notifications) {
+                PeriodButton("Last Week", Icons.Filled.History) {
                     val calendar = Calendar.getInstance()
                     calendar.set(Calendar.DAY_OF_WEEK, calendar.firstDayOfWeek)
                     calendar.add(Calendar.WEEK_OF_YEAR, -1)
@@ -167,7 +163,7 @@ fun FilterScreen(
                     updateDates(lastWeekStart, lastWeekEnd)
                     periodType = PeriodType.LAST_WEEK
                 }
-                PeriodButton("Custom Period", Icons.Filled.DateRange) {
+                PeriodButton("Custom Period", Icons.Filled.EditCalendar) {
                     displayStartDate = ""
                     displayEndDate = ""
                     startDate = null
@@ -197,7 +193,7 @@ fun FilterScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                ActionButton("Clear All", Icons.Filled.Clear) {
+                ActionButton("Clear All", Icons.Filled.Delete) {
                     displayStartDate = ""
                     displayEndDate = ""
                     startDate = null
@@ -206,7 +202,7 @@ fun FilterScreen(
                 }
 
 //                To be activate in second phase
-                ActionButton("Generate Report", Icons.Filled.Send) {
+                ActionButton("Generate Report", Icons.Filled.Assessment) {
                     val selectedStartDate = startDate
                     val selectedEndDate = endDate
 

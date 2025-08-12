@@ -25,6 +25,7 @@ class SensorDataColStateRepository @Inject constructor() {
     // Tracks whether the vehicle is currently moving
     private val _isVehicleMoving = MutableStateFlow(false)
     val isVehicleMoving: StateFlow<Boolean> get() = _isVehicleMoving
+    val vehicleMovementStatus: StateFlow<Boolean> get() = _isVehicleMoving
 
     private val _linAcceleReading = mutableFloatStateOf(0f)
     val linAcceleReading: MutableState<Float> get()=_linAcceleReading

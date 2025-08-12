@@ -7,6 +7,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.uoa.core.utils.PreferenceUtils
 import com.uoa.core.apiServices.workManager.UploadAllDataWorker
 //import com.uoa.core.utils.TimeZoneMonitor
 import com.uoa.core.network.NetworkMonitor
@@ -37,8 +38,11 @@ override fun onCreate(savedInstanceState: Bundle?) {
     }
 
     private fun setupPeriodicUploadWork() {
+        val allowMetered = PreferenceUtils.isMeteredUploadsAllowed(this)
         val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.UNMETERED)
+            .setRequiredNetworkType(
+                if (allowMetered) NetworkType.CONNECTED else NetworkType.UNMETERED
+            )
             .setRequiresCharging(true)
             .build()
 

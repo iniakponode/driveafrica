@@ -8,11 +8,15 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.uoa.core.utils.PreferenceUtils
 import java.util.concurrent.TimeUnit
 
 fun scheduleDataUploadWork(context: Context) {
+    val allowMetered = PreferenceUtils.isMeteredUploadsAllowed(context)
     val constraints = Constraints.Builder()
-        .setRequiredNetworkType(NetworkType.UNMETERED)
+        .setRequiredNetworkType(
+            if (allowMetered) NetworkType.CONNECTED else NetworkType.UNMETERED
+        )
         .setRequiresCharging(true)
         .build()
 

@@ -2,6 +2,7 @@ package com.uoa.core.utils
 
 import android.content.Context
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
+import com.uoa.core.utils.Constants.Companion.ALLOW_METERED_UPLOADS
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.Constants.Companion.TRIP_ID
 import java.util.UUID
@@ -27,5 +28,15 @@ object PreferenceUtils {
         } catch (e: IllegalArgumentException) {
             null
         }
+    }
+
+    fun isMeteredUploadsAllowed(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(ALLOW_METERED_UPLOADS, true)
+    }
+
+    fun setMeteredUploadsAllowed(context: Context, allowed: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(ALLOW_METERED_UPLOADS, allowed).apply()
     }
 }

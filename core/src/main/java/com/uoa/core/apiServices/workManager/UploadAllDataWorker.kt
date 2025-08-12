@@ -51,9 +51,12 @@ import com.uoa.core.network.NetworkMonitor
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -103,43 +106,52 @@ class UploadAllDataWorker @AssistedInject constructor(
         private const val BATCH_SIZE = 500 // Adjust as needed
     }
 
-    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        // Check network connectivity
-        if (!networkMonitor.isOnline.first()) {
-            vehicleNotificationManager.displayNotification(
-                title = "Upload Failed",
-                message = "No internet connectivity. Please check your network."
-            )
-            Log.w("UploadAllDataWorker", "No internet connectivity. Retrying...")
-            return@withContext Result.retry()
-        }
+    private val repositoryMutex = Mutex()
 
-        // Define upload order based on dependencies
-        val uploadSequence = listOf(
-            ::uploadDriverProfile,
-            ::uploadTrips,
-            ::uploadLocations,
-            ::uploadDrivingTips,
-            ::uploadUnsafeBehaviours,
-            ::uploadRawSensorData,
-            ::uploadAIModelInputs,
-//            ::uploadReportStatistics,
-            ::uploadQuestionnaires,
-            ::uploadRoads,
-        )
+    override suspend fun doWork(): Result = withContext(Dispatchers.IO + SupervisorJob()) {
+        try {
+            repositoryMutex.withLock<Result> {
+                // Check network connectivity
+                if (!networkMonitor.isOnline.first()) {
+                    vehicleNotificationManager.displayNotification(
+                        title = "Upload Failed",
+                        message = "No internet connectivity. Please check your network."
+                    )
+                    Log.w("UploadAllDataWorker", "No internet connectivity. Retrying...")
+                    return@withLock Result.retry()
+                }
 
-        // Execute uploads in sequence
-        for (uploadAction in uploadSequence) {
-            val success = uploadAction()
-            if (!success) {
-                Log.e("UploadAllDataWorker", "Failed to upload ${uploadAction.name}. Retrying...")
-                return@withContext Result.retry()
+                // Define upload order based on dependencies
+                val uploadSequence = listOf(
+                    ::uploadDriverProfile,
+                    ::uploadTrips,
+                    ::uploadLocations,
+                    ::uploadDrivingTips,
+                    ::uploadUnsafeBehaviours,
+                    ::uploadRawSensorData,
+                    ::uploadAIModelInputs,
+//                    ::uploadReportStatistics,
+                    ::uploadQuestionnaires,
+                    ::uploadRoads,
+                )
+
+                // Execute uploads in sequence
+                for (uploadAction in uploadSequence) {
+                    val success = uploadAction()
+                    if (!success) {
+                        Log.e("UploadAllDataWorker", "Failed to upload ${uploadAction.name}. Retrying...")
+                        return@withLock Result.retry()
+                    }
+                }
+
+                // All uploads succeeded
+                Log.d("UploadAllDataWorker", "All data uploads succeeded.")
+                Result.success()
             }
+        } catch (e: Exception) {
+            Log.e("UploadAllDataWorker", "Unexpected error during upload", e)
+            Result.retry()
         }
-
-        // All uploads succeeded
-        Log.d("UploadAllDataWorker", "All data uploads succeeded.")
-        Result.success()
     }
     /****
      * Upload Single Driver Profile

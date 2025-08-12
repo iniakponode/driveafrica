@@ -11,12 +11,15 @@ import com.uoa.core.model.RawSensorData
 import com.uoa.core.utils.toEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.map
 //import kotlinx.coroutines.flow.asFlow
 //import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -31,6 +34,9 @@ class SensorDataBufferManager @Inject constructor(
     private val bufferLimit = 500  // Threshold limit for batch size
 
     private val bufferHandler = Handler(Looper.getMainLooper())
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val repositoryMutex = Mutex()
 
     init {
         startBufferFlushHandler()
@@ -80,16 +86,17 @@ class SensorDataBufferManager @Inject constructor(
             sensorDataBuffer.clear()
         }
 
-        CoroutineScope(Dispatchers.IO).launch(){
+        scope.launch {
             try {
-                // Just call the repository method (transaction logic is inside the repository)
-                Log.d("SensorBufferManager", "Data bufferCopy: $bufferCopy")
-                rawSensorDataRepository.processAndStoreSensorData(bufferCopy)
-                Log.d("SensorBufferManager", "Data processed successfully:.")
+                repositoryMutex.withLock {
+                    // Just call the repository method (transaction logic is inside the repository)
+                    Log.d("SensorBufferManager", "Data bufferCopy: $bufferCopy")
+                    rawSensorDataRepository.processAndStoreSensorData(bufferCopy)
+                    Log.d("SensorBufferManager", "Data processed successfully:.")
+                }
             } catch (e: Exception) {
                 Log.e("SensorBufferManager", "Error in processAndStoreSensorData", e)
             }
-
         }
     }
 
@@ -107,12 +114,14 @@ class SensorDataBufferManager @Inject constructor(
         }
 
         // Insert data on IO dispatcher *and wait* for completion
-        withContext(Dispatchers.IO) {
-            try {
-                rawSensorDataRepository.processAndStoreSensorData(bufferCopy)
-                Log.d("SensorBufferManager", "Data processed successfully (sync).")
-            } catch (e: Exception) {
-                Log.e("SensorBufferManager", "Error in processAndStoreSensorDataSync", e)
+        repositoryMutex.withLock {
+            withContext(Dispatchers.IO) {
+                try {
+                    rawSensorDataRepository.processAndStoreSensorData(bufferCopy)
+                    Log.d("SensorBufferManager", "Data processed successfully (sync).")
+                } catch (e: Exception) {
+                    Log.e("SensorBufferManager", "Error in processAndStoreSensorDataSync", e)
+                }
             }
         }
     }

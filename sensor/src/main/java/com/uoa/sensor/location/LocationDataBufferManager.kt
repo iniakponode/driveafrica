@@ -8,8 +8,11 @@ import com.uoa.core.model.LocationData
 import com.uoa.core.utils.toEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,6 +31,9 @@ class LocationDataBufferManager @Inject constructor(
     // Flag to prevent concurrent inserts
     @Volatile
     private var isInsertingData = false
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val repositoryMutex = Mutex()
 
     init {
         startBufferInsertHandler()
@@ -77,13 +83,15 @@ class LocationDataBufferManager @Inject constructor(
 
         isInsertingData = true
 
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch {
             try {
-                locationRepositoryImpl.insertLocationBatch(bufferCopy.map { it.toEntity() })
-                // The newest location ID is the last one we added:
-                val lastId = bufferCopy.lastOrNull()?.id
-                if (lastId != null) {
-                    currentLocationId = lastId
+                repositoryMutex.withLock {
+                    locationRepositoryImpl.insertLocationBatch(bufferCopy.map { it.toEntity() })
+                    // The newest location ID is the last one we added:
+                    val lastId = bufferCopy.lastOrNull()?.id
+                    if (lastId != null) {
+                        currentLocationId = lastId
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("LocationDataBufferManager", "Error storing location data", e)
@@ -111,17 +119,19 @@ class LocationDataBufferManager @Inject constructor(
         }
 
         isInsertingData = true
-        withContext(Dispatchers.IO) {
-            try {
-                locationRepositoryImpl.insertLocationBatch(bufferCopy.map { it.toEntity() })
-                val lastId = bufferCopy.lastOrNull()?.id
-                if (lastId != null) {
-                    currentLocationId = lastId
+        repositoryMutex.withLock {
+            withContext(Dispatchers.IO) {
+                try {
+                    locationRepositoryImpl.insertLocationBatch(bufferCopy.map { it.toEntity() })
+                    val lastId = bufferCopy.lastOrNull()?.id
+                    if (lastId != null) {
+                        currentLocationId = lastId
+                    }
+                } catch (e: Exception) {
+                    Log.e("LocationDataBufferManager", "Error in flushBufferToDatabase", e)
+                } finally {
+                    isInsertingData = false
                 }
-            } catch (e: Exception) {
-                Log.e("LocationDataBufferManager", "Error in flushBufferToDatabase", e)
-            } finally {
-                isInsertingData = false
             }
         }
     }

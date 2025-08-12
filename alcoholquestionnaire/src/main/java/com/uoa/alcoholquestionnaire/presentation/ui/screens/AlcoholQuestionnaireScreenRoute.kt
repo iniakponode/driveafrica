@@ -61,7 +61,7 @@ fun AlcoholQuestionnaireScreenRoute(
         onSubmit = { responseMap ->
             questionnaireViewModel.saveAndAttemptUpload(responseMap)
         },
-        onCancel = {
+        onSkip = {
             val savedProfileId = prefs.getString(DRIVER_PROFILE_ID, null)
             val profileUuid = UUID.fromString(savedProfileId ?: return@AlcoholQuestionnaireScreen)
 

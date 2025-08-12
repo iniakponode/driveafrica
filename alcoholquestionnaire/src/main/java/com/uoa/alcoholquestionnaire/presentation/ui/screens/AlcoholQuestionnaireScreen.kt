@@ -36,7 +36,7 @@ import java.util.UUID
 @Composable
 fun AlcoholQuestionnaireScreen(
     onSubmit: (AlcoholQuestionnaireCreate) -> Unit,
-    onCancel: () -> Unit
+    onSkip: () -> Unit
 ) {
     var drankAlcohol by remember { mutableStateOf(false) }
     var selectedAlcoholTypes by remember { mutableStateOf(listOf<String>()) }
@@ -78,11 +78,12 @@ fun AlcoholQuestionnaireScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text("Alcohol Consumption Questionnaire", fontSize = 18.sp)
+            Text("Optional survey for research; you may skip", fontSize = 14.sp)
             Spacer(modifier = Modifier.height(2.dp))
-            Button(onClick = onCancel) {
+            Button(onClick = onSkip) {
                 Icon(Icons.Filled.Close, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Cancel")
+                Text("Skip")
             }
         }
 

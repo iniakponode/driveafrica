@@ -38,7 +38,8 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
     private fun setupPeriodicUploadWork() {
         val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiredNetworkType(NetworkType.UNMETERED)
+            .setRequiresCharging(true)
             .build()
 
         val uploadRequest = PeriodicWorkRequestBuilder<UploadAllDataWorker>(

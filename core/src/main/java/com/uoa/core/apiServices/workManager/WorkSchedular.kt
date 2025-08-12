@@ -11,12 +11,13 @@ import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
 
 fun scheduleDataUploadWork(context: Context) {
-//    val constraints = Constraints.Builder()
-//        .setRequiredNetworkType(NetworkType.CONNECTED)
-//        .build()
+    val constraints = Constraints.Builder()
+        .setRequiredNetworkType(NetworkType.UNMETERED)
+        .setRequiresCharging(true)
+        .build()
 
     val uploadWorkRequest = PeriodicWorkRequestBuilder<UploadAllDataWorker>(5, TimeUnit.MINUTES)
-//        .setConstraints(constraints)
+        .setConstraints(constraints)
         .build()
 
     WorkManager.getInstance(context).enqueueUniquePeriodicWork(

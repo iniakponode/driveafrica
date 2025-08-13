@@ -17,16 +17,14 @@ import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.network.NetworkMonitor
 //import com.uoa.core.utils.TimeZoneMonitor
-import com.uoa.core.utils.HOME_SCREEN_ROUTE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import com.uoa.safedriveafrica.presentation.daappnavigation.TopLevelDestinations
-import com.uoa.core.utils.FILTER_SCREEN_ROUTE
 import com.uoa.core.utils.REPORT_SCREEN_ROUTE
+import com.uoa.core.utils.FILTER_SCREEN_ROUTE
 import com.uoa.core.utils.SENSOR_CONTROL_SCREEN_ROUTE
-import android.app.Application
 import androidx.compose.ui.platform.LocalContext
 import com.uoa.core.utils.ENTRYPOINT_ROUTE
 
@@ -69,11 +67,13 @@ class DAAppState(
         @Composable get() = navController.currentBackStackEntryAsState().value?.destination
 
     val currentTopLevelDestination: TopLevelDestinations?
-        @Composable get() = when (currentDestination?.route) {
-            HOME_SCREEN_ROUTE -> TopLevelDestinations.HOME
-            REPORT_SCREEN_ROUTE -> TopLevelDestinations.REPORTS
-//            SEARCH_ROUTE -> TopLevelDestinations.SEARCH
-            SENSOR_CONTROL_SCREEN_ROUTE -> TopLevelDestinations.RECORD_TRIP
+        @Composable get() = when {
+            currentDestination?.route?.startsWith(TopLevelDestinations.HOME.route) == true ->
+                TopLevelDestinations.HOME
+            currentDestination?.route?.startsWith(TopLevelDestinations.REPORTS.route) == true ->
+                TopLevelDestinations.REPORTS
+            currentDestination?.route?.startsWith(TopLevelDestinations.RECORD_TRIP.route) == true ->
+                TopLevelDestinations.RECORD_TRIP
             else -> null
         }
 
@@ -119,26 +119,17 @@ class DAAppState(
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val savedProfileId = prefs.getString(DRIVER_PROFILE_ID, null)
 
-        when (topLevelDestination) {
-            TopLevelDestinations.REPORTS -> {
-                navController.navigate(FILTER_SCREEN_ROUTE, topLevelNavOptions)
+        val resolvedRoute = if (topLevelDestination == TopLevelDestinations.HOME) {
+            if (savedProfileId != null) {
+                topLevelDestination.route.replace("{$DRIVER_PROFILE_ID}", savedProfileId)
+            } else {
+                ENTRYPOINT_ROUTE
             }
-            TopLevelDestinations.RECORD_TRIP -> {
-                navController.navigate(SENSOR_CONTROL_SCREEN_ROUTE, topLevelNavOptions)
-            }
-            TopLevelDestinations.HOME -> {
-                // IMPORTANT: We must supply the actual profileId in the route
-                if (savedProfileId != null) {
-                    // Build the full route: "homeScreen/<profile-id>"
-                    navController.navigate("homeScreen/$savedProfileId", topLevelNavOptions)
-                } else {
-                    // If no profile ID exists, decide how you want to handle it.
-                    // For example, you might navigate to the entry point or show a warning.
-                    navController.navigate(ENTRYPOINT_ROUTE, topLevelNavOptions)
-                    // Or show a Toast/snackbar, etc.
-                }
-            }
+        } else {
+            topLevelDestination.route
         }
+
+        navController.navigate(resolvedRoute, topLevelNavOptions)
     }
 
     fun canNavigateBack(): Boolean = navController.previousBackStackEntry != null

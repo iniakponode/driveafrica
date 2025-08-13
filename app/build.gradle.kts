@@ -80,7 +80,7 @@ dependencies {
     implementation(libs.navigation.compose)
     implementation(libs.androidx.compose.ui)
     implementation(libs.kotlinx.datetime)
-
+    implementation(libs.androidx.compose.material.iconsExtended)
     implementation(libs.request.permisions)
 //    implementation(libs.compose.material)
     implementation(libs.androidx.compose.material3)

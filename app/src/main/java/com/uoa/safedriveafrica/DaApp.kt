@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -97,7 +98,7 @@ fun DATopBar(appState: DAAppState) {
         navigationIcon = {
             if (appState.canNavigateBack()) {
                 IconButton(onClick = { appState.navController.popBackStack() }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.Filled.ArrowBackIosNew, contentDescription = "Back")
                 }
             }
         }
@@ -143,6 +144,7 @@ fun DABottomBar(destinations:List<TopLevelDestinations>,
 
 
 
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun DAContent(padding: PaddingValues, appState: DAAppState, snackbarHostState: SnackbarHostState) {
     Box(modifier = Modifier.padding(padding)) {

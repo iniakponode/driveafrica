@@ -84,6 +84,8 @@ dependencies {
 //    implementation(libs.androidx.ui.desktop)
     implementation(libs.androidx.runtime.livedata)
 
+    implementation(libs.androidx.compose.material.iconsExtended)
+
 
     implementation(libs.androidx.activity.compose)
 //    implementation(libs.androidx.compose.compiler)

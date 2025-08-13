@@ -8,6 +8,8 @@ import android.os.Looper
 import android.annotation.SuppressLint
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Map
@@ -45,10 +47,6 @@ import org.osmdroid.util.GeoPoint
 
 import java.util.UUID
 
-/**
- * Production‑ready Composable for controlling vehicle movement detection and displaying trip status.
- * Automatically manages permissions, starts/stops monitoring service, and reflects real‑time state.
- */
 @RequiresApi(Build.VERSION_CODES.Q)
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -60,27 +58,22 @@ fun SensorControlScreenUpdate(
 ) {
     val context = LocalContext.current
 
-    // 1. Permission states
+    // 1) Permissions
     val requiredPermissions = listOf(
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.ACCESS_COARSE_LOCATION,
         Manifest.permission.ACTIVITY_RECOGNITION.takeIf { Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q },
         Manifest.permission.POST_NOTIFICATIONS.takeIf { Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU }
     ).filterNotNull()
-
     val permissionState = rememberMultiplePermissionsState(requiredPermissions)
 
-    // 2. Determine if all needed permissions are granted
     val permissionsGranted by remember {
-        derivedStateOf {
-            permissionState.permissions.all { it.hasPermission }
-        }
+        derivedStateOf { permissionState.permissions.all { it.hasPermission } }
     }
 
-    // 3. Track service start status
+    // 2) Service start
     var serviceStarted by rememberSaveable { mutableStateOf(false) }
 
-    // 4. Auto‑start monitoring when permissions granted
     LaunchedEffect(permissionsGranted) {
         if (permissionsGranted && !serviceStarted) {
             Intent(context, VehicleMovementServiceUpdate::class.java).apply {
@@ -93,20 +86,19 @@ fun SensorControlScreenUpdate(
         }
     }
 
-    // 5. Collect view model state
+    // 3) State
     val isMoving by sensorViewModel.isVehicleMoving.collectAsState()
     val tripStarted by sensorViewModel.tripStartStatus.collectAsState()
     val collecting by sensorViewModel.collectionStatus.collectAsState()
     val readableAccel by sensorViewModel.readableAcceleration
     val movementType by sensorViewModel.movementType
-
-    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
-    var currentLocation by remember { mutableStateOf<GeoPoint?>(null) }
     val distanceTravelled by sensorViewModel.distanceTravelled.collectAsState()
     val pathPoints by sensorViewModel.pathPoints.collectAsState()
     val roads by roadViewModel.nearbyRoads.collectAsState()
 
-    // Listen for location updates once permissions are granted
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+    var currentLocation by remember { mutableStateOf<GeoPoint?>(null) }
+
     @SuppressLint("MissingPermission")
     DisposableEffect(permissionsGranted) {
         if (permissionsGranted) {
@@ -128,29 +120,29 @@ fun SensorControlScreenUpdate(
         }
     }
 
+    // ✅ Make whole screen scrollable
+    val scroll = rememberScrollState()
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .verticalScroll(scroll)
+            .padding(16.dp)
+            .navigationBarsPadding()
+            .imePadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Permission request UI
         if (!permissionsGranted) {
             Text("This app requires location, activity, and notification permissions to function.")
-            Button(
-                onClick = { permissionState.launchMultiplePermissionRequest() },
-                enabled = true
-            ) {
+            Button(onClick = { permissionState.launchMultiplePermissionRequest() }) {
                 Icon(Icons.Filled.CheckCircle, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(Modifier.width(8.dp))
                 Text("Grant Permissions")
             }
             return@Column
         }
 
-        // Monitoring status
-        // Live movement‐type display
+        // Movement status
         Text(
             text = when (movementType) {
                 "stationary" -> "No movement detected"
@@ -162,74 +154,44 @@ fun SensorControlScreenUpdate(
         )
         Spacer(Modifier.height(24.dp))
 
-        // Trip status based on all possible combinations
+        // Trip status
         when {
-            movementType == "vehicle" && tripStarted && collecting -> {
+            movementType == "vehicle" && tripStarted && collecting ->
                 Text("Trip now active and data collection is ongoing.")
-            }
-            movementType == "vehicle" && tripStarted && !collecting -> {
+            movementType == "vehicle" && tripStarted && !collecting ->
                 Text("Trip started, waiting to start data collection.")
-            }
-            movementType == "vehicle" && !tripStarted && collecting -> {
+            movementType == "vehicle" && !tripStarted && collecting ->
                 Text("Vehicle movement detected, starting trip.... Data is being collected.")
-            }
-            movementType == "vehicle" && !tripStarted && !collecting -> {
+            movementType == "vehicle" && !tripStarted && !collecting ->
                 Text("Vehicle movement detected, waiting to start trip and data collection....")
-            }
-            movementType == "stationary" && !tripStarted -> {
+            movementType == "stationary" && !tripStarted ->
                 Text("Yet to start trip:\nTrip will start automatically when you start driving.")
-            }
-            movementType == "stationary" && tripStarted && collecting -> {
-                Text(
-                    "Trip Ended\nBecause vehicle has stopped.\n",
-                    Modifier.align(Alignment.CenterHorizontally),
-                    )
-            }
-            movementType == "stationary" && tripStarted && !collecting -> {
+            movementType == "stationary" && tripStarted && collecting ->
+                Text("Trip Ended\nBecause vehicle has stopped.\n")
+            movementType == "stationary" && tripStarted && !collecting ->
                 Text("Trip ongoing but data collection is paused while vehicle is being stopped.")
-            }
-            movementType == "stationary" && !tripStarted && collecting -> {
-                Text("Vehicle is stopped, processing las collected data.",
-                    Modifier.align(Alignment.CenterHorizontally)
-                )
-            }
-            movementType == "stationary" && !tripStarted && !collecting -> {
-                Text("Vehicle is stopped and no trip or data collection in progress.",
-                    Modifier.align(Alignment.CenterHorizontally))
-            }
-            movementType in listOf("walking", "running") && tripStarted && collecting -> {
-                Text("Trip ongoing and data collection is active while on foot.",
-                    Modifier.align(Alignment.CenterHorizontally))
-            }
-            movementType in listOf("walking", "running") && tripStarted && !collecting -> {
-                Text("Trip ongoing on foot, but data collection is not active.",
-                    Modifier.align(Alignment.CenterHorizontally)
-                )
-            }
-            movementType in listOf("walking", "running") && !tripStarted && collecting -> {
-                Text("Walking/running detected, data being collected without trip start.",
-                    Modifier.align(Alignment.CenterHorizontally)
-                )
-            }
-            movementType in listOf("walking", "running") && !tripStarted && !collecting -> {
-                Text("Walking/running detected, trip not started and no data collection.",
-                    Modifier.align(Alignment.CenterHorizontally)
-                )
-            }
-            movementType !in listOf("stationary", "walking", "running", "vehicle") && collecting -> {
-                Text("Unknown movement detected so trip is stopped.\nNow processing collected data from last trip.",
-                    Modifier.align(Alignment.CenterHorizontally)
-                )
-            }
-            movementType !in listOf("stationary", "walking", "running", "vehicle") && !collecting -> {
-                Text("Unknown movement detected\nApp cannot start Trip and or Data collection.",
-                    Modifier.align(Alignment.CenterHorizontally)
-                )
-            }
+            movementType == "stationary" && !tripStarted && collecting ->
+                Text("Vehicle is stopped, processing las collected data.")
+            movementType == "stationary" && !tripStarted && !collecting ->
+                Text("Vehicle is stopped and no trip or data collection in progress.")
+            movementType in listOf("walking", "running") && tripStarted && collecting ->
+                Text("Trip ongoing and data collection is active while on foot.")
+            movementType in listOf("walking", "running") && tripStarted && !collecting ->
+                Text("Trip ongoing on foot, but data collection is not active.")
+            movementType in listOf("walking", "running") && !tripStarted && collecting ->
+                Text("Walking/running detected, data being collected without trip start.")
+            movementType in listOf("walking", "running") && !tripStarted && !collecting ->
+                Text("Walking/running detected, trip not started and no data collection.")
+            movementType !in listOf("stationary", "walking", "running", "vehicle") && collecting ->
+                Text("Unknown movement detected so trip is stopped.\nNow processing collected data from last trip.")
+            movementType !in listOf("stationary", "walking", "running", "vehicle") && !collecting ->
+                Text("Unknown movement detected\nApp cannot start Trip and or Data collection.")
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(Modifier.height(24.dp))
+
         currentLocation?.let { location ->
+            // Fixed-height map so the rest can scroll
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -256,16 +218,17 @@ fun SensorControlScreenUpdate(
                             .padding(16.dp)
                     ) {
                         Icon(Icons.Filled.Stop, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text("Stop Monitoring")
                     }
                 }
             }
+
             Spacer(Modifier.height(8.dp))
+
+            // Info cards — no Box.align here (we're in a Column)
             Column(
-                modifier = Modifier
-                    .align(Alignment.Start)
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Card(
@@ -281,7 +244,7 @@ fun SensorControlScreenUpdate(
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text(
                             text = stringResource(
                                 R.string.distance_travelled,
@@ -293,6 +256,7 @@ fun SensorControlScreenUpdate(
                         )
                     }
                 }
+
                 roads.firstOrNull()?.speedLimit?.let { limit ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -307,7 +271,7 @@ fun SensorControlScreenUpdate(
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(Modifier.width(8.dp))
                             Text(
                                 text = stringResource(
                                     R.string.speed_limit,

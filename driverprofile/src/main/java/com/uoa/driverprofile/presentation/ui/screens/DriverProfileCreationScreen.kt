@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -82,7 +83,7 @@ fun DriverProfileCreationScreen(
             modifier = Modifier.padding(top = 16.dp),
             enabled = !isError
         ) {
-            Icon(Icons.Filled.AccountCircle, contentDescription = null)
+            Icon(Icons.Filled.PersonAdd, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
             Text("Create Profile")
         }

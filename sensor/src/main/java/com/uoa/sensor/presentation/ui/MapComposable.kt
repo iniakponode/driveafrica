@@ -129,14 +129,14 @@ fun MapComposable(
         }
 
         // Stop Monitoring button (also stays visible)
-        Button(
-            onClick = onStopMonitoring,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(16.dp)
-        ) {
-            Text("Stop Monitoring")
-        }
+//        Button(
+//            onClick = onStopMonitoring,
+//            modifier = Modifier
+//                .align(Alignment.BottomStart)
+//                .padding(16.dp)
+//        ) {
+//            Text("Stop Monitoring")
+//        }
     }
 }
 

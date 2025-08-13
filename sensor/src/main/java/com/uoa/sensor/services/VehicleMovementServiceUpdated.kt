@@ -38,7 +38,7 @@ import javax.inject.Inject
  */
 @AndroidEntryPoint
 @RequiresApi(Build.VERSION_CODES.O)
-class VehicleMovementServiceUpdate : LifecycleService() {
+open class VehicleMovementServiceUpdate : LifecycleService() {
     @Inject lateinit var hardwareModule: HardwareModule
     @Inject lateinit var sensorRepo: SensorDataColStateRepository
 
@@ -125,7 +125,6 @@ class VehicleMovementServiceUpdate : LifecycleService() {
     internal fun observeMovement() {
         serviceScope.launch {
             sensorRepo.isVehicleMoving
-                .distinctUntilChanged()
                 .collect { moving ->
                     if (moving) handlePossibleStart() else handlePossibleStop()
                 }

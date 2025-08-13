@@ -14,9 +14,9 @@ fun RowScope.DaAppNavigationBarItem(
     modifier: Modifier=Modifier,
     enabled: Boolean,
     alwaysShowLabel: Boolean=true,
-    icon: @Composable () -> Unit,
+    unselectedIcon: @Composable () -> Unit,
     label: @Composable (() -> Unit)?= null,
-    selectedIcon: @Composable () -> Unit= icon,
+    selectedIcon: @Composable () -> Unit= unselectedIcon,
 ){
     NavigationBarItem(
         selected=selected,
@@ -24,7 +24,7 @@ fun RowScope.DaAppNavigationBarItem(
         modifier=modifier,
         enabled=enabled,
         alwaysShowLabel=alwaysShowLabel,
-        icon= if(selected) selectedIcon else icon,
+        icon= if(selected) selectedIcon else unselectedIcon,
         label=label,
         colors=NavigationBarItemDefaults.colors(
             selectedIconColor = DaAppBarItemDefaults.navigationSelectedItemColor(),

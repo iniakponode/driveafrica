@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -117,7 +116,7 @@ fun DABottomBar(destinations:List<TopLevelDestinations>,
                 selected=selected,
                 onClick={onNavigateToDestination(destination)},
 
-                icon={
+                unselectedIcon={
                     Icon(
                         painterResource(destination.unselectedIconResId),
                         contentDescription=null

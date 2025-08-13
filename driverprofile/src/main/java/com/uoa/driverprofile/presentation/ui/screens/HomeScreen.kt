@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +62,9 @@ fun HomeScreen(
     showReminder: Boolean,
     onDismissReminder: () -> Unit
 ) {
+
+
+
     val context = LocalContext.current
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     val savedEmail = prefs.getString(DRIVER_EMAIL_ID, null)
@@ -161,6 +165,8 @@ fun HomeScreenRoute(
     drivingTipsViewModel: DrivingTipsViewModel = hiltViewModel(),
     profileId: UUID
 ) {
+
+
     val gpt_drivingTips by drivingTipsViewModel.gptDrivingTips.observeAsState(emptyList())
     val gemini_tips by drivingTipsViewModel.geminiDrivingTips.observeAsState(emptyList())
     Log.d("HomeScreenRoute", "Observed GPT ${gpt_drivingTips.size} driving tips")

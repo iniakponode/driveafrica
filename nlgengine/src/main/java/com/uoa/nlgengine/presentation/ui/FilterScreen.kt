@@ -1,5 +1,6 @@
 package com.uoa.nlgengine.presentation.ui
 
+import android.content.Context
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -33,11 +34,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.uoa.core.ui.DAAppTopNavBar
+import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
+import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.PeriodType
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -74,6 +78,10 @@ fun FilterScreen(
             setEndDate = { endDate = it }
         )
     }
+
+    val ctx = LocalContext.current
+    val id = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getString(DRIVER_PROFILE_ID, null)
 
     Scaffold(
         topBar = {

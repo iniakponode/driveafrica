@@ -115,13 +115,6 @@ fun DABottomBar(
             DaAppNavigationBarItem(
                 selected = selected,
                 onClick = { onNavigateToDestination(destination) },
-                // Provide both variants; wrapper will pick based on `selected`
-                icon = {
-                    Icon(
-                        painter = painterResource(destination.unselectedIconResId),
-                        contentDescription = null
-                    )
-                },
                 unselectedIcon = {
                     Icon(
                         painter = painterResource(destination.unselectedIconResId),

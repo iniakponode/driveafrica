@@ -1,5 +1,6 @@
 package com.uoa.safedriveafrica.presentation.daappnavigation
 
+import com.uoa.core.utils.FILTER_SCREEN_ROUTE
 import com.uoa.safedriveafrica.R
 import com.uoa.core.utils.HOME_SCREEN_ROUTE
 import com.uoa.core.utils.REPORT_SCREEN_ROUTE
@@ -21,8 +22,8 @@ enum class TopLevelDestinations(
         titleTextId = R.string.home,
     ),
     REPORTS(
-        route = REPORT_SCREEN_ROUTE,
-        baseRoute = REPORT_SCREEN_ROUTE.substringBefore("/"),
+        route = FILTER_SCREEN_ROUTE,
+        baseRoute = FILTER_SCREEN_ROUTE.substringBefore("/"),
         selectedIcon = R.drawable.report,
         unselectedIconResId = R.drawable.history,
         titleTextId = R.string.reports,

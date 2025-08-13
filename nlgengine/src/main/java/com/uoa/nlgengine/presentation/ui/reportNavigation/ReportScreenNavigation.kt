@@ -65,4 +65,17 @@ fun NavGraphBuilder.reportScreen(navController: NavController) {
         }
         }
 
+    composable(REPORT_SCREEN_ROUTE) {
+        ReportScreenRoute(
+            navController = navController,
+            startDate = 0L,
+            endDate = 0L,
+            periodType = PeriodType.LAST_TRIP,
+            chatGPTViewModel = hiltViewModel(),
+            unsafeBehavioursViewModel = hiltViewModel(),
+            nlgEngineViewModel = hiltViewModel()
+        )
+    }
+
+
 }

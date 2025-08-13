@@ -158,8 +158,10 @@ fun DAContent(padding: PaddingValues, appState: DAAppState, snackbarHostState: S
     }
 }
 
-private fun NavDestination?.isTopLevelDestinationInHierarchy(topLevelDestinations: TopLevelDestinations)=
-        this?.hierarchy?.any{
-            it.route?.contains(topLevelDestinations.name) ?: false
-        } ?: false
+private fun NavDestination?.isTopLevelDestinationInHierarchy(
+    topLevelDestinations: TopLevelDestinations
+) =
+    this?.hierarchy?.any {
+        it.route?.startsWith(topLevelDestinations.route) == true
+    } ?: false
 

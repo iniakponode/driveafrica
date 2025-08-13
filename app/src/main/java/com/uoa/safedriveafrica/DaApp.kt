@@ -26,8 +26,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -35,8 +35,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import com.uoa.safedriveafrica.presentation.daappnavigation.DAAppNavHost
-import com.uoa.safedriveafrica.presentation.daappnavigation.TopLevelDestinations
 import com.uoa.safedriveafrica.presentation.daappnavigation.DaAppNavigationBarItem
+import com.uoa.safedriveafrica.presentation.daappnavigation.TopLevelDestinations
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -68,11 +68,10 @@ fun DAApp(appState: DAAppState) {
                 onNavigateToDestination = appState::navigateToTopLevelDestination,
                 currentDestination = appState.currentDestination
             )
-        },
-        content = { padding ->
-            DAContent(padding, appState, snackbarHostState = snackbarHostState)
         }
-    )
+    ) { padding ->
+        DAContent(padding, appState, snackbarHostState = snackbarHostState)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -116,20 +115,27 @@ fun DABottomBar(
             DaAppNavigationBarItem(
                 selected = selected,
                 onClick = { onNavigateToDestination(destination) },
+                // Provide both variants; wrapper will pick based on `selected`
                 icon = {
                     Icon(
-                        painterResource(destination.unselectedIconResId),
+                        painter = painterResource(destination.unselectedIconResId),
+                        contentDescription = null
+                    )
+                },
+                unselectedIcon = {
+                    Icon(
+                        painter = painterResource(destination.unselectedIconResId),
                         contentDescription = null
                     )
                 },
                 selectedIcon = {
                     Icon(
-                        painterResource(destination.selectedIcon),
+                        painter = painterResource(destination.selectedIcon),
                         contentDescription = null
                     )
                 },
                 label = { Text(text = stringResource(id = destination.titleTextId)) },
-                enabled = true,
+                enabled = true
             )
         }
     }
@@ -138,7 +144,10 @@ fun DABottomBar(
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun DAContent(padding: PaddingValues, appState: DAAppState, snackbarHostState: SnackbarHostState) {
-    Box(modifier = Modifier.padding(padding)) {
+    Box(modifier = Modifier
+        .padding(padding)
+        .fillMaxSize()
+    ) {
         DAAppNavHost(
             appState = appState,
             onShowSnackbar = { message, action ->
@@ -158,3 +167,4 @@ private fun NavDestination?.isTopLevelDestinationInHierarchy(
     topLevelDestinations: TopLevelDestinations
 ): Boolean =
     this?.hierarchy?.any { it.route?.startsWith(topLevelDestinations.route) == true } ?: false
+

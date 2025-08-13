@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -42,12 +41,8 @@ import com.uoa.safedriveafrica.presentation.daappnavigation.DaAppNavigationBarIt
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DAApp(appState: DAAppState) {
-    val snackbarHostState= remember { SnackbarHostState() }
-
+    val snackbarHostState = remember { SnackbarHostState() }
     val isOffline by appState.isOffline.collectAsStateWithLifecycle()
-
-//    If Users internet is not connected
-    val conMessage= "No internet connection on your phone"
 
     LaunchedEffect(isOffline) {
         if (isOffline) {
@@ -55,10 +50,7 @@ fun DAApp(appState: DAAppState) {
                 message = "No internet connection",
                 duration = SnackbarDuration.Indefinite
             )
-            if (result == SnackbarResult.Dismissed) {
-                // Additional action on dismiss if needed
-                return@LaunchedEffect
-            }
+            if (result == SnackbarResult.Dismissed) return@LaunchedEffect
         } else {
             snackbarHostState.currentSnackbarData?.dismiss()
             snackbarHostState.showSnackbar(
@@ -68,13 +60,15 @@ fun DAApp(appState: DAAppState) {
         }
     }
 
-
     Scaffold(
         topBar = { DATopBar(appState) },
-        bottomBar = { DABottomBar(appState.topLevelDestinations,
-            appState::navigateToTopLevelDestination,
-            appState.currentDestination
-            ) },
+        bottomBar = {
+            DABottomBar(
+                destinations = appState.topLevelDestinations,
+                onNavigateToDestination = appState::navigateToTopLevelDestination,
+                currentDestination = appState.currentDestination
+            )
+        },
         content = { padding ->
             DAContent(padding, appState, snackbarHostState = snackbarHostState)
         }
@@ -106,62 +100,61 @@ fun DATopBar(appState: DAAppState) {
 }
 
 @Composable
-fun DABottomBar(destinations:List<TopLevelDestinations>,
-                onNavigateToDestination: (TopLevelDestinations) -> Unit,
-                currentDestination: NavDestination?
+fun DABottomBar(
+    destinations: List<TopLevelDestinations>,
+    onNavigateToDestination: (TopLevelDestinations) -> Unit,
+    currentDestination: NavDestination?
 ) {
     NavigationBar {
-        destinations.forEach{ destination->
-            val selected=currentDestination.isTopLevelDestinationInHierarchy(destination)
-            DaAppNavigationBarItem(
-                selected=selected,
-                onClick={onNavigateToDestination(destination)},
+        val currentRoute = currentDestination?.route
+        destinations.forEach { destination ->
+            // Highlight using base-route prefix match
+            val selected =
+                currentRoute?.startsWith(destination.route) == true ||
+                        currentDestination.isTopLevelDestinationInHierarchy(destination)
 
-                icon={
+            DaAppNavigationBarItem(
+                selected = selected,
+                onClick = { onNavigateToDestination(destination) },
+                icon = {
                     Icon(
                         painterResource(destination.unselectedIconResId),
-                        contentDescription=null
+                        contentDescription = null
                     )
                 },
-                selectedIcon={
+                selectedIcon = {
                     Icon(
                         painterResource(destination.selectedIcon),
-                        contentDescription=null
+                        contentDescription = null
                     )
                 },
-
-                label={
-                    Text(
-                        text=stringResource(id=destination.titleTextId)
-                    )
-                },
-                enabled=true,
+                label = { Text(text = stringResource(id = destination.titleTextId)) },
+                enabled = true,
             )
         }
     }
-
 }
-
-
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun DAContent(padding: PaddingValues, appState: DAAppState, snackbarHostState: SnackbarHostState) {
     Box(modifier = Modifier.padding(padding)) {
-        DAAppNavHost(appState = appState, onShowSnackbar = { message, action ->
-            snackbarHostState.showSnackbar(
-                message = message,
-                actionLabel = action,
-                duration = SnackbarDuration.Short,
-            ) == SnackbarResult.ActionPerformed
-        }, modifier = Modifier.fillMaxSize())
+        DAAppNavHost(
+            appState = appState,
+            onShowSnackbar = { message, action ->
+                snackbarHostState.showSnackbar(
+                    message = message,
+                    actionLabel = action,
+                    duration = SnackbarDuration.Short,
+                ) == SnackbarResult.ActionPerformed
+            },
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 
+// Use base-route prefix matching for top-level destination detection
 private fun NavDestination?.isTopLevelDestinationInHierarchy(
     topLevelDestinations: TopLevelDestinations
-) =
-    this?.hierarchy?.any {
-        it.route?.startsWith(topLevelDestinations.route) == true
-    } ?: false
-
+): Boolean =
+    this?.hierarchy?.any { it.route?.startsWith(topLevelDestinations.route) == true } ?: false

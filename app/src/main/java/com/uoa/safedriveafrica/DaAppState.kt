@@ -17,13 +17,13 @@ import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.network.NetworkMonitor
 //import com.uoa.core.utils.TimeZoneMonitor
-import com.uoa.core.utils.HOME_SCREEN_ROUTE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import com.uoa.safedriveafrica.presentation.daappnavigation.TopLevelDestinations
 import com.uoa.core.utils.REPORT_SCREEN_ROUTE
+import com.uoa.core.utils.FILTER_SCREEN_ROUTE
 import com.uoa.core.utils.SENSOR_CONTROL_SCREEN_ROUTE
 import androidx.compose.ui.platform.LocalContext
 import com.uoa.core.utils.ENTRYPOINT_ROUTE
@@ -67,11 +67,13 @@ class DAAppState(
         @Composable get() = navController.currentBackStackEntryAsState().value?.destination
 
     val currentTopLevelDestination: TopLevelDestinations?
-        @Composable get() = when (currentDestination?.route) {
-            HOME_SCREEN_ROUTE -> TopLevelDestinations.HOME
-            REPORT_SCREEN_ROUTE -> TopLevelDestinations.REPORTS
-//            SEARCH_ROUTE -> TopLevelDestinations.SEARCH
-            SENSOR_CONTROL_SCREEN_ROUTE -> TopLevelDestinations.RECORD_TRIP
+        @Composable get() = when {
+            currentDestination?.route?.startsWith(TopLevelDestinations.HOME.route) == true ->
+                TopLevelDestinations.HOME
+            currentDestination?.route?.startsWith(TopLevelDestinations.REPORTS.route) == true ->
+                TopLevelDestinations.REPORTS
+            currentDestination?.route?.startsWith(TopLevelDestinations.RECORD_TRIP.route) == true ->
+                TopLevelDestinations.RECORD_TRIP
             else -> null
         }
 

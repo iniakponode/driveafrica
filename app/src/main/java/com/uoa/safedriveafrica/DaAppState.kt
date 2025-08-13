@@ -22,9 +22,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import com.uoa.safedriveafrica.presentation.daappnavigation.TopLevelDestinations
+import com.uoa.core.utils.REPORT_SCREEN_ROUTE
 import com.uoa.core.utils.FILTER_SCREEN_ROUTE
 import com.uoa.core.utils.SENSOR_CONTROL_SCREEN_ROUTE
-import android.app.Application
 import androidx.compose.ui.platform.LocalContext
 import com.uoa.core.utils.ENTRYPOINT_ROUTE
 
@@ -119,26 +119,17 @@ class DAAppState(
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val savedProfileId = prefs.getString(DRIVER_PROFILE_ID, null)
 
-        when (topLevelDestination) {
-            TopLevelDestinations.REPORTS -> {
-                navController.navigate(FILTER_SCREEN_ROUTE, topLevelNavOptions)
+        val resolvedRoute = if (topLevelDestination == TopLevelDestinations.HOME) {
+            if (savedProfileId != null) {
+                topLevelDestination.route.replace("{$DRIVER_PROFILE_ID}", savedProfileId)
+            } else {
+                ENTRYPOINT_ROUTE
             }
-            TopLevelDestinations.RECORD_TRIP -> {
-                navController.navigate(SENSOR_CONTROL_SCREEN_ROUTE, topLevelNavOptions)
-            }
-            TopLevelDestinations.HOME -> {
-                // IMPORTANT: We must supply the actual profileId in the route
-                if (savedProfileId != null) {
-                    // Build the full route: "homeScreen/<profile-id>"
-                    navController.navigate("homeScreen/$savedProfileId", topLevelNavOptions)
-                } else {
-                    // If no profile ID exists, decide how you want to handle it.
-                    // For example, you might navigate to the entry point or show a warning.
-                    navController.navigate(ENTRYPOINT_ROUTE, topLevelNavOptions)
-                    // Or show a Toast/snackbar, etc.
-                }
-            }
+        } else {
+            topLevelDestination.route
         }
+
+        navController.navigate(resolvedRoute, topLevelNavOptions)
     }
 
     fun canNavigateBack(): Boolean = navController.previousBackStackEntry != null

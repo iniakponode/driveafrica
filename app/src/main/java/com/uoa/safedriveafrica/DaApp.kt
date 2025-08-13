@@ -111,31 +111,32 @@ fun DABottomBar(destinations:List<TopLevelDestinations>,
                 currentDestination: NavDestination?
 ) {
     NavigationBar {
-        destinations.forEach{ destination->
-            val selected=currentDestination.isTopLevelDestinationInHierarchy(destination)
+        val currentRoute = currentDestination?.route?.substringBefore("/")
+        destinations.forEach { destination ->
+            val selected = currentRoute == destination.route
             DaAppNavigationBarItem(
-                selected=selected,
-                onClick={onNavigateToDestination(destination)},
+                selected = selected,
+                onClick = { onNavigateToDestination(destination) },
 
-                icon={
+                icon = {
                     Icon(
                         painterResource(destination.unselectedIconResId),
-                        contentDescription=null
+                        contentDescription = null
                     )
                 },
-                selectedIcon={
+                selectedIcon = {
                     Icon(
                         painterResource(destination.selectedIcon),
-                        contentDescription=null
+                        contentDescription = null
                     )
                 },
 
-                label={
+                label = {
                     Text(
-                        text=stringResource(id=destination.titleTextId)
+                        text = stringResource(id = destination.titleTextId)
                     )
                 },
-                enabled=true,
+                enabled = true,
             )
         }
     }
@@ -158,8 +159,8 @@ fun DAContent(padding: PaddingValues, appState: DAAppState, snackbarHostState: S
     }
 }
 
-private fun NavDestination?.isTopLevelDestinationInHierarchy(topLevelDestinations: TopLevelDestinations)=
-        this?.hierarchy?.any{
-            it.route?.contains(topLevelDestinations.name) ?: false
-        } ?: false
+private fun NavDestination?.isTopLevelDestinationInHierarchy(topLevelDestination: TopLevelDestinations): Boolean {
+    val destinationRoute = this?.route?.substringBefore("/")
+    return destinationRoute == topLevelDestination.route
+}
 

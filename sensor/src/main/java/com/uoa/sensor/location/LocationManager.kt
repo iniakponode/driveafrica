@@ -21,6 +21,7 @@ import com.uoa.core.utils.buildSpeedLimitQuery
 import com.uoa.core.utils.formatDateToUTCPlusOne
 import com.uoa.core.utils.getRoadDataForLocation
 import com.uoa.sensor.repository.LocationRepositoryImpl
+import com.uoa.sensor.repository.SensorDataColStateRepository
 import com.uoa.core.utils.toEntity
 import com.uoa.sensor.hardware.MotionDetection
 //import com.uoa.sensor.hardware.MotionDetector
@@ -36,6 +37,7 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.text.filter
+import org.osmdroid.util.GeoPoint
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Singleton
@@ -46,7 +48,8 @@ class LocationManager @Inject constructor(
     private val osmSpeedLimitApiService: OSMSpeedLimitApiService,
     private val context: Context,
     private val osmRoadApiService: OSMRoadApiService,
-    private val roadRepository: RoadRepository
+    private val roadRepository: RoadRepository,
+    private val sensorDataColStateRepository: SensorDataColStateRepository
 ) : MotionDetection.MotionListener {
 
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -272,6 +275,14 @@ class LocationManager @Inject constructor(
 
                 // Buffer the location; once inserted, the buffer manager will track currentLocationId
                 bufferManager.addLocationData(updatedLocationData)
+
+                val roads = roadRepository.getNearByRoad(location.latitude, location.longitude, 0.05)
+                sensorDataColStateRepository.updateLocation(
+                    GeoPoint(location.latitude, location.longitude),
+                    distance,
+                    roads,
+                    speedLimit ?: 0
+                )
             }
         }
     }

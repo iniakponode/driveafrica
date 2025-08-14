@@ -15,8 +15,7 @@ import com.uoa.core.model.LocationData
 import com.uoa.core.model.Road
 import com.uoa.core.network.apiservices.OSMRoadApiService
 import com.uoa.core.network.apiservices.OSMSpeedLimitApiService
-import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
-import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.core.utils.PreferenceUtils
 import com.uoa.core.utils.buildSpeedLimitQuery
 import com.uoa.core.utils.formatDateToUTCPlusOne
 import com.uoa.core.utils.getRoadDataForLocation
@@ -52,9 +51,7 @@ class LocationManager @Inject constructor(
     private val sensorDataColStateRepository: SensorDataColStateRepository
 ) : MotionDetection.MotionListener {
 
-    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    val profileIdString = prefs.getString(DRIVER_PROFILE_ID, null)
-    val driverProfileId = UUID.fromString(profileIdString)
+    val driverProfileId: UUID? = PreferenceUtils.getDriverProfileId(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // Keep track of the last valid location we've recorded
@@ -249,15 +246,24 @@ class LocationManager @Inject constructor(
                     sync = false
                 )
 
-                // 1) Call our new function to fetch road data (road name + speed limit) for this location.
-                val (roadName, speedLimit) = getRoadDataForLocation(
-                    context = context,
-                    location = locationData,
-                    osmApiService =osmRoadApiService /* your OSMRoadApiService */,
-                    speedLimitApiService = osmSpeedLimitApiService, // from your constructor
-                    roadRepository =roadRepository /* your RoadRepository (inject if needed) */,
-                    profileId = driverProfileId
-                )
+                // 1) Call our new function to fetch road data (road name + speed limit) for this location
+                //    only if we have a valid driver profile ID.
+                if (driverProfileId == null) {
+                    Log.e(
+                        "LocationManager",
+                        "Driver profile ID is null or invalid; skipping road data retrieval"
+                    )
+                }
+                val (roadName, speedLimit) = driverProfileId?.let {
+                    getRoadDataForLocation(
+                        context = context,
+                        location = locationData,
+                        osmApiService = osmRoadApiService,
+                        speedLimitApiService = osmSpeedLimitApiService,
+                        roadRepository = roadRepository,
+                        profileId = it
+                    )
+                } ?: (null to null)
 
                 // 2) Update the locationData with speed limit from Overpass (if available)
                 val finalSpeedLimitMps: Double? = speedLimit?.let { it * 0.44704 } // mph→m/s if needed

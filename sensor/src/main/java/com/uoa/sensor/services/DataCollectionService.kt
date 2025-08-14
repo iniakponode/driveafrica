@@ -69,6 +69,8 @@ class DataCollectionService : Service() {
 
     override fun onDestroy() {
         stopDataCollection()
+        stopForeground(true)
+        notificationManager.clearNotification()
         serviceScope.cancel()
         super.onDestroy()
     }
@@ -91,10 +93,8 @@ class DataCollectionService : Service() {
     private fun stopDataCollection() {
         try {
             hardwareModule.stopDataCollection()
-            notificationManager.buildForegroundNotification(
-                title = "Data Collection Service",
-                message = "Data collection service is stopped"
-            )
+            stopForeground(true)
+            notificationManager.clearNotification()
         } catch (e: Exception) {
             Log.e("DataCollectionService", "Error stopping data collection", e)
         }

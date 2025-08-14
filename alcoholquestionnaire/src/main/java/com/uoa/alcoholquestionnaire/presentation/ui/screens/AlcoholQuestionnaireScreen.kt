@@ -1,6 +1,5 @@
 package com.uoa.alcoholquestionnaire.presentation.ui.screens
 
-import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -16,18 +15,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.uoa.core.apiServices.models.alcoholquestionnaireModels.AlcoholQuestionnaireCreate
-import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
-import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.DateConversionUtils
 import java.text.SimpleDateFormat
 import java.time.Instant
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
@@ -35,6 +29,7 @@ import java.util.UUID
 
 @Composable
 fun AlcoholQuestionnaireScreen(
+    profileId: UUID,
     onSubmit: (AlcoholQuestionnaireCreate) -> Unit,
     onSkip: () -> Unit
 ) {
@@ -51,18 +46,11 @@ fun AlcoholQuestionnaireScreen(
     var plansToDrive by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
-    val context = LocalContext.current
-    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    val savedProfileId = prefs.getString(DRIVER_PROFILE_ID, null)
-
     // Create and configure the SimpleDateFormat for ISO 8601 format in UTC
     val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
     sdf.timeZone = TimeZone.getTimeZone("UTC")
 
     val timestamp = Instant.now().toEpochMilli()
-
-// Format the current date
-    val currentIsoDate = sdf.format(Date())
 
     Column(
         modifier = Modifier
@@ -194,14 +182,9 @@ fun AlcoholQuestionnaireScreen(
         Button(
             onClick = {
                 Log.d("AlcoholQuestionnaireScreen", "Submit button clicked")
-                if (savedProfileId == null) {
-                    Log.e("AlcoholQuestionnaireScreen", "Saved profile ID is null!")
-                    // Optionally show an error message to the user.
-                    return@Button
-                }
                 val response = AlcoholQuestionnaireCreate(
                     id = UUID.randomUUID(), // Generates a unique ID for each response
-                    driverProfileId = UUID.fromString(savedProfileId), // Ensure `savedProfileId` is not null
+                    driverProfileId = profileId,
                     drankAlcohol = drankAlcohol,
                     selectedAlcoholTypes = selectedAlcoholTypes.joinToString(","), // Convert list to comma-separated string
                     beerQuantity = beerQuantity.text,

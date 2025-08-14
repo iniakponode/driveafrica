@@ -155,7 +155,10 @@ fun SensorControlScreenUpdate(
 
         Spacer(Modifier.height(24.dp))
 
-        currentLocation?.let { location ->
+        // Use the last known point if the current location becomes null
+        val displayLocation = currentLocation ?: pathPoints.lastOrNull()
+
+        displayLocation?.let { location ->
             // Fixed-height map so the rest can scroll
             Box(
                 modifier = Modifier

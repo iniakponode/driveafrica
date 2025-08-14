@@ -15,6 +15,7 @@ import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.LAST_QUESTIONNAIRE_DAY
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.Resource
+import com.uoa.driverprofile.presentation.ui.navigation.navigateToOnboardingScreen
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
@@ -28,6 +29,21 @@ fun AlcoholQuestionnaireScreenRoute(
 ) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val profileIdString = prefs.getString(DRIVER_PROFILE_ID, null)
+
+    if (profileIdString.isNullOrEmpty()) {
+        LaunchedEffect(Unit) {
+            navController.navigateToOnboardingScreen()
+        }
+        return
+    }
+
+    val profileUuid = runCatching { UUID.fromString(profileIdString) }
+        .getOrElse {
+            prefs.edit().remove(DRIVER_PROFILE_ID).apply()
+            LaunchedEffect(Unit) { navController.navigateToOnboardingScreen() }
+            return
+        }
 
     val uploadState by questionnaireViewModel.uploadState.observeAsState()
 
@@ -35,8 +51,6 @@ fun AlcoholQuestionnaireScreenRoute(
         when (uploadState) {
             is Resource.Success -> {
                 Log.e("Navigation", uploadState.toString())
-                val savedProfileId = prefs.getString(DRIVER_PROFILE_ID, null)
-                val profileUuid = UUID.fromString(savedProfileId ?: return@LaunchedEffect)
 
                 val today = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
                 prefs.edit().putString(LAST_QUESTIONNAIRE_DAY, today).apply()
@@ -58,13 +72,11 @@ fun AlcoholQuestionnaireScreenRoute(
     }
 
     AlcoholQuestionnaireScreen(
+        profileId = profileUuid,
         onSubmit = { responseMap ->
             questionnaireViewModel.saveAndAttemptUpload(responseMap)
         },
         onSkip = {
-            val savedProfileId = prefs.getString(DRIVER_PROFILE_ID, null)
-            val profileUuid = UUID.fromString(savedProfileId ?: return@AlcoholQuestionnaireScreen)
-
             navController.navigate("homeScreen/${profileUuid}") {
                 popUpTo(ALCOHOL_QUESTIONNAIRE_ROUTE) {
                     inclusive = true

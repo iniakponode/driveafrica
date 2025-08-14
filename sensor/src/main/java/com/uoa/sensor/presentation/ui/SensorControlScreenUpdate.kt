@@ -1,11 +1,8 @@
 package com.uoa.sensor.presentation.ui
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.os.Looper
-import android.annotation.SuppressLint
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -32,18 +29,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.accompanist.permissions.*
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationResult
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
 import com.uoa.core.utils.DRIVER_PROFILE_ID
 import com.uoa.sensor.presentation.viewModel.SensorViewModel
 import com.uoa.sensor.presentation.viewModel.TripViewModel
-import com.uoa.sensor.presentation.viewModel.RoadViewModel
 import com.uoa.sensor.services.VehicleMovementServiceUpdate
 import com.uoa.sensor.R
-import org.osmdroid.util.GeoPoint
 
 import java.util.UUID
 
@@ -53,8 +43,7 @@ import java.util.UUID
 fun SensorControlScreenUpdate(
     driverProfileId: UUID,
     sensorViewModel: SensorViewModel = hiltViewModel(),
-    tripViewModel: TripViewModel = hiltViewModel(),
-    roadViewModel: RoadViewModel = hiltViewModel()
+    tripViewModel: TripViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
 
@@ -87,38 +76,14 @@ fun SensorControlScreenUpdate(
     }
 
     // 3) State
-    val isMoving by sensorViewModel.isVehicleMoving.collectAsState()
     val tripStarted by sensorViewModel.tripStartStatus.collectAsState()
     val collecting by sensorViewModel.collectionStatus.collectAsState()
-    val readableAccel by sensorViewModel.readableAcceleration
     val movementType by sensorViewModel.movementType
     val distanceTravelled by sensorViewModel.distanceTravelled.collectAsState()
     val pathPoints by sensorViewModel.pathPoints.collectAsState()
-    val roads by roadViewModel.nearbyRoads.collectAsState()
-
-    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
-    var currentLocation by remember { mutableStateOf<GeoPoint?>(null) }
-
-    @SuppressLint("MissingPermission")
-    DisposableEffect(permissionsGranted) {
-        if (permissionsGranted) {
-            val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000L).build()
-            val callback = object : LocationCallback() {
-                override fun onLocationResult(result: LocationResult) {
-                    result.lastLocation?.let { location ->
-                        val point = GeoPoint(location.latitude, location.longitude)
-                        currentLocation = point
-                        sensorViewModel.addLocation(point)
-                        roadViewModel.fetchNearbyRoads(location.latitude, location.longitude, 0.05)
-                    }
-                }
-            }
-            fusedLocationClient.requestLocationUpdates(request, callback, Looper.getMainLooper())
-            onDispose { fusedLocationClient.removeLocationUpdates(callback) }
-        } else {
-            onDispose { }
-        }
-    }
+    val roads by sensorViewModel.nearbyRoads.collectAsState()
+    val speedLimit by sensorViewModel.speedLimit.collectAsState()
+    val currentLocation by sensorViewModel.currentLocation.collectAsState()
 
     // ✅ Make whole screen scrollable
     val scroll = rememberScrollState()
@@ -257,31 +222,29 @@ fun SensorControlScreenUpdate(
                     }
                 }
 
-                roads.firstOrNull()?.speedLimit?.let { limit ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Speed,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = stringResource(
-                                    R.string.speed_limit,
-                                    limit,
-                                    stringResource(R.string.unit_kilometers_per_hour)
-                                ),
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Filled.Speed,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(
+                                R.string.speed_limit,
+                                speedLimit,
+                                stringResource(R.string.unit_kilometers_per_hour)
+                            ),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }

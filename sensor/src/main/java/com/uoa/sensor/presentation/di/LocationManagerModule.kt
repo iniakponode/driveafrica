@@ -9,6 +9,7 @@ import com.uoa.core.network.apiservices.OSMSpeedLimitApiService
 import com.uoa.sensor.hardware.MotionDetection
 import com.uoa.sensor.location.LocationDataBufferManager
 import com.uoa.sensor.location.LocationManager
+import com.uoa.sensor.repository.SensorDataColStateRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,7 +29,8 @@ object LocationManagerModule {
         motionDector: MotionDetection,
         osmSpeedLimitApiService: OSMSpeedLimitApiService,
         osmRoadApiService: OSMRoadApiService,
-        roadRepository: RoadRepository
+        roadRepository: RoadRepository,
+        sensorDataColStateRepository: SensorDataColStateRepository
     ): LocationManager {
         // Provide an instance of LocationManager
         return LocationManager(
@@ -38,7 +40,8 @@ object LocationManagerModule {
             osmSpeedLimitApiService,
             context,
             osmRoadApiService,
-            roadRepository
+            roadRepository,
+            sensorDataColStateRepository
         )
     }
 

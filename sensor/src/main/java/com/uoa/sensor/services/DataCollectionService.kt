@@ -33,7 +33,17 @@ class DataCollectionService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val tripIdString = intent?.getStringExtra("TRIP_ID")
-        val tripId = tripIdString?.let { UUID.fromString(it) }
+        val tripId = tripIdString?.let {
+            runCatching { UUID.fromString(it) }
+                .onFailure { e ->
+                    Log.e(
+                        "DataCollectionService",
+                        "Invalid Trip ID provided: $it",
+                        e
+                    )
+                }
+                .getOrNull()
+        }
 
         if (tripId != null) {
             startDataCollection(tripId)

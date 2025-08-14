@@ -11,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 import com.uoa.core.notifications.VehicleNotificationManager
@@ -35,9 +36,7 @@ class DataCollectionService : Service() {
         val tripIdString = intent?.getStringExtra("TRIP_ID")
         val tripId = tripIdString?.let { UUID.fromString(it) }
 
-        if (tripId != null) {
-            startDataCollection(tripId)
-        } else {
+        if (tripId == null) {
             Log.e("DataCollectionService", "No valid Trip ID provided. Stopping service.")
             stopSelf()
             return START_NOT_STICKY
@@ -50,6 +49,11 @@ class DataCollectionService : Service() {
                 message = "Sensors and Location Data collection is started and ongoing"
             )
         )
+
+        serviceScope.launch {
+            startDataCollection(tripId)
+        }
+
         return START_STICKY
     }
 

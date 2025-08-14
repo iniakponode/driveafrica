@@ -11,11 +11,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.*
 import com.uoa.alcoholquestionnaire.presentation.viewmodel.QuestionnaireViewModel
 import com.uoa.core.utils.ALCOHOL_QUESTIONNAIRE_ROUTE
+import com.uoa.core.utils.ONBOARDING_SCREEN_ROUTE
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.LAST_QUESTIONNAIRE_DAY
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.Resource
-import com.uoa.driverprofile.presentation.ui.navigation.navigateToOnboardingScreen
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
@@ -33,7 +33,7 @@ fun AlcoholQuestionnaireScreenRoute(
 
     if (profileIdString.isNullOrEmpty()) {
         LaunchedEffect(Unit) {
-            navController.navigateToOnboardingScreen()
+            navController.navigate(ONBOARDING_SCREEN_ROUTE)
         }
         return
     }
@@ -41,7 +41,7 @@ fun AlcoholQuestionnaireScreenRoute(
     val profileUuid = runCatching { UUID.fromString(profileIdString) }
         .getOrElse {
             prefs.edit().remove(DRIVER_PROFILE_ID).apply()
-            LaunchedEffect(Unit) { navController.navigateToOnboardingScreen() }
+            LaunchedEffect(Unit) { navController.navigate(ONBOARDING_SCREEN_ROUTE) }
             return
         }
 

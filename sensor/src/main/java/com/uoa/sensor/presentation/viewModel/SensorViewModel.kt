@@ -1,26 +1,24 @@
 package com.uoa.sensor.presentation.viewModel
 
 import android.content.Context
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uoa.sensor.repository.SensorDataColStateRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
 import java.util.UUID
+import com.uoa.core.model.Road
 import javax.inject.Inject
 
 @HiltViewModel
 class SensorViewModel @Inject constructor(
     private val sensorDataColStateRepository: SensorDataColStateRepository,
-    @ApplicationContext val context: Context,
-    private val savedStateHandle: SavedStateHandle
+    @ApplicationContext val context: Context
 ) : ViewModel() {
 
     // Flows exposed to the UI:
@@ -41,17 +39,11 @@ class SensorViewModel @Inject constructor(
 
     val movementType=sensorDataColStateRepository.movementLabel
 
-    // Distance travelled in meters across the current path
-    private val _distanceTravelled = MutableStateFlow(
-        savedStateHandle.get<Double>("distanceTravelled") ?: 0.0
-    )
-    val distanceTravelled: StateFlow<Double> = _distanceTravelled
-
-    // List of recorded path points
-    private val _pathPoints = MutableStateFlow(
-        savedStateHandle.get<ArrayList<GeoPoint>>("pathPoints")?.toList() ?: emptyList()
-    )
-    val pathPoints: StateFlow<List<GeoPoint>> = _pathPoints
+    val distanceTravelled: StateFlow<Double> = sensorDataColStateRepository.distanceTravelled
+    val pathPoints: StateFlow<List<GeoPoint>> = sensorDataColStateRepository.pathPoints
+    val nearbyRoads: StateFlow<List<Road>> = sensorDataColStateRepository.nearbyRoads
+    val speedLimit: StateFlow<Int> = sensorDataColStateRepository.speedLimit
+    val currentLocation: StateFlow<GeoPoint?> = sensorDataColStateRepository.currentLocation
 
 
     // Expose one‐off “start trip” and “stop trip” events
@@ -74,18 +66,7 @@ class SensorViewModel @Inject constructor(
         }
     }
 
-    fun addLocation(point: GeoPoint) {
-        val currentPath = _pathPoints.value
-        if (currentPath.isNotEmpty()) {
-            val lastPoint = currentPath.last()
-            _distanceTravelled.value = _distanceTravelled.value + lastPoint.distanceToAsDouble(point)
-        }
-        _pathPoints.value = currentPath + point
-    }
-
-    override fun onCleared() {
-        savedStateHandle["distanceTravelled"] = _distanceTravelled.value
-        savedStateHandle["pathPoints"] = ArrayList(_pathPoints.value)
-        super.onCleared()
+    fun addLocation(point: GeoPoint, distance: Double, roads: List<Road>, speedLimit: Int) {
+        sensorDataColStateRepository.updateLocation(point, distance, roads, speedLimit)
     }
 }

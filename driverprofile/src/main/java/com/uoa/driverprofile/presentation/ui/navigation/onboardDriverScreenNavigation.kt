@@ -10,7 +10,11 @@ import com.uoa.driverprofile.presentation.ui.screens.DriverProfileCreationRoute
 
 //const val ONBOARDING_SCREEN_ROUTE = "onboardingScreen"
 
-fun NavController.navigateToOnboardingScreen(navOptions: NavOptionsBuilder.() -> Unit = {}) = navigate(ONBOARDING_SCREEN_ROUTE, navOptions)
+fun NavController.navigateToOnboardingScreen(navOptions: NavOptionsBuilder.() -> Unit = {}) {
+    if (graph.findNode(ONBOARDING_SCREEN_ROUTE) != null) {
+        navigate(ONBOARDING_SCREEN_ROUTE, navOptions)
+    }
+}
 
 /**
  * Add a composable function to the NavGraphBuilder that will create the OnboardDriverScreen composable

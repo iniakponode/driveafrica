@@ -11,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 import com.uoa.core.notifications.VehicleNotificationManager
@@ -33,11 +34,19 @@ class DataCollectionService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val tripIdString = intent?.getStringExtra("TRIP_ID")
-        val tripId = tripIdString?.let { UUID.fromString(it) }
+        val tripId = tripIdString?.let {
+            runCatching { UUID.fromString(it) }
+                .onFailure { e ->
+                    Log.e(
+                        "DataCollectionService",
+                        "Invalid Trip ID provided: $it",
+                        e
+                    )
+                }
+                .getOrNull()
+        }
 
-        if (tripId != null) {
-            startDataCollection(tripId)
-        } else {
+        if (tripId == null) {
             Log.e("DataCollectionService", "No valid Trip ID provided. Stopping service.")
             stopSelf()
             return START_NOT_STICKY
@@ -50,11 +59,18 @@ class DataCollectionService : Service() {
                 message = "Sensors and Location Data collection is started and ongoing"
             )
         )
+
+        serviceScope.launch {
+            startDataCollection(tripId)
+        }
+
         return START_STICKY
     }
 
     override fun onDestroy() {
         stopDataCollection()
+        stopForeground(true)
+        notificationManager.clearNotification()
         serviceScope.cancel()
         super.onDestroy()
     }
@@ -77,10 +93,8 @@ class DataCollectionService : Service() {
     private fun stopDataCollection() {
         try {
             hardwareModule.stopDataCollection()
-            notificationManager.buildForegroundNotification(
-                title = "Data Collection Service",
-                message = "Data collection service is stopped"
-            )
+            stopForeground(true)
+            notificationManager.clearNotification()
         } catch (e: Exception) {
             Log.e("DataCollectionService", "Error stopping data collection", e)
         }

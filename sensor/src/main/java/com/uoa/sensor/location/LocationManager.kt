@@ -15,12 +15,12 @@ import com.uoa.core.model.LocationData
 import com.uoa.core.model.Road
 import com.uoa.core.network.apiservices.OSMRoadApiService
 import com.uoa.core.network.apiservices.OSMSpeedLimitApiService
-import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
-import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.core.utils.PreferenceUtils
 import com.uoa.core.utils.buildSpeedLimitQuery
 import com.uoa.core.utils.formatDateToUTCPlusOne
 import com.uoa.core.utils.getRoadDataForLocation
 import com.uoa.sensor.repository.LocationRepositoryImpl
+import com.uoa.sensor.repository.SensorDataColStateRepository
 import com.uoa.core.utils.toEntity
 import com.uoa.sensor.hardware.MotionDetection
 //import com.uoa.sensor.hardware.MotionDetector
@@ -36,6 +36,7 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.text.filter
+import org.osmdroid.util.GeoPoint
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Singleton
@@ -46,12 +47,11 @@ class LocationManager @Inject constructor(
     private val osmSpeedLimitApiService: OSMSpeedLimitApiService,
     private val context: Context,
     private val osmRoadApiService: OSMRoadApiService,
-    private val roadRepository: RoadRepository
+    private val roadRepository: RoadRepository,
+    private val sensorDataColStateRepository: SensorDataColStateRepository
 ) : MotionDetection.MotionListener {
 
-    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    val profileIdString = prefs.getString(DRIVER_PROFILE_ID, null)
-    val driverProfileId = UUID.fromString(profileIdString)
+    val driverProfileId: UUID? = PreferenceUtils.getDriverProfileId(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // Keep track of the last valid location we've recorded
@@ -246,15 +246,24 @@ class LocationManager @Inject constructor(
                     sync = false
                 )
 
-                // 1) Call our new function to fetch road data (road name + speed limit) for this location.
-                val (roadName, speedLimit) = getRoadDataForLocation(
-                    context = context,
-                    location = locationData,
-                    osmApiService =osmRoadApiService /* your OSMRoadApiService */,
-                    speedLimitApiService = osmSpeedLimitApiService, // from your constructor
-                    roadRepository =roadRepository /* your RoadRepository (inject if needed) */,
-                    profileId = driverProfileId
-                )
+                // 1) Call our new function to fetch road data (road name + speed limit) for this location
+                //    only if we have a valid driver profile ID.
+                if (driverProfileId == null) {
+                    Log.e(
+                        "LocationManager",
+                        "Driver profile ID is null or invalid; skipping road data retrieval"
+                    )
+                }
+                val (roadName, speedLimit) = driverProfileId?.let {
+                    getRoadDataForLocation(
+                        context = context,
+                        location = locationData,
+                        osmApiService = osmRoadApiService,
+                        speedLimitApiService = osmSpeedLimitApiService,
+                        roadRepository = roadRepository,
+                        profileId = it
+                    )
+                } ?: (null to null)
 
                 // 2) Update the locationData with speed limit from Overpass (if available)
                 val finalSpeedLimitMps: Double? = speedLimit?.let { it * 0.44704 } // mph→m/s if needed
@@ -272,6 +281,14 @@ class LocationManager @Inject constructor(
 
                 // Buffer the location; once inserted, the buffer manager will track currentLocationId
                 bufferManager.addLocationData(updatedLocationData)
+
+                val roads = roadRepository.getNearByRoad(location.latitude, location.longitude, 0.05)
+                sensorDataColStateRepository.updateLocation(
+                    GeoPoint(location.latitude, location.longitude),
+                    distance,
+                    roads,
+                    speedLimit ?: 0
+                )
             }
         }
     }

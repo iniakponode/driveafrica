@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -27,8 +26,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -36,18 +35,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import com.uoa.safedriveafrica.presentation.daappnavigation.DAAppNavHost
-import com.uoa.safedriveafrica.presentation.daappnavigation.TopLevelDestinations
 import com.uoa.safedriveafrica.presentation.daappnavigation.DaAppNavigationBarItem
+import com.uoa.safedriveafrica.presentation.daappnavigation.TopLevelDestinations
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DAApp(appState: DAAppState) {
-    val snackbarHostState= remember { SnackbarHostState() }
-
+    val snackbarHostState = remember { SnackbarHostState() }
     val isOffline by appState.isOffline.collectAsStateWithLifecycle()
-
-//    If Users internet is not connected
-    val conMessage= "No internet connection on your phone"
 
     LaunchedEffect(isOffline) {
         if (isOffline) {
@@ -55,10 +50,7 @@ fun DAApp(appState: DAAppState) {
                 message = "No internet connection",
                 duration = SnackbarDuration.Indefinite
             )
-            if (result == SnackbarResult.Dismissed) {
-                // Additional action on dismiss if needed
-                return@LaunchedEffect
-            }
+            if (result == SnackbarResult.Dismissed) return@LaunchedEffect
         } else {
             snackbarHostState.currentSnackbarData?.dismiss()
             snackbarHostState.showSnackbar(
@@ -68,17 +60,18 @@ fun DAApp(appState: DAAppState) {
         }
     }
 
-
     Scaffold(
         topBar = { DATopBar(appState) },
-        bottomBar = { DABottomBar(appState.topLevelDestinations,
-            appState::navigateToTopLevelDestination,
-            appState.currentDestination
-            ) },
-        content = { padding ->
-            DAContent(padding, appState, snackbarHostState = snackbarHostState)
+        bottomBar = {
+            DABottomBar(
+                destinations = appState.topLevelDestinations,
+                onNavigateToDestination = appState::navigateToTopLevelDestination,
+                currentDestination = appState.currentDestination
+            )
         }
-    )
+    ) { padding ->
+        DAContent(padding, appState, snackbarHostState = snackbarHostState)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -106,9 +99,10 @@ fun DATopBar(appState: DAAppState) {
 }
 
 @Composable
-fun DABottomBar(destinations:List<TopLevelDestinations>,
-                onNavigateToDestination: (TopLevelDestinations) -> Unit,
-                currentDestination: NavDestination?
+fun DABottomBar(
+    destinations: List<TopLevelDestinations>,
+    onNavigateToDestination: (TopLevelDestinations) -> Unit,
+    currentDestination: NavDestination?
 ) {
     NavigationBar {
         val currentRoute = currentDestination?.route?.substringBefore("/")
@@ -140,22 +134,26 @@ fun DABottomBar(destinations:List<TopLevelDestinations>,
             )
         }
     }
-
 }
-
-
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun DAContent(padding: PaddingValues, appState: DAAppState, snackbarHostState: SnackbarHostState) {
-    Box(modifier = Modifier.padding(padding)) {
-        DAAppNavHost(appState = appState, onShowSnackbar = { message, action ->
-            snackbarHostState.showSnackbar(
-                message = message,
-                actionLabel = action,
-                duration = SnackbarDuration.Short,
-            ) == SnackbarResult.ActionPerformed
-        }, modifier = Modifier.fillMaxSize())
+    Box(modifier = Modifier
+        .padding(padding)
+        .fillMaxSize()
+    ) {
+        DAAppNavHost(
+            appState = appState,
+            onShowSnackbar = { message, action ->
+                snackbarHostState.showSnackbar(
+                    message = message,
+                    actionLabel = action,
+                    duration = SnackbarDuration.Short,
+                ) == SnackbarResult.ActionPerformed
+            },
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 

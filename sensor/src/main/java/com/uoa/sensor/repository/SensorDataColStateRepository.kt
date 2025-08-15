@@ -4,10 +4,12 @@ import android.util.Log
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import com.uoa.core.model.Road
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
+import org.osmdroid.util.GeoPoint
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -35,6 +37,22 @@ class SensorDataColStateRepository @Inject constructor() {
 
     private val _movementStatus = MutableStateFlow(false)
     val movementStatus: StateFlow<Boolean> get()=_movementStatus
+
+    // --- Location / road tracking ---
+    private val _currentLocation = MutableStateFlow<GeoPoint?>(null)
+    val currentLocation: StateFlow<GeoPoint?> get() = _currentLocation
+
+    private val _distanceTravelled = MutableStateFlow(0.0)
+    val distanceTravelled: StateFlow<Double> get() = _distanceTravelled
+
+    private val _pathPoints = MutableStateFlow<List<GeoPoint>>(emptyList())
+    val pathPoints: StateFlow<List<GeoPoint>> get() = _pathPoints
+
+    private val _nearbyRoads = MutableStateFlow<List<Road>>(emptyList())
+    val nearbyRoads: StateFlow<List<Road>> get() = _nearbyRoads
+
+    private val _speedLimit = MutableStateFlow(0)
+    val speedLimit: StateFlow<Int> get() = _speedLimit
 
 
     /**
@@ -99,4 +117,21 @@ class SensorDataColStateRepository @Inject constructor() {
     suspend fun startTripStatus(tripStarted: Boolean) {
         _tripStartStatus.emit(tripStarted)
     }
+
+    // ------------------------------------------------------------
+    // Location helpers
+    // ------------------------------------------------------------
+    fun updateLocation(
+        point: GeoPoint,
+        distanceDelta: Double,
+        roads: List<Road>,
+        speedLimit: Int
+    ) {
+        _currentLocation.value = point
+        _distanceTravelled.value += distanceDelta
+        _pathPoints.value = _pathPoints.value + point
+        _nearbyRoads.value = roads
+        _speedLimit.value = speedLimit
+    }
+}
 }

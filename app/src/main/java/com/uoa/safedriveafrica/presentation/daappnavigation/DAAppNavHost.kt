@@ -2,6 +2,7 @@ package com.uoa.safedriveafrica.presentation.daappnavigation
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.annotation.RequiresExtension
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
@@ -21,6 +22,7 @@ import com.uoa.nlgengine.presentation.ui.reportNavigation.reportScreen
 import com.uoa.sensor.presentation.ui.sensornavigation.sensorControlScreen
 
 
+@RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun DAAppNavHost(

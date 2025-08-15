@@ -13,6 +13,7 @@ enum class TopLevelDestinations(
     val selectedIcon: Int,
     val unselectedIconResId: Int,
     val titleTextId: Int,
+    val route: String,
 ) {
     HOME(
         route = HOME_SCREEN_ROUTE,
@@ -20,6 +21,7 @@ enum class TopLevelDestinations(
         selectedIcon = R.drawable.home,
         unselectedIconResId = R.drawable.home,
         titleTextId = R.string.home,
+        route = "homeScreen",
     ),
     REPORTS(
         route = FILTER_SCREEN_ROUTE,
@@ -27,6 +29,7 @@ enum class TopLevelDestinations(
         selectedIcon = R.drawable.report,
         unselectedIconResId = R.drawable.history,
         titleTextId = R.string.reports,
+        route = "filterScreen",
     ),
     RECORD_TRIP(
         route = SENSOR_CONTROL_SCREEN_ROUTE,
@@ -34,5 +37,6 @@ enum class TopLevelDestinations(
         selectedIcon = R.drawable.tips,
         unselectedIconResId = R.drawable.tips,
         titleTextId = R.string.record_trip,
+        route = "sensorControlScreen",
     )
 }

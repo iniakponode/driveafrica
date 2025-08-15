@@ -105,30 +105,32 @@ fun DABottomBar(
     currentDestination: NavDestination?
 ) {
     NavigationBar {
-        val currentRoute = currentDestination?.route
+        val currentRoute = currentDestination?.route?.substringBefore("/")
         destinations.forEach { destination ->
-            // Highlight using base-route prefix match
-            val selected =
-                currentRoute?.startsWith(destination.route) == true ||
-                        currentDestination.isTopLevelDestinationInHierarchy(destination)
-
+            val selected = currentRoute == destination.route
             DaAppNavigationBarItem(
                 selected = selected,
                 onClick = { onNavigateToDestination(destination) },
-                unselectedIcon = {
+
+                icon = {
                     Icon(
-                        painter = painterResource(destination.unselectedIconResId),
+                        painterResource(destination.unselectedIconResId),
                         contentDescription = null
                     )
                 },
                 selectedIcon = {
                     Icon(
-                        painter = painterResource(destination.selectedIcon),
+                        painterResource(destination.selectedIcon),
                         contentDescription = null
                     )
                 },
-                label = { Text(text = stringResource(id = destination.titleTextId)) },
-                enabled = true
+
+                label = {
+                    Text(
+                        text = stringResource(id = destination.titleTextId)
+                    )
+                },
+                enabled = true,
             )
         }
     }
@@ -155,9 +157,8 @@ fun DAContent(padding: PaddingValues, appState: DAAppState, snackbarHostState: S
     }
 }
 
-// Use base-route prefix matching for top-level destination detection
-private fun NavDestination?.isTopLevelDestinationInHierarchy(
-    topLevelDestinations: TopLevelDestinations
-): Boolean =
-    this?.hierarchy?.any { it.route?.startsWith(topLevelDestinations.route) == true } ?: false
+private fun NavDestination?.isTopLevelDestinationInHierarchy(topLevelDestination: TopLevelDestinations): Boolean {
+    val destinationRoute = this?.route?.substringBefore("/")
+    return destinationRoute == topLevelDestination.route
+}
 

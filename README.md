@@ -13,6 +13,52 @@ Safe Drive Africa is a research application developed as part of a PhD study on 
 - **dbda** – unsafe behaviour data analysis utilities.
 - **alcoholquestionnaire** – collects alcohol consumption questionnaire responses.
 
+## Architecture overview
+
+The project follows a multi‑module Clean Architecture pattern. Each module is a
+stand‑alone library wired together in the **app** entry point using [Hilt](https://dagger.dev/hilt/).
+Important pieces include:
+
+- **MainActivity** – starts the Compose UI and schedules `UploadAllDataWorker` for
+  periodic uploads.
+- **core** – hosts the `Sdadb` Room database, network clients and work manager
+  classes such as `UploadAllDataWorker` and `WorkSchedular`. Other modules depend
+  on these abstractions to read and write data.
+- **sensor** – provides `LocationManager`, `MotionFFTClassifier` and repository
+  implementations (`SensorDataRepositoryImpl`, `LocationRepositoryImpl`) that
+  stream hardware readings into the `core` database.
+- **driverprofile** – exposes `DriverProfileRepositoryImpl` and
+  `DrivingTipRepositoryImpl` which feed `DriverProfileViewModel` and
+  `DrivingTipsViewModel` to render driver information and safety tips.
+- **ml** – contains the Onnx model runner and use cases such as
+  `RunClassificationUseCase` that enrich raw sensor data with machine‑learning
+  features.
+- **dbda** – analysis utilities and view models
+  (`AnalysisViewModel`, `UnsafeBehaviourRepositoryImpl`) used to review unsafe
+  behaviours.
+- **nlgengine** – view models (`ChatGPTViewModel`, `GeminiViewModel`,
+  `NLGEngineViewModel`) and repositories that generate and persist natural‑language
+  driving reports.
+- **alcoholquestionnaire** – a simple `QuestionnaireViewModel` and repository for
+  collecting alcohol consumption answers.
+
+### Component interaction
+
+1. The **sensor** module records motion and location events and persists them to
+   the `core` database.
+2. The **ml** and **dbda** modules transform these records into unsafe‑behaviour
+   summaries.
+3. `UploadAllDataWorker` in **core** periodically uploads local data to the
+   backend and fetches new driving tips.
+4. The **nlgengine** module reads local summaries and calls ChatGPT/Gemini to
+   produce personalised reports stored via `NLGReportRepositoryImpl`.
+5. The **driverprofile** module displays tips and report summaries to the user,
+   while the **alcoholquestionnaire** module augments the dataset with survey
+   responses.
+
+With this flow, a new developer can trace each feature from UI, through its
+view model, into repositories and the shared `core` layer.
+
 ## Build prerequisites
 
 - JDK 11
@@ -74,4 +120,16 @@ Key localisation strategies ensure the reports feel relevant:
 - Reference alcohol influence results when present.
 
 By weaving these elements into a concise 150–180 word narrative, the reports remain persuasive, context‑aware and easy for drivers to act upon.
+
+## Development tips
+
+- Run `./gradlew test` to execute unit tests across all modules.
+- Run `./gradlew assembleDebug` for a local debug build.
+- New features generally follow the pattern: Compose UI → ViewModel (Hilt) →
+  repository → `core` database. Ensuring each layer has clear interfaces makes
+  cross‑module changes easier.
+- Update `settings.gradle.kts` and individual `build.gradle.kts` files when
+  adding modules or external libraries.
+- Reuse `UploadAllDataWorker` or extend it if new data needs to be synchronised
+  with the backend.
 

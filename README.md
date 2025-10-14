@@ -100,6 +100,11 @@ tight coupling between UI and data sources.
 2. Supply API keys as described below.
 3. Build the project with `./gradlew assembleDebug` or open it in Android Studio.
 
+### Documentation
+
+- [User manual](docs/USER_MANUAL.md)
+- [Reproduction guide](docs/REPRODUCTION_GUIDE.md)
+
 ## API Keys
 
 The project expects API keys to be defined locally. Create a `local.properties` file in the project root (this file is ignored by Git) and add:

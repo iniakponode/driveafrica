@@ -59,6 +59,35 @@ Important pieces include:
 With this flow, a new developer can trace each feature from UI, through its
 view model, into repositories and the shared `core` layer.
 
+### MVVM implementation
+
+Safe Drive Africa applies the Model–View–ViewModel pattern consistently across
+modules:
+
+- **View (Compose screens)** – The `app` module hosts Jetpack Compose screens
+  such as `DisclaimerScreen`, `DriverProfileScreen` and the alcohol
+  questionnaire. Each screen is responsible only for rendering state exposed by
+  a view model and forwarding user intents (button taps, refresh events, etc.).
+- **ViewModel** – Every feature module defines its own view models that extend
+  `ViewModel` and inject dependencies with Hilt. Examples include
+  `DriverProfileViewModel` (driver profiles and tips), `DrivingTipsViewModel`
+  (safety advice), `ChatGPTViewModel`/`GeminiViewModel` (LLM reports), and
+  `QuestionnaireViewModel` (alcohol survey). View models coordinate UI state,
+  expose immutable `StateFlow`/`LiveData` to the UI, invoke use cases and handle
+  WorkManager scheduling when needed.
+- **Model and data layer** – Repository implementations live in their owning
+  module (e.g. `DriverProfileRepositoryImpl`, `NLGReportRepositoryImpl`,
+  `SensorDataRepositoryImpl`) and depend on the shared `core` abstractions for
+  persistence (`Sdadb`, DAOs) and networking. Additional use cases in modules
+  such as `ml` or `dbda` provide domain-specific transformations that view
+  models compose.
+
+This structure keeps UI code declarative and side-effect free, centralises
+business logic in the view models and use cases, and isolates data access inside
+repositories. Hilt modules in each package bind repository interfaces to their
+implementations, letting the same MVVM flow scale across new features without
+tight coupling between UI and data sources.
+
 ## Build prerequisites
 
 - JDK 11

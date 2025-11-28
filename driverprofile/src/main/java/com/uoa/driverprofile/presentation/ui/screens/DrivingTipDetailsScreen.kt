@@ -59,6 +59,28 @@ internal fun DrivingTipDetailsScreen(
     drivingTip: DrivingTip?,
     onBackClick: () -> Unit
 ) {
+    if (drivingTip == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "Driving tip unavailable",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                IconButton(onClick = onBackClick) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                }
+            }
+        }
+        return
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -97,7 +119,7 @@ internal fun DrivingTipDetailsScreen(
                     )
                 }
                 Text(
-                    text = drivingTip!!.title,
+                    text = drivingTip.title,
                     style = MaterialTheme.typography.headlineMedium
                         .copy(
                             fontWeight = FontWeight.Bold,

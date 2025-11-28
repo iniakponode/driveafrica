@@ -49,8 +49,8 @@ class UpdateTripUseCase @Inject constructor(private val tripRepository: TripData
 }
 
 class GetTripByIdUseCase @Inject constructor(private val tripRepository: TripDataRepository){
-    suspend operator fun invoke(tripId: UUID): Trip{
-        return tripRepository.getTripById(tripId)!!
+    suspend operator fun invoke(tripId: UUID): Trip? {
+        return tripRepository.getTripById(tripId)
     }
 }
 

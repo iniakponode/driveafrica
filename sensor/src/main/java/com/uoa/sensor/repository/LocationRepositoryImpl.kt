@@ -10,9 +10,7 @@ import com.uoa.core.utils.toDomainModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.forEach
 import kotlinx.coroutines.withContext
-import java.util.Date
 import java.util.UUID
 
 class LocationRepositoryImpl(private val locationDao: LocationDao, val rawSensorDataDao: RawSensorDataDao): LocationRepository {
@@ -88,24 +86,13 @@ class LocationRepositoryImpl(private val locationDao: LocationDao, val rawSensor
     }
 
     override suspend fun getLocationDataByTripId(tripId: UUID): List<LocationData> {
-        val rawSensorDataList=rawSensorDataDao.getSensorDataByTripId(tripId)
+        val rawSensorData = rawSensorDataDao.getSensorDataByTripId(tripId).first()
+        val locationIds = rawSensorData.mapNotNull { it.locationId }.distinct()
 
-        val locationIdList= mutableListOf(UUID.randomUUID())
+        if (locationIds.isEmpty()) return emptyList()
 
-        val locationsList= mutableListOf<LocationData>()
-
-        rawSensorDataList.collect{ rawSensorData ->
-            rawSensorData.forEach() {
-                locationIdList.add(it.locationId)
-            }
-        }
-
-        locationIdList.forEach() {
-            val location=locationDao.getLocationById(it)
-            locationsList.add(location?.toDomainModel()!!)
-        }
-
-        return locationsList.toList()
+        val locations = locationDao.getLocationsByIds(locationIds)
+        return locations.map { it.toDomainModel() }
 
     }
 }

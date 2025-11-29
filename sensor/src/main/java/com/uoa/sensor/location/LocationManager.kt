@@ -201,6 +201,8 @@ class LocationManager @Inject constructor(
         scope.launch {
             val speed = location.speed // m/s
             val distance = lastRecordedLocation?.distanceTo(location)?.toDouble() ?: 0.0
+            val clampedSpeed = speed.toDouble().takeIf { it.isFinite() }?.coerceAtLeast(0.0) ?: 0.0
+            sensorDataColStateRepository.updateSpeed(clampedSpeed)
 
             // Attempt to fetch speed limit from Overpass
             val query = buildSpeedLimitQuery(location.latitude, location.longitude, radius = 200.0)

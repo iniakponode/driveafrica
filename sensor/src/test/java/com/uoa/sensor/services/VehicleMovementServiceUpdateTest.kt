@@ -57,4 +57,29 @@ class VehicleMovementServiceUpdateTest {
         delay(50)
         assertFalse(service.autoStartCalled)
     }
+
+    @Test
+    fun `high speed alone triggers vehicle start`() = runBlocking {
+        val repo = SensorDataColStateRepository()
+        val service = TestVehicleMovementService().apply {
+            sensorRepo = repo
+            movementStartDelay = 0L
+        }
+
+        repo.updateSpeed(6.0)
+        service.handlePossibleStart()
+
+        delay(50)
+        assertTrue(service.autoStartCalled)
+    }
+
+    @Test
+    fun `walking label with low speed keeps vehicle false`() = runBlocking {
+        val repo = SensorDataColStateRepository()
+
+        repo.updateMovementType("walking")
+        repo.updateSpeed(0.8)
+
+        assertFalse(repo.isVehicleMoving.value)
+    }
 }

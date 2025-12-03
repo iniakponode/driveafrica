@@ -3,7 +3,6 @@ package com.uoa.safedriveafrica.presentation.daappnavigation
 import com.uoa.core.utils.FILTER_SCREEN_ROUTE
 import com.uoa.safedriveafrica.R
 import com.uoa.core.utils.HOME_SCREEN_ROUTE
-import com.uoa.core.utils.REPORT_SCREEN_ROUTE
 import com.uoa.core.utils.SENSOR_CONTROL_SCREEN_ROUTE
 
 // Top-level destinations with a full route for navigation and a baseRoute for bottom-bar highlighting.
@@ -13,7 +12,6 @@ enum class TopLevelDestinations(
     val selectedIcon: Int,
     val unselectedIconResId: Int,
     val titleTextId: Int,
-    val route: String,
 ) {
     HOME(
         route = HOME_SCREEN_ROUTE,
@@ -21,7 +19,6 @@ enum class TopLevelDestinations(
         selectedIcon = R.drawable.home,
         unselectedIconResId = R.drawable.home,
         titleTextId = R.string.home,
-        route = "homeScreen",
     ),
     REPORTS(
         route = FILTER_SCREEN_ROUTE,
@@ -29,7 +26,6 @@ enum class TopLevelDestinations(
         selectedIcon = R.drawable.report,
         unselectedIconResId = R.drawable.history,
         titleTextId = R.string.reports,
-        route = "filterScreen",
     ),
     RECORD_TRIP(
         route = SENSOR_CONTROL_SCREEN_ROUTE,
@@ -37,6 +33,5 @@ enum class TopLevelDestinations(
         selectedIcon = R.drawable.tips,
         unselectedIconResId = R.drawable.tips,
         titleTextId = R.string.record_trip,
-        route = "sensorControlScreen",
     )
 }

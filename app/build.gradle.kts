@@ -14,7 +14,7 @@ android {
 
     defaultConfig {
         applicationId = "com.uoa.safedriveafrica"
-        minSdk = 26
+        minSdk = 29
         targetSdk = 34
         versionCode = 12
         versionName = "1.12"

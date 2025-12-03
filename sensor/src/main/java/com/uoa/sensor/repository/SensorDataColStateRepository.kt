@@ -156,6 +156,7 @@ class SensorDataColStateRepository @Inject constructor() {
         _nearbyRoads.value = roads
         _speedLimit.value = speedLimit
     }
+<<<<<<< Updated upstream
 
     private fun recomputeMovementSignals() {
         val label = _movementLabel.value
@@ -179,4 +180,6 @@ class SensorDataColStateRepository @Inject constructor() {
         _movementStatus.value = movingBySpeed || movingByLabel || explicitVehicle || resolvedVehicle
         _isVehicleMoving.value = resolvedVehicle
     }
+=======
+>>>>>>> Stashed changes
 }

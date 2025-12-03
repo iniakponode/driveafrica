@@ -33,12 +33,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
-import androidx.navigation.NavDestination.Companion.hierarchy
 import com.uoa.safedriveafrica.presentation.daappnavigation.DAAppNavHost
 import com.uoa.safedriveafrica.presentation.daappnavigation.DaAppNavigationBarItem
 import com.uoa.safedriveafrica.presentation.daappnavigation.TopLevelDestinations
+import androidx.annotation.RequiresExtension
 
-@RequiresApi(Build.VERSION_CODES.O)
+@RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun DAApp(appState: DAAppState) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -111,8 +112,7 @@ fun DABottomBar(
             DaAppNavigationBarItem(
                 selected = selected,
                 onClick = { onNavigateToDestination(destination) },
-
-                icon = {
+                unselectedIcon = {
                     Icon(
                         painterResource(destination.unselectedIconResId),
                         contentDescription = null
@@ -136,6 +136,7 @@ fun DABottomBar(
     }
 }
 
+@RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun DAContent(padding: PaddingValues, appState: DAAppState, snackbarHostState: SnackbarHostState) {
@@ -155,10 +156,5 @@ fun DAContent(padding: PaddingValues, appState: DAAppState, snackbarHostState: S
             modifier = Modifier.fillMaxSize()
         )
     }
-}
-
-private fun NavDestination?.isTopLevelDestinationInHierarchy(topLevelDestination: TopLevelDestinations): Boolean {
-    val destinationRoute = this?.route?.substringBefore("/")
-    return destinationRoute == topLevelDestination.route
 }
 

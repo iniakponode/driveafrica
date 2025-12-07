@@ -179,4 +179,5 @@ class SensorDataColStateRepository @Inject constructor() {
         _movementStatus.value = movingBySpeed || movingByLabel || explicitVehicle || resolvedVehicle
         _isVehicleMoving.value = resolvedVehicle
     }
+
 }

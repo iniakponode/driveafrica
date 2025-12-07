@@ -221,10 +221,19 @@ open class VehicleMovementServiceUpdate : LifecycleService() {
             sensorRepo.updateCollectionStatus(false)
 
             val localTrip = getTripByIdUseCase.invoke(tripId)
+                ?: run {
+                    Log.e(TAG, "No local trip found for id: $tripId during auto-stop")
+                    return
+                }
+            val startDate = localTrip.startDate
+                ?: run {
+                    Log.e(TAG, "Missing start date for trip $tripId during auto-stop")
+                    return
+                }
             val payload = TripCreate(
                 id = tripId,
                 driverProfileId = localTrip.driverPId,
-                startDate = utcIso(localTrip.startDate!!.time),
+                startDate = utcIso(startDate.time),
                 endDate = utcIso(System.currentTimeMillis()),
                 startTime = localTrip.startTime,
                 endTime = System.currentTimeMillis(),

@@ -71,6 +71,13 @@ composeCompiler {
     stabilityConfigurationFile = rootProject.layout.projectDirectory.file("stability_config.conf")
 }
 
+secrets {
+    // Fall back to repo-shipped defaults so CI and clean environments don't fail
+    // when a developer has not yet created a personal local.properties file.
+    propertiesFileName = "local.properties"
+    defaultPropertiesFileName = "local.defaults.properties"
+}
+
 dependencies {
 
     implementation(libs.androidx.core.ktx)

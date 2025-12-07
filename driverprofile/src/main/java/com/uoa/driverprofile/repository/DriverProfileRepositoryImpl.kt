@@ -12,8 +12,8 @@ import javax.inject.Inject
 class DriverProfileRepositoryImpl @Inject constructor(
     private val driverProfileDAO: DriverProfileDAO
 ): DriverProfileRepository {
-    suspend fun getDriverProfile(driverProfileId: UUID): DriverProfile {
-        return driverProfileDAO.getDriverProfileById(driverProfileId)?.toDomainModel()!!
+    suspend fun getDriverProfile(driverProfileId: UUID): DriverProfile? {
+        return driverProfileDAO.getDriverProfileById(driverProfileId)?.toDomainModel()
     }
 
     override suspend fun insertDriverProfile(driverProfileEntity: DriverProfileEntity) {
@@ -40,8 +40,8 @@ class DriverProfileRepositoryImpl @Inject constructor(
         return driverProfileDAO.getDriverProfileById(driverProfileId)?.toDomainModel()
     }
 
-    override suspend fun getDriverProfileByEmail(email: String): DriverProfile {
-        return driverProfileDAO.getDriverProfileByEmail(email)?.toDomainModel()!!
+    override suspend fun getDriverProfileByEmail(email: String): DriverProfile? {
+        return driverProfileDAO.getDriverProfileByEmail(email)?.toDomainModel()
     }
 
     override suspend fun getDriverProfileBySyncStatus(synced: Boolean): List<DriverProfile> {

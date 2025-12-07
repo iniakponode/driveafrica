@@ -208,6 +208,12 @@ class TripViewModel @Inject constructor(
             getTripByIdUseCase.invoke(tripId)
         }
 
+        if (updatedTrip == null) {
+            Log.e("TripViewModel", "No local trip found for id: $tripId")
+            tripUploadSuccess.value = false
+            return false
+        }
+
         // Prepare date/time fields. Example: UTC+1 zone
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault()).apply {
             timeZone = TimeZone.getTimeZone("UTC+1")

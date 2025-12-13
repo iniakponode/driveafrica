@@ -156,7 +156,6 @@ class SensorDataColStateRepository @Inject constructor() {
         _nearbyRoads.value = roads
         _speedLimit.value = speedLimit
     }
-
     private fun recomputeMovementSignals() {
         val label = _movementLabel.value
         val speed = _currentSpeedMps.value

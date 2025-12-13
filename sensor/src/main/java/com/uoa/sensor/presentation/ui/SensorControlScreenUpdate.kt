@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.google.accompanist.permissions.*
 import com.uoa.core.utils.DRIVER_PROFILE_ID
 import com.uoa.sensor.presentation.viewModel.SensorViewModel
@@ -41,6 +42,7 @@ import java.util.UUID
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun SensorControlScreenUpdate(
+    navController: NavController,
     driverProfileId: UUID,
     sensorViewModel: SensorViewModel = hiltViewModel(),
     tripViewModel: TripViewModel = hiltViewModel()
@@ -106,6 +108,15 @@ fun SensorControlScreenUpdate(
             }
             return@Column
         }
+
+        // Navigation button to Vehicle Detection Monitor
+        Button(
+            onClick = { navController.navigate("vehicleDetectionMonitor") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("🚗 Open Vehicle Monitor")
+        }
+        Spacer(Modifier.height(16.dp))
 
         // Movement status
         Text(

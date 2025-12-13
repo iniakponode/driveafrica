@@ -3,7 +3,6 @@ package com.uoa.alcoholquestionnaire.presentation.ui.screens
 import android.content.Context
 import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresExtension
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.platform.LocalContext
@@ -20,7 +19,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-@RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 @Composable
 fun AlcoholQuestionnaireScreenRoute(
     navController: NavController,

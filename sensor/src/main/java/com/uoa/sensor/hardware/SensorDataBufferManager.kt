@@ -1,21 +1,13 @@
 package com.uoa.sensor.hardware
 
-import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import com.uoa.core.behaviouranalysis.NewUnsafeDrivingBehaviourAnalyser
 import com.uoa.core.database.repository.RawSensorDataRepository
-import com.uoa.core.database.repository.UnsafeBehaviourRepository
 import com.uoa.core.model.RawSensorData
-import com.uoa.core.utils.toEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.map
-//import kotlinx.coroutines.flow.asFlow
-//import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
@@ -34,8 +26,10 @@ class SensorDataBufferManager @Inject constructor(
     private val bufferLimit = 500  // Threshold limit for batch size
 
     private val bufferHandler = Handler(Looper.getMainLooper())
+    private var isFlushHandlerRunning = false  // Track handler state
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scopeJob = SupervisorJob()
+    private val scope = CoroutineScope(scopeJob + Dispatchers.IO)
     private val repositoryMutex = Mutex()
 
     init {
@@ -61,12 +55,55 @@ class SensorDataBufferManager @Inject constructor(
      * This ensures we eventually write data even if the buffer doesn't reach bufferLimit.
      */
     private fun startBufferFlushHandler() {
+        if (isFlushHandlerRunning) {
+            Log.w("SensorBufferManager", "Buffer flush handler already running")
+            return
+        }
+        isFlushHandlerRunning = true
+
         bufferHandler.postDelayed(object : Runnable {
             override fun run() {
+                if (!isFlushHandlerRunning) return  // Check if stopped
                 processAndStoreSensorData()
                 bufferHandler.postDelayed(this, bufferInsertInterval)
             }
         }, bufferInsertInterval)
+
+        Log.d("SensorBufferManager", "Buffer flush handler started")
+    }
+
+    /**
+     * Stop the buffer flush handler to prevent memory leaks
+     */
+    fun stopBufferFlushHandler() {
+        isFlushHandlerRunning = false
+        bufferHandler.removeCallbacksAndMessages(null)
+        Log.d("SensorBufferManager", "Buffer flush handler stopped")
+    }
+
+    /**
+     * Clear the buffer contents
+     */
+    fun clearBuffer() {
+        synchronized(sensorDataBuffer) {
+            val size = sensorDataBuffer.size
+            sensorDataBuffer.clear()
+            Log.d("SensorBufferManager", "Buffer cleared ($size items removed)")
+        }
+    }
+
+    /**
+     * Complete cleanup - call this when shutting down
+     */
+    fun cleanup() {
+        try {
+            stopBufferFlushHandler()
+            scopeJob.cancel()  // Cancel all coroutines
+            clearBuffer()
+            Log.d("SensorBufferManager", "Complete cleanup finished")
+        } catch (e: Exception) {
+            Log.e("SensorBufferManager", "Error during cleanup", e)
+        }
     }
 
     /**

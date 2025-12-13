@@ -36,9 +36,6 @@ import androidx.navigation.NavDestination
 import com.uoa.safedriveafrica.presentation.daappnavigation.DAAppNavHost
 import com.uoa.safedriveafrica.presentation.daappnavigation.DaAppNavigationBarItem
 import com.uoa.safedriveafrica.presentation.daappnavigation.TopLevelDestinations
-import androidx.annotation.RequiresExtension
-
-@RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun DAApp(appState: DAAppState) {
@@ -136,7 +133,6 @@ fun DABottomBar(
     }
 }
 
-@RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun DAContent(padding: PaddingValues, appState: DAAppState, snackbarHostState: SnackbarHostState) {

@@ -33,7 +33,6 @@ fun NavController.navigateToHomeScreen(
 }
 
 
-@RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 fun NavGraphBuilder.homeScreen(
     navController: NavController
 ) {

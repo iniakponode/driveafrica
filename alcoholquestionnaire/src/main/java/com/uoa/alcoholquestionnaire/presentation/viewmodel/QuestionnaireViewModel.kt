@@ -5,7 +5,6 @@ import android.content.Context
 import android.net.http.HttpException
 import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresExtension
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -116,7 +115,6 @@ class QuestionnaireViewModel @javax.inject.Inject constructor(
      *    - If data integrity error, skip/mark invalid so it won't be retried.
      *    - If any other error, do NOT mark as synced => Worker will handle.
      */
-    @RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
     fun saveAndAttemptUpload(response: AlcoholQuestionnaireCreate) {
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
         sdf.timeZone = TimeZone.getTimeZone("UTC+1")

@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -200,6 +201,7 @@ import com.uoa.core.apiServices.workManager.UploadAllDataWorker
 
 
         fun SensorControlScreen(
+            navController: NavController,
             sensorViewModel: SensorViewModel = hiltViewModel(),
             tripViewModel: TripViewModel = hiltViewModel(),
             driverProfileId: UUID
@@ -288,6 +290,18 @@ import com.uoa.core.apiServices.workManager.UploadAllDataWorker
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
+
+                // Navigation button to Vehicle Detection Monitor
+                Button(
+                    onClick = {
+                        navController.navigate("vehicleDetectionMonitor")
+                    },
+                    modifier = Modifier.padding(vertical = 8.dp)
+                ) {
+                    Text("🚗 Open Vehicle Monitor")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
                     onClick = {

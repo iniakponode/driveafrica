@@ -62,6 +62,17 @@ class LocationManager @Inject constructor(
     @Volatile
     private var latestLocationId: UUID? = null
 
+    // Callback for forwarding location updates to DrivingStateManager
+    private var externalLocationCallback: ((Location) -> Unit)? = null
+
+    /**
+     * Set a callback to receive location updates (for DrivingStateManager)
+     */
+    fun setLocationCallback(callback: (Location) -> Unit) {
+        externalLocationCallback = callback
+        Log.d("LocationManager", "External location callback registered")
+    }
+
     // Two different intervals for location updates:
     private val intervalMovingMillis: Long = 20_000 // 20 seconds
     private val intervalStationaryMillis: Long = 5 * 60_000 // 5 minutes
@@ -75,6 +86,10 @@ class LocationManager @Inject constructor(
         override fun onLocationResult(locationResult: LocationResult) {
             locationResult.lastLocation?.let { location ->
                 if (isValidLocation(location)) {
+                    // Forward to external callback (DrivingStateManager)
+                    externalLocationCallback?.invoke(location)
+
+                    // Process location for storage
                     processLocation(location)
                 } else {
                     Log.d("LocationManager", "Invalid location received")

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -59,6 +60,7 @@ fun HomeScreen(
     onRecordTripClick: () -> Unit,
     onViewReportsClick: () -> Unit,
     onQuestionnaireClick: () -> Unit,
+    onVehicleMonitorClick: () -> Unit,
     showReminder: Boolean,
     onDismissReminder: () -> Unit
 ) {
@@ -151,6 +153,15 @@ fun HomeScreen(
             Spacer(modifier = Modifier.width(8.dp))
             Text(text = "View Reports")
         }
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(onClick = onVehicleMonitorClick, modifier = Modifier.fillMaxWidth()) {
+            Icon(
+                Icons.Filled.Speed,
+                contentDescription = "Vehicle monitor icon"
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = "Vehicle Detection Monitor")
+        }
     }
 }
 
@@ -158,7 +169,6 @@ fun HomeScreen(
 
 
 
-@RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 @Composable
 fun HomeScreenRoute(
     navController: NavController,
@@ -190,6 +200,7 @@ fun HomeScreenRoute(
         onRecordTripClick = { navController.navigate(SENSOR_CONTROL_SCREEN_ROUTE) },
         onViewReportsClick = { navController.navigate(FILTER_SCREEN_ROUTE) },
         onQuestionnaireClick = { navController.navigateToQuestionnaire() },
+        onVehicleMonitorClick = { navController.navigate("vehicleDetectionMonitor") },
         showReminder = showReminder,
         onDismissReminder = { showReminder = false }
     )

@@ -20,9 +20,9 @@ import com.uoa.driverprofile.presentation.ui.navigation.onboardingScreen
 import com.uoa.nlgengine.presentation.ui.reportNavigation.filterScreen
 import com.uoa.nlgengine.presentation.ui.reportNavigation.reportScreen
 import com.uoa.sensor.presentation.ui.sensornavigation.sensorControlScreen
+import com.uoa.sensor.presentation.ui.navigation.vehicleDetectionMonitorScreen
 
 
-@RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun DAAppNavHost(
@@ -55,5 +55,8 @@ fun DAAppNavHost(
 
         // Add the Alcohol Questionnaire screen route
         alcoholQuestionnaireScreen(navController)
+
+        // Vehicle Detection Monitor - Real-time GPS speed and detection monitoring
+        vehicleDetectionMonitorScreen()
     }
 }

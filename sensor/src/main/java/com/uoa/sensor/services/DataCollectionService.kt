@@ -68,11 +68,42 @@ class DataCollectionService : Service() {
     }
 
     override fun onDestroy() {
-        stopDataCollection()
-        stopForeground(true)
-        notificationManager.clearNotification()
-        serviceScope.cancel()
-        super.onDestroy()
+        Log.d("DataCollectionService", "Service destroying - starting cleanup")
+
+        try {
+            // Stop data collection
+            stopDataCollection()
+
+            // Complete cleanup to prevent memory leaks
+            hardwareModule.cleanup()
+
+            // Stop foreground and clear notification
+            stopForeground(true)
+            notificationManager.clearNotification()
+
+            // Cancel service scope
+            serviceScope.cancel()
+
+            Log.d("DataCollectionService", "Service destroyed successfully")
+        } catch (e: Exception) {
+            Log.e("DataCollectionService", "Error during service destruction", e)
+        } finally {
+            super.onDestroy()
+        }
+    }
+
+    override fun onTaskRemoved(intent: Intent?) {
+        Log.d("DataCollectionService", "Task removed - cleaning up")
+
+        try {
+            stopDataCollection()
+            hardwareModule.cleanup()
+        } catch (e: Exception) {
+            Log.e("DataCollectionService", "Error in onTaskRemoved", e)
+        }
+
+        stopSelf()
+        super.onTaskRemoved(intent)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

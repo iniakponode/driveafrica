@@ -48,7 +48,6 @@ import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.log
 
-@RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 @HiltViewModel
 class DrivingTipsViewModel @Inject constructor(
     private val getDrivingTipByProfileIdUseCase: GetDrivingTipByProfileIdUseCase,
@@ -106,7 +105,7 @@ class DrivingTipsViewModel @Inject constructor(
                         withContext(Dispatchers.Main) {
                             if (updatedTip.llm == "gemini") {
                                 _geminiDrivingTips.postValue(listOf(updatedTip))
-                            } else if (updatedTip.llm == "gpt-3.5-turbo") {
+                            } else if (updatedTip.llm == "gpt-4-turbo") {
                                 _gptDrivingTips.postValue(listOf(updatedTip))
                             }
                             Log.d("DrivingTipsViewModel", "Using existing driving tip")
@@ -188,14 +187,14 @@ class DrivingTipsViewModel @Inject constructor(
                     geminiCaller.generateContent(prompt)
                 }.getOrNull()?.text?.let { parseTipContent(it, "gemini", profileId) }
                 val requestBody = RequestBody(
-                    model = "gpt-3.5-turbo",
+                    model = "gpt-4-turbo",
                     messages = listOf(Message(role = "user", content = prompt)),
                     maxTokens = 750,
                     temperature = 0.5f
                 )
                 val chatGPTResponse = nlgEngineRepository.sendChatGPTPrompt(requestBody)
                 val chatGPTTipContent = chatGPTResponse.choices.firstOrNull()?.message?.content?.let {
-                    parseTipContent(it, "gpt-3.5-turbo", profileId)
+                    parseTipContent(it, "gpt-4-turbo", profileId)
                 }
                 if (geminiTipContent != null && chatGPTTipContent != null) {
                     Log.d("DrivingTipsViewModel", "Successfully generated driving tips")

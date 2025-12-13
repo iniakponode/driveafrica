@@ -181,7 +181,6 @@ internal fun DrivingTipDetailsScreen(
 }
 
 
-@RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 @Composable
 fun DrivingTipDetailsScreenRoute(
     navController: NavController,

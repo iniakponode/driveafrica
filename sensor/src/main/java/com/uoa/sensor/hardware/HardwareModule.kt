@@ -12,6 +12,9 @@ import com.uoa.sensor.repository.SensorDataColStateRepository
 import com.uoa.sensor.utils.GetSensorTypeNameUtil
 import com.uoa.sensor.utils.ProcessSensorData
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.runBlocking
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
@@ -32,13 +35,21 @@ class HardwareModule @Inject constructor(
     private val motionDetection: MotionDetectionFFT,
     private val sensorDataColStateRepository: SensorDataColStateRepository,
     private val context: Context
-) : MotionDetectionFFT.MotionListener {
+) : MotionDetectionFFT.MotionListener, com.uoa.sensor.motion.DrivingStateManager.StateCallback {
 
     // --------------------------------------
     // Collection State & Concurrency
     // --------------------------------------
     private val isCollecting = AtomicBoolean(false)
     private var currentTripId: UUID? = null
+
+    // Expose current trip ID as StateFlow for UI observation
+    private val _currentTripIdFlow = MutableStateFlow<UUID?>(null)
+
+    /**
+     * Flow of current trip ID for UI observation
+     */
+    fun currentTripIdFlow(): StateFlow<UUID?> = _currentTripIdFlow
 
     // Background scope for async operations
     private val hardwareModuleScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -61,8 +72,22 @@ class HardwareModule @Inject constructor(
     // Callback that receives raw sensor updates from each sensor wrapper.
     private lateinit var sensorEventListener: (Int, List<Float>, Int) -> Unit
 
+    // Smart Motion Detection
+    private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    private val drivingStateManager = com.uoa.sensor.motion.DrivingStateManager()
+
     init {
         setupListeners()
+
+        // Initialize the smart motion detection
+        drivingStateManager.initialize(this)
+    }
+
+    /**
+     * Get the DrivingStateManager instance for UI monitoring
+     */
+    fun getDrivingStateManager(): com.uoa.sensor.motion.DrivingStateManager {
+        return drivingStateManager
     }
 
     // --------------------------------------
@@ -81,19 +106,121 @@ class HardwareModule @Inject constructor(
     }
 
     /**
-     * Start always-on motion detection (hybrid).
+     * Start smart motion detection using DrivingStateManager FSM.
+     * This uses low-power accelerometer monitoring in IDLE state,
+     * and only enables GPS when vehicle motion is detected.
      */
     fun startMovementDetection() {
-        motionDetection.addMotionListener(this)
-        motionDetection.startHybridMotionDetection()
+        Log.d("HardwareModule", "Starting smart motion detection with FSM")
+
+        // Register accelerometer for motion detection
+        val accelerometer = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER)
+        if (accelerometer != null) {
+            sensorManager.registerListener(
+                drivingStateManager,
+                accelerometer,
+                SensorManager.SENSOR_DELAY_NORMAL
+            )
+            drivingStateManager.startMonitoring()
+
+            hardwareModuleScope.launch {
+                sensorDataColStateRepository.updateMovementType("Monitoring for vehicle motion")
+            }
+
+            Log.d("HardwareModule", "Smart motion detection started successfully")
+        } else {
+            Log.e("HardwareModule", "Accelerometer not available - motion detection failed")
+        }
     }
 
     /**
-     * Stop the always-on motion detection.
+     * Stop smart motion detection.
      */
     fun stopMovementDetection() {
-        motionDetection.stopHybridMotionDetection()
-        motionDetection.removeMotionListener(this)
+        Log.d("HardwareModule", "Stopping smart motion detection")
+        sensorManager.unregisterListener(drivingStateManager)
+        drivingStateManager.stopMonitoring()
+
+        hardwareModuleScope.launch {
+            sensorDataColStateRepository.updateMovementType("Motion detection stopped")
+        }
+    }
+
+    // =================================================================
+    // DrivingStateManager.StateCallback Implementation
+    // =================================================================
+
+    override fun onDriveStarted() {
+        Log.i("HardwareModule", "🚗 Drive detected and confirmed - Starting trip")
+
+        // Create new trip automatically
+        val newTripId = UUID.randomUUID()
+        startDataCollection(newTripId)
+
+        // Update UI state
+        hardwareModuleScope.launch {
+            sensorDataColStateRepository.updateMovementStatus(true)
+            sensorDataColStateRepository.startTripStatus(true)
+            sensorDataColStateRepository.updateMovementType("Recording trip")
+        }
+    }
+
+    override fun onDriveStopped() {
+        Log.i("HardwareModule", "🛑 Drive ended - Vehicle parked")
+
+        // Stop data collection
+        stopDataCollection()
+
+        // Update UI state
+        hardwareModuleScope.launch {
+            sensorDataColStateRepository.updateMovementStatus(false)
+            sensorDataColStateRepository.startTripStatus(false)
+            sensorDataColStateRepository.updateMovementType("Waiting for motion")
+        }
+    }
+
+    override fun requestGpsEnable() {
+        Log.i("HardwareModule", "📍 Enabling GPS for verification")
+
+        locationManager.startLocationUpdates()
+
+        // Set up location callback to forward updates to DrivingStateManager
+        locationManager.setLocationCallback { location ->
+            drivingStateManager.updateLocation(location)
+        }
+
+        hardwareModuleScope.launch {
+            sensorDataColStateRepository.updateMovementType("Verifying vehicle motion...")
+        }
+    }
+
+    override fun requestGpsDisable() {
+        Log.i("HardwareModule", "📍 Disabling GPS (battery save)")
+
+        locationManager.stopLocationUpdates()
+
+        hardwareModuleScope.launch {
+            sensorDataColStateRepository.updateMovementType("Waiting for motion")
+        }
+    }
+
+    override fun onStateChanged(newState: com.uoa.sensor.motion.DrivingStateManager.DrivingState) {
+        Log.i("HardwareModule", "State changed: $newState")
+
+        // Update UI with current state
+        hardwareModuleScope.launch {
+            val statusMessage = when (newState) {
+                com.uoa.sensor.motion.DrivingStateManager.DrivingState.IDLE ->
+                    "Waiting for motion"
+                com.uoa.sensor.motion.DrivingStateManager.DrivingState.VERIFYING ->
+                    "Verifying vehicle motion..."
+                com.uoa.sensor.motion.DrivingStateManager.DrivingState.RECORDING ->
+                    "Recording trip"
+                com.uoa.sensor.motion.DrivingStateManager.DrivingState.POTENTIAL_STOP ->
+                    "Vehicle stopped (traffic?)"
+            }
+            sensorDataColStateRepository.updateMovementType(statusMessage)
+        }
     }
 
     // --------------------------------------
@@ -108,6 +235,7 @@ class HardwareModule @Inject constructor(
 
         // Now mark new trip as active.
         currentTripId = tripId
+        _currentTripIdFlow.value = tripId
         isCollecting.set(true)
 
         // Update local repository that trip is started.
@@ -128,6 +256,7 @@ class HardwareModule @Inject constructor(
      * This flushes buffers, updates the DB & repository, and then clears references.
      */
     fun stopDataCollection() {
+        val tripId = currentTripId
         hardwareModuleScope.launch {
             if (isCollecting.get()) {
                 isCollecting.set(false)
@@ -140,9 +269,13 @@ class HardwareModule @Inject constructor(
                 sensorDataColStateRepository.startTripStatus(false)
                 sensorDataColStateRepository.updateCollectionStatus(false)
 
-                Log.d("HardwareModule", "Trip data flushed for trip: $currentTripId")
+                Log.d("HardwareModule", "Trip data flushed for trip: $tripId")
             }
         }
+
+        // Clear trip ID from flow
+        _currentTripIdFlow.value = null
+
         // Cleanup & reset state
         clear()
     }
@@ -285,15 +418,80 @@ class HardwareModule @Inject constructor(
      * This is invoked after stopDataCollection.
      */
     private fun clear() {
-        stopSensorListeners()
-        locationManager.stopLocationUpdates()
+        try {
+            stopSensorListeners()
+            locationManager.stopLocationUpdates()
 
-        currentTripId = null
-        isCollecting.set(false)
+            // Stop buffer flush handler to prevent memory leaks
+            sensorDataBufferManager.stopBufferFlushHandler()
 
-        hardwareModuleScope.launch {
-            // In case any UI or logic depends on "collection status," ensure false
-            sensorDataColStateRepository.updateCollectionStatus(false)
+            currentTripId = null
+            isCollecting.set(false)
+
+            // Reset sensor state
+            hasAccelerometerReading = false
+            hasMagnetometerReading = false
+            lastProcessedEventTime = 0L
+
+            hardwareModuleScope.launch {
+                // In case any UI or logic depends on "collection status," ensure false
+                sensorDataColStateRepository.updateCollectionStatus(false)
+            }
+
+            Log.d("HardwareModule", "Clear completed successfully")
+        } catch (e: Exception) {
+            Log.e("HardwareModule", "Error during clear", e)
+        }
+    }
+
+    /**
+     * Complete cleanup when module is destroyed.
+     * MUST be called from Service onDestroy() to prevent memory leaks.
+     */
+    fun cleanup() {
+        try {
+            Log.d("HardwareModule", "Starting complete cleanup")
+
+            // Stop any ongoing collection
+            if (isCollecting.get()) {
+                // Synchronous stop to ensure cleanup completes
+                runBlocking {
+                    stopDataCollection()
+                }
+            }
+
+            // Stop motion detection
+            try {
+                stopMovementDetection()
+                motionDetection.removeMotionListener(this)
+            } catch (e: Exception) {
+                Log.e("HardwareModule", "Error stopping motion detection", e)
+            }
+
+            // Cleanup buffers
+            try {
+                sensorDataBufferManager.cleanup()
+            } catch (e: Exception) {
+                Log.e("HardwareModule", "Error cleaning up buffer manager", e)
+            }
+
+            // Stop location
+            try {
+                locationManager.stopLocationUpdates()
+            } catch (e: Exception) {
+                Log.e("HardwareModule", "Error stopping location", e)
+            }
+
+            // Cancel coroutine scope
+            try {
+                hardwareModuleScope.cancel()
+            } catch (e: Exception) {
+                Log.e("HardwareModule", "Error cancelling scope", e)
+            }
+
+            Log.d("HardwareModule", "Complete cleanup finished")
+        } catch (e: Exception) {
+            Log.e("HardwareModule", "Error during cleanup", e)
         }
     }
 

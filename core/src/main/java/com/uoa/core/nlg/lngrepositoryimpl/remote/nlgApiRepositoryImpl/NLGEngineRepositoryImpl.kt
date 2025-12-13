@@ -31,8 +31,7 @@ class NLGEngineRepositoryImpl @Inject constructor(
         return chatGPTApiService.getChatCompletion(requestBody)
     }
 
-    @RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
-    override suspend fun sendGeminiPrompt(context: Context, prompt: String): GeminiResponse {
+        override suspend fun sendGeminiPrompt(context: Context, prompt: String): GeminiResponse {
         val payload = getGeminiPayload(prompt)
 
         try {

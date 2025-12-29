@@ -4,9 +4,16 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import com.uoa.core.model.Road
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.osmdroid.util.GeoPoint
 import java.util.Locale
@@ -22,6 +29,11 @@ class SensorDataColStateRepository @Inject constructor() {
     private val VEHICLE_SPEED_LOWER_BOUND = 3.0       // m/s – light vehicle movement when paired with accel/label
     private val VEHICLE_ACCEL_THRESHOLD = 1.2         // m/s^2 – bursty acceleration typical for vehicles
     private val FOOT_SPEED_CUTOFF = 3.0               // m/s – classify walking/running below this as non-vehicle
+
+    // Scope for internal background tasks (like the timer)
+    private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var timerJob: Job? = null
+    private var tripStartTime = 0L
 
     // Tracks whether data collection is active (e.g., sensors running)
     private val _collectionStatus = MutableStateFlow(false)
@@ -50,6 +62,16 @@ class SensorDataColStateRepository @Inject constructor() {
     private val _currentSpeedMps = MutableStateFlow(0.0)
     val currentSpeedMps: StateFlow<Double> get() = _currentSpeedMps
 
+    private val _computedSpeedMps = MutableStateFlow(0.0)
+    private val _fusedSpeedMps = MutableStateFlow(0.0)
+    val fusedSpeedMps: StateFlow<Double> = _fusedSpeedMps.asStateFlow()
+
+    private var lastAccelTimestamp = 0L
+
+    // --- Trip Duration ---
+    private val _tripDuration = MutableStateFlow("00:00:00")
+    val tripDuration: StateFlow<String> = _tripDuration.asStateFlow()
+
     // --- Location / road tracking ---
     private val _currentLocation = MutableStateFlow<GeoPoint?>(null)
     val currentLocation: StateFlow<GeoPoint?> get() = _currentLocation
@@ -72,6 +94,32 @@ class SensorDataColStateRepository @Inject constructor() {
      */
     suspend fun updateCollectionStatus(status: Boolean) {
         _collectionStatus.emit(status)
+        if (status) {
+            startTimer()
+        } else {
+            stopTimer()
+        }
+    }
+
+    private fun startTimer() {
+        if (timerJob?.isActive == true) return
+        tripStartTime = System.currentTimeMillis()
+        timerJob = repoScope.launch {
+            while (isActive) {
+                val duration = System.currentTimeMillis() - tripStartTime
+                val hours = duration / 3600000
+                val minutes = (duration % 3600000) / 60000
+                val seconds = (duration % 60000) / 1000
+                _tripDuration.emit("%02d:%02d:%02d".format(hours, minutes, seconds))
+                delay(1000)
+            }
+        }
+    }
+
+    private fun stopTimer() {
+        timerJob?.cancel()
+        timerJob = null
+        tripStartTime = 0L
     }
 
     /**
@@ -95,6 +143,17 @@ class SensorDataColStateRepository @Inject constructor() {
      */
     suspend fun updateLinearAcceleration(linAcceleReading: Double) {
         withContext(Dispatchers.IO) {
+            val currentTime = System.currentTimeMillis()
+            if (lastAccelTimestamp > 0) {
+                val deltaTime = (currentTime - lastAccelTimestamp) / 1000.0 // in seconds
+                val newSpeed = _computedSpeedMps.value + (linAcceleReading * deltaTime)
+                _computedSpeedMps.emit(newSpeed.coerceAtLeast(0.0))
+            } else {
+                // Reset computed speed if there's a long gap in accelerometer readings
+                _computedSpeedMps.emit(0.0)
+            }
+            lastAccelTimestamp = currentTime
+
             _linAcceleReading.floatValue = linAcceleReading.toFloat()
             recomputeMovementSignals()
         }
@@ -130,6 +189,9 @@ class SensorDataColStateRepository @Inject constructor() {
      * Update last known device speed in meters/second from GPS.
      */
     suspend fun updateSpeed(speedMps: Double) {
+        if (speedMps > 0) {
+            _computedSpeedMps.emit(0.0) // Reset computed speed when GPS is available
+        }
         _currentSpeedMps.emit(speedMps)
         recomputeMovementSignals()
     }
@@ -158,21 +220,26 @@ class SensorDataColStateRepository @Inject constructor() {
     }
     private fun recomputeMovementSignals() {
         val label = _movementLabel.value
-        val speed = _currentSpeedMps.value
+        val gpsSpeed = _currentSpeedMps.value
+        val computedSpeed = _computedSpeedMps.value
+
+        val finalSpeed = if (gpsSpeed > 0) gpsSpeed else computedSpeed
+        _fusedSpeedMps.value = finalSpeed
+
         val accel = _linAcceleReading.floatValue.toDouble().absoluteValue
-        val movingBySpeed = speed >= MOVING_SPEED_THRESHOLD
+        val movingBySpeed = finalSpeed >= MOVING_SPEED_THRESHOLD
         val movingByLabel = label == "walking" || label == "running" || label == "vehicle"
 
-        val vehicleBySpeed = speed >= VEHICLE_SPEED_THRESHOLD
+        val vehicleBySpeed = finalSpeed >= VEHICLE_SPEED_THRESHOLD
         val vehicleByLabel = label == "vehicle"
-        val vehicleByAccel = accel >= VEHICLE_ACCEL_THRESHOLD && speed >= VEHICLE_SPEED_LOWER_BOUND
+        val vehicleByAccel = accel >= VEHICLE_ACCEL_THRESHOLD && finalSpeed >= VEHICLE_SPEED_LOWER_BOUND
         val explicitVehicle = _explicitVehicleSignal.value
-        val definitelyOnFoot = (label == "walking" || label == "running") && speed < FOOT_SPEED_CUTOFF
+        val definitelyOnFoot = (label == "walking" || label == "running") && finalSpeed < FOOT_SPEED_CUTOFF
 
         val resolvedVehicle = if (definitelyOnFoot) {
             false
         } else {
-            explicitVehicle || vehicleBySpeed || (vehicleByLabel && (vehicleByAccel || speed >= VEHICLE_SPEED_LOWER_BOUND))
+            explicitVehicle || vehicleBySpeed || (vehicleByLabel && (vehicleByAccel || finalSpeed >= VEHICLE_SPEED_LOWER_BOUND))
         }
 
         _movementStatus.value = movingBySpeed || movingByLabel || explicitVehicle || resolvedVehicle

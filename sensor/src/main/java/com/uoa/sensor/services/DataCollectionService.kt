@@ -23,13 +23,13 @@ class DataCollectionService : Service() {
     @Inject
     lateinit var hardwareModule: HardwareModule
 
-    private lateinit var notificationManager: VehicleNotificationManager
+    @Inject
+    lateinit var notificationManager: VehicleNotificationManager
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
-        notificationManager = VehicleNotificationManager(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -111,10 +111,6 @@ class DataCollectionService : Service() {
     private fun startDataCollection(tripId: UUID) {
         try {
             hardwareModule.startDataCollection(tripId)
-            notificationManager.displayNotification(
-                "Sensors and Location Data Collection Service",
-                "Collecting Sensors and Location Data for trip: $tripId"
-            )
         } catch (e: Exception) {
             Log.e("DataCollectionService", "Error starting data collection for trip $tripId", e)
             stopSelf()

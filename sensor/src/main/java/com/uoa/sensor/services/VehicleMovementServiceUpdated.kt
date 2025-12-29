@@ -56,8 +56,8 @@ open class VehicleMovementServiceUpdate : LifecycleService() {
     private var stopJob: Job? = null
 
     // Debounce windows
-    internal var movementStartDelay = 10_000L
-    internal var movementStopDelay = 30_000L
+    internal var movementStartDelay = 3_000L
+    internal var movementStopDelay = 10_000L
 
     private lateinit var notificationManager: VehicleNotificationManager
 

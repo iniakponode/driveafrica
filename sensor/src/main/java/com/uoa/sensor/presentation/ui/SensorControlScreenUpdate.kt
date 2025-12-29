@@ -86,6 +86,7 @@ fun SensorControlScreenUpdate(
     val roads by sensorViewModel.nearbyRoads.collectAsState()
     val speedLimit by sensorViewModel.speedLimit.collectAsState()
     val currentLocation by sensorViewModel.currentLocation.collectAsState()
+    val fusedSpeedMps by sensorViewModel.fusedSpeedMps.collectAsState()
 
     // ✅ Make whole screen scrollable
     val scroll = rememberScrollState()
@@ -254,6 +255,29 @@ fun SensorControlScreenUpdate(
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(Modifier.width(8.dp))
+                val speedText = if (currentLocation == null) "--" else "%.1f".format(fusedSpeedMps * 3.6)
+                Text(
+                    text = "Current Speed: $speedText ${stringResource(R.string.unit_kilometers_per_hour)}",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+        ) {
+            Row(
+                modifier = Modifier.padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Speed,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.secondary
+                )
+                Spacer(Modifier.width(8.dp))
                 val speedText = if (currentLocation == null) "--" else speedLimit.toString()
                 Text(
                     text = stringResource(
@@ -262,7 +286,7 @@ fun SensorControlScreenUpdate(
                         stringResource(R.string.unit_kilometers_per_hour)
                     ),
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.secondary
                 )
             }
         }

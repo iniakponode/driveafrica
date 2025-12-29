@@ -347,74 +347,43 @@ fun MotionAnalysisCard(
                 Text(
                     text = "%.3f m/s²".format(variance),
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    color = if (variance > 0.15 && variance < 1.5) MaterialTheme.colorScheme.primary else Color.Gray
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Classification
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Classification:",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = classification,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = if (classification == "VEHICLE MOTION") Color(0xFF00C853) else Color.Gray
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Classification
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = when (classification) {
-                        "VEHICLE MOTION" -> Color(0xFFC8E6C9) // Light green
-                        "Stationary" -> Color(0xFFE0E0E0) // Gray
-                        "Walking/Running" -> Color(0xFFFFCDD2) // Light red
-                        else -> Color(0xFFF5F5F5)
-                    }
+            // Timer Progress
+            Column {
+                Text(
+                    text = "State Change Timer",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.Gray
                 )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Classification",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = classification,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = when (classification) {
-                            "VEHICLE MOTION" -> Color(0xFF388E3C)
-                            "Stationary" -> Color.Gray
-                            "Walking/Running" -> Color(0xFFC62828)
-                            else -> Color.Black
-                        }
-                    )
-                }
-            }
-
-            // Timer Progress (if active)
-            if (timerProgress > 0) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Column {
-                    Text(
-                        text = "Detection Timer:",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    LinearProgressIndicator(
-                        progress = timerProgress,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "%.1f / 5.0 seconds".format(timerProgress * 5),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
-                    )
-                }
+                LinearProgressIndicator(
+                    progress = timerProgress,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
@@ -429,23 +398,24 @@ fun ThresholdsCard(
     stoppedThreshold: Double
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "⚙️ DETECTION THRESHOLDS",
-                style = MaterialTheme.typography.titleMedium,
+                text = "DETECTION THRESHOLDS",
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
             )
-
-            Divider(modifier = Modifier.padding(vertical = 12.dp))
-
-            ThresholdRow("Vehicle Variance", "%.2f - %.2f m/s²".format(vehicleMin, vehicleMax))
-            ThresholdRow("Walking Threshold", "> %.2f m/s²".format(walkingThreshold))
-            ThresholdRow("Speed Threshold", "> %.1f mph".format(speedThreshold))
-            ThresholdRow("Stopped Threshold", "< %.1f mph".format(stoppedThreshold))
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            ThresholdRow("Vehicle Variance", "$vehicleMin - $vehicleMax m/s²")
+            ThresholdRow("Walking Variance", "> $walkingThreshold m/s²")
+            ThresholdRow("Speed Threshold", "> $speedThreshold mph")
+            ThresholdRow("Stopped Threshold", "< $stoppedThreshold mph")
         }
     }
 }
@@ -453,21 +423,11 @@ fun ThresholdsCard(
 @Composable
 fun ThresholdRow(label: String, value: String) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium
-        )
+        Text(text = label, style = MaterialTheme.typography.bodySmall)
+        Text(text = value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -476,35 +436,26 @@ fun TripInfoCard(tripDuration: String, tripId: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFC8E6C9) // Light green
+            containerColor = Color(0xFFFCE4EC) // Light pink
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "🚗 ACTIVE TRIP",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF388E3C)
+                text = "ACTIVE TRIP",
+                style = MaterialTheme.typography.labelMedium,
+                color = Color(0xFFC2185B) // Pink
             )
-
-            Divider(modifier = Modifier.padding(vertical = 12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(text = "Duration:", style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    text = tripDuration,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
             Spacer(modifier = Modifier.height(8.dp))
-
+            Text(
+                text = tripDuration,
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFC2185B)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "Trip ID: $tripId",
                 style = MaterialTheme.typography.labelSmall,
@@ -513,4 +464,3 @@ fun TripInfoCard(tripDuration: String, tripId: String) {
         }
     }
 }
-

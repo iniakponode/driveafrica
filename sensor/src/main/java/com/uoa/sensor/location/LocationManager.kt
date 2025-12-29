@@ -232,20 +232,14 @@ class LocationManager @Inject constructor(
                 ?.filter { it.isDigit() }
                 ?.toIntOrNull() ?: 0
 
-            // Create and persist a Road object
-
-//            val road = Road(
-//                id = UUID.randomUUID(),
-//                driverProfileId = profileId, // Update this as needed
-//                name = roadName,
-//                roadType = "",      // Populate if available
-//                speedLimit = speedLimit ?: 0,
-//                latitude = coordinate.first,
-//                longitude = coordinate.second
-//            )
-//            roadRepository.saveOrUpdateRoad(road)
-
             val speedLimitMps = speedLimit * 0.44704 // Convert mph to m/s if speedLimit is in mph
+            val roads = roadRepository.getNearByRoad(location.latitude, location.longitude, 0.05)
+            sensorDataColStateRepository.updateLocation(
+                GeoPoint(location.latitude, location.longitude),
+                distance,
+                roads,
+                speedLimit ?: 0
+            )
 
             // Decide if we want to record the new location
             if (shouldRecordNewLocation(location)) {
@@ -291,21 +285,12 @@ class LocationManager @Inject constructor(
                 // 3) Log or do something with the roadName if you wish
                 Log.d("LocationManager", "Fetched roadName=$roadName for locationId=$locationId")
 
-
                 // Immediately update local memory with the newly-created ID
                 latestLocationId = locationId
                 lastRecordedLocation = location
 
                 // Buffer the location; once inserted, the buffer manager will track currentLocationId
                 bufferManager.addLocationData(updatedLocationData)
-
-                val roads = roadRepository.getNearByRoad(location.latitude, location.longitude, 0.05)
-                sensorDataColStateRepository.updateLocation(
-                    GeoPoint(location.latitude, location.longitude),
-                    distance,
-                    roads,
-                    speedLimit ?: 0
-                )
             }
         }
     }

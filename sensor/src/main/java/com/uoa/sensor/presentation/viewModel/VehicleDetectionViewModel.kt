@@ -2,11 +2,13 @@ package com.uoa.sensor.presentation.viewModel
 
 import android.os.Parcelable
 import android.util.Log
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uoa.sensor.hardware.HardwareModule
+import com.uoa.sensor.presentation.TripTimer
 import com.uoa.sensor.repository.SensorDataColStateRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -14,21 +16,17 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlinx.parcelize.Parcelize
 
+@Stable
 @Parcelize
 data class VehicleDetectionUiState(
     // Current state
     val currentState: String = "IDLE",
 
-    // GPS Speed data
+    // Fused Speed data
     val speedMs: Double = 0.0,
     val speedKmh: Double = 0.0,
     val speedMph: Double = 0.0,
     val accuracy: Float = 0f,
-
-    // Computed speed from sensors (fallback)
-    val computedSpeedMph: Double = 0.0,
-    val isUsingComputedSpeed: Boolean = false,
-    val gpsTimeout: Boolean = false,
 
     // Speed thresholds
     val speedThresholdMph: Double = 9.0,
@@ -63,33 +61,27 @@ class VehicleDetectionViewModel @Inject constructor(
     companion object {
         private const val TAG = "VehicleDetectionVM"
         private const val KEY_UI_STATE = "vehicle_detection_ui_state"
-        private const val KEY_TRIP_START_TIME = "trip_start_time"
-        private const val GPS_TIMEOUT_MS = 5000L // 5 seconds
     }
 
     // Make the UI state survive process death and configuration changes.
     val uiState: StateFlow<VehicleDetectionUiState> = savedStateHandle.getStateFlow(KEY_UI_STATE, VehicleDetectionUiState())
 
-    // Trip start time for duration calculation - saved across config changes
-    private var tripStartTime: Long
-        get() = savedStateHandle.get<Long>(KEY_TRIP_START_TIME) ?: 0L
-        set(value) = savedStateHandle.set(KEY_TRIP_START_TIME, value)
-
     // Get DrivingStateManager for real-time data
     private val drivingStateManager = hardwareModule.getDrivingStateManager()
-
-    // Track last GPS update time
-    private var lastGpsUpdateTime = 0L
 
     init {
         Log.d(TAG, "ViewModel initialized")
         observeSensorState()
         observeDrivingStateManager()
         setupUiCallback()
+        observeTripDuration()
+    }
 
-        // Restore trip duration if was recording
-        if (tripStartTime != 0L) {
-            startDurationTimer()
+    private fun observeTripDuration() {
+        viewModelScope.launch {
+            TripTimer.tripDuration.collect { duration ->
+                savedStateHandle[KEY_UI_STATE] = uiState.value.copy(tripDuration = duration)
+            }
         }
     }
 
@@ -99,31 +91,24 @@ class VehicleDetectionViewModel @Inject constructor(
             combine(
                 drivingStateManager.currentState,
                 drivingStateManager.currentVariance,
-                drivingStateManager.currentSpeedMph
-            ) { state, variance, speedMph ->
-                Triple(state, variance, speedMph)
-            }.collect { (state, variance, speedMph) ->
+                sensorDataColStateRepository.fusedSpeedMps // Use the fused speed
+            ) { state, variance, speedMps ->
+                Triple(state, variance, speedMps)
+            }.collect { (state, variance, speedMps) ->
                 val now = System.currentTimeMillis()
-                val speedMs = speedMph / 2.23694
-
-                // Check for GPS timeout
-                val gpsTimeout = (now - lastGpsUpdateTime) > GPS_TIMEOUT_MS &&
-                                 state.name == "VERIFYING"
-
                 savedStateHandle[KEY_UI_STATE] = uiState.value.copy(
                     currentState = state.name,
                     variance = variance,
-                    speedMs = speedMs,
-                    speedKmh = speedMs * 3.6,
-                    speedMph = speedMph,
-                    gpsTimeout = gpsTimeout,
+                    speedMs = speedMps,
+                    speedKmh = speedMps * 3.6,
+                    speedMph = speedMps * 2.23694,
                     lastUpdate = now
                 )
 
                 // Update classification based on variance
                 updateClassification(variance)
 
-                Log.v(TAG, "State update: ${state.name}, Speed: $speedMph mph, Variance: $variance")
+                Log.v(TAG, "State update: ${state.name}, Speed: ${speedMps * 2.23694} mph, Variance: $variance")
             }
         }
     }
@@ -132,15 +117,12 @@ class VehicleDetectionViewModel @Inject constructor(
         drivingStateManager.setUiUpdateCallback { variance, speedMph, accuracy ->
             viewModelScope.launch {
                 val now = System.currentTimeMillis()
-                lastGpsUpdateTime = now
-
                 savedStateHandle[KEY_UI_STATE] = uiState.value.copy(
                     variance = variance,
                     accuracy = accuracy,
                     speedMs = speedMph / 2.23694,
                     speedKmh = (speedMph / 2.23694) * 3.6,
                     speedMph = speedMph,
-                    gpsTimeout = false,
                     lastUpdate = now
                 )
 
@@ -156,13 +138,11 @@ class VehicleDetectionViewModel @Inject constructor(
                 savedStateHandle[KEY_UI_STATE] = uiState.value.copy(isRecording = isCollecting)
 
                 // Handle trip timing
-                if (isCollecting && tripStartTime == 0L) {
-                    tripStartTime = System.currentTimeMillis()
+                if (isCollecting) {
+                    TripTimer.start()
                     startDurationTimer()
-                    Log.d(TAG, "Trip started")
-                } else if (!isCollecting && tripStartTime != 0L) {
-                    tripStartTime = 0L
-                    Log.d(TAG, "Trip ended")
+                } else {
+                    TripTimer.stop()
                 }
             }
         }
@@ -173,52 +153,6 @@ class VehicleDetectionViewModel @Inject constructor(
                 savedStateHandle[KEY_UI_STATE] = uiState.value.copy(tripId = tripId?.toString() ?: "")
                 Log.d(TAG, "Trip ID updated: $tripId")
             }
-        }
-
-        // Observe linear acceleration for computed speed (fallback)
-        viewModelScope.launch {
-            snapshotFlow { sensorDataColStateRepository.linAcceleReading.value }
-                .collect { accel ->
-                    // Compute approximate speed from acceleration
-                    val computedSpeedMph = computeSpeedFromAcceleration(accel)
-
-                    savedStateHandle[KEY_UI_STATE] = uiState.value.copy(computedSpeedMph = computedSpeedMph)
-                }
-        }
-
-        // Observe GPS speed from repository (fallback data source)
-        viewModelScope.launch {
-            sensorDataColStateRepository.currentSpeedMps.collect { speedMs ->
-                val now = System.currentTimeMillis()
-                lastGpsUpdateTime = now
-
-                savedStateHandle[KEY_UI_STATE] = uiState.value.copy(
-                    speedMs = speedMs,
-                    speedKmh = speedMs * 3.6,
-                    speedMph = speedMs * 2.23694,
-                    isUsingComputedSpeed = false,
-                    lastUpdate = now
-                )
-            }
-        }
-    }
-
-    /**
-     * Compute approximate speed from linear acceleration
-     * This is a simplified calculation and less accurate than GPS
-     */
-    private fun computeSpeedFromAcceleration(acceleration: Float): Double {
-        // Simple integration over time (very rough estimate)
-        // In real implementation, you'd need to track velocity over time
-        val accelMagnitude = kotlin.math.abs(acceleration)
-
-        // Convert acceleration to approximate speed (rough heuristic)
-        // Vehicle acceleration typically 0-2 m/s² for normal driving
-        return when {
-            accelMagnitude < 0.5 -> 0.0 // Stationary
-            accelMagnitude < 1.5 -> 15.0 // ~15 mph - slow driving
-            accelMagnitude < 2.5 -> 30.0 // ~30 mph - moderate
-            else -> 45.0 // ~45 mph - aggressive driving
         }
     }
 
@@ -235,16 +169,15 @@ class VehicleDetectionViewModel @Inject constructor(
         savedStateHandle[KEY_UI_STATE] = uiState.value.copy(classification = classification)
     }
 
-
     private fun startDurationTimer() {
         viewModelScope.launch {
-            while (tripStartTime != 0L) {
-                val duration = System.currentTimeMillis() - tripStartTime
+            while (TripTimer.tripStartTime != 0L) {
+                val duration = System.currentTimeMillis() - TripTimer.tripStartTime
                 val hours = duration / 3600000
                 val minutes = (duration % 3600000) / 60000
                 val seconds = (duration % 60000) / 1000
                 val durationStr = "%02d:%02d:%02d".format(hours, minutes, seconds)
-                savedStateHandle[KEY_UI_STATE] = uiState.value.copy(tripDuration = durationStr)
+                TripTimer.updateDuration(durationStr)
                 kotlinx.coroutines.delay(1000)
             }
         }
@@ -292,4 +225,3 @@ class VehicleDetectionViewModel @Inject constructor(
         savedStateHandle[KEY_UI_STATE] = uiState.value.copy(tripId = tripId)
     }
 }
-

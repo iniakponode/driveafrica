@@ -1,0 +1,15 @@
+Safe Drive Africa is a research app for drivers and fleet partners in Africa who want to understand their driving behavior. It records trips using GPS, accelerometer/gyroscope sensors, and activity recognition so the app can automatically detect when you are driving, flag unsafe maneuvers, and generate personalized safety reports.
+
+Key features:
+- Record trips with GPS + motion sensors so the driving metrics stay aligned with the Safe Drive Africa backend without manual input.
+- Detect unsafe behaviors with NLG-powered analysis, personalized tips, and compliance assignments that refresh as soon as new sensor data arrives.
+- Provide a secure driver profile linked to daily questionnaires, backend assignments, and fleet reviews that persists across rides.
+- Run a research-grade foreground service that keeps sensors active while a trip is underway and uploads the anonymized data once a network is available.
+- Keep data on-device until you grant the app permission to sync; we never share the raw sensor feed with advertisers or third-party analytics providers.
+
+Permission & data handling:
+- Location & motion: ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, and Activity Recognition determine trip start/stop, detect speeding, and pause monitoring when you exit the vehicle.
+- High sampling sensors & foreground service: HIGH_SAMPLING_RATE_SENSORS plus the FOREGROUND_SERVICE family keep the accelerometer/gyroscope listeners alive even when your screen is off; POST_NOTIFICATIONS keeps you informed about monitoring, and RECEIVE_BOOT_COMPLETED lets the service restart after a reboot once you have granted consent.
+- Background sync & connectivity: INTERNET and ACCESS_NETWORK_STATE let the app upload anonymized trip packets to the research backend as soon as a reliable connection is available, while the data remains encrypted and tied to the driver profile you created.
+
+Privacy policy: https://datahub.safedriveafrica.com/privacy

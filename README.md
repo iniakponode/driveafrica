@@ -90,7 +90,7 @@ tight coupling between UI and data sources.
 
 ## Build prerequisites
 
-- JDK 11
+- JDK 17 (required by Android Gradle Plugin 8.13.1)
 - Android Studio Flamingo (or later) with Android SDK 34
 - Gradle 8.7 (handled automatically by the wrapper)
 

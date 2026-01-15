@@ -25,12 +25,20 @@ class SensorDataBufferManager @Inject constructor(
     private val bufferInsertInterval: Long = 5000  // Time interval to process the buffer (e.g., every 5 seconds)
     private val bufferLimit = 500  // Threshold limit for batch size
 
-    private val bufferHandler = Handler(Looper.getMainLooper())
+    private val bufferHandler = runCatching { Looper.getMainLooper() }
+        .getOrNull()
+        ?.let { Handler(it) }
     private var isFlushHandlerRunning = false  // Track handler state
 
     private val scopeJob = SupervisorJob()
     private val scope = CoroutineScope(scopeJob + Dispatchers.IO)
     private val repositoryMutex = Mutex()
+    @Volatile private var isProcessing = false
+    @Volatile private var processingJob: kotlinx.coroutines.Job? = null
+
+    private fun safeLog(block: () -> Unit) {
+        runCatching { block() }
+    }
 
     init {
         startBufferFlushHandler()
@@ -55,21 +63,27 @@ class SensorDataBufferManager @Inject constructor(
      * This ensures we eventually write data even if the buffer doesn't reach bufferLimit.
      */
     private fun startBufferFlushHandler() {
+        val handler = bufferHandler ?: run {
+            safeLog {
+                Log.w("SensorBufferManager", "Main looper unavailable; buffer flush handler disabled")
+            }
+            return
+        }
         if (isFlushHandlerRunning) {
-            Log.w("SensorBufferManager", "Buffer flush handler already running")
+            safeLog { Log.w("SensorBufferManager", "Buffer flush handler already running") }
             return
         }
         isFlushHandlerRunning = true
 
-        bufferHandler.postDelayed(object : Runnable {
+        handler.postDelayed(object : Runnable {
             override fun run() {
                 if (!isFlushHandlerRunning) return  // Check if stopped
                 processAndStoreSensorData()
-                bufferHandler.postDelayed(this, bufferInsertInterval)
+                handler.postDelayed(this, bufferInsertInterval)
             }
         }, bufferInsertInterval)
 
-        Log.d("SensorBufferManager", "Buffer flush handler started")
+        safeLog { Log.d("SensorBufferManager", "Buffer flush handler started") }
     }
 
     /**
@@ -77,8 +91,8 @@ class SensorDataBufferManager @Inject constructor(
      */
     fun stopBufferFlushHandler() {
         isFlushHandlerRunning = false
-        bufferHandler.removeCallbacksAndMessages(null)
-        Log.d("SensorBufferManager", "Buffer flush handler stopped")
+        bufferHandler?.removeCallbacksAndMessages(null)
+        safeLog { Log.d("SensorBufferManager", "Buffer flush handler stopped") }
     }
 
     /**
@@ -88,7 +102,7 @@ class SensorDataBufferManager @Inject constructor(
         synchronized(sensorDataBuffer) {
             val size = sensorDataBuffer.size
             sensorDataBuffer.clear()
-            Log.d("SensorBufferManager", "Buffer cleared ($size items removed)")
+            safeLog { Log.d("SensorBufferManager", "Buffer cleared ($size items removed)") }
         }
     }
 
@@ -100,9 +114,9 @@ class SensorDataBufferManager @Inject constructor(
             stopBufferFlushHandler()
             scopeJob.cancel()  // Cancel all coroutines
             clearBuffer()
-            Log.d("SensorBufferManager", "Complete cleanup finished")
+            safeLog { Log.d("SensorBufferManager", "Complete cleanup finished") }
         } catch (e: Exception) {
-            Log.e("SensorBufferManager", "Error during cleanup", e)
+            safeLog { Log.e("SensorBufferManager", "Error during cleanup", e) }
         }
     }
 
@@ -116,6 +130,7 @@ class SensorDataBufferManager @Inject constructor(
      *            If you want to *wait* until insertion finishes, see flushBufferToDatabase().
      */
     fun processAndStoreSensorData() {
+        if (isProcessing) return
         val bufferCopy: List<RawSensorData>
         synchronized(sensorDataBuffer) {
             if (sensorDataBuffer.isEmpty()) return
@@ -123,16 +138,22 @@ class SensorDataBufferManager @Inject constructor(
             sensorDataBuffer.clear()
         }
 
-        scope.launch {
+        isProcessing = true
+        processingJob = scope.launch {
             try {
                 repositoryMutex.withLock {
                     // Just call the repository method (transaction logic is inside the repository)
-                    Log.d("SensorBufferManager", "Data bufferCopy: $bufferCopy")
+                    safeLog {
+                        Log.d("SensorBufferManager", "Processing buffer batch, count=${bufferCopy.size}.")
+                    }
                     rawSensorDataRepository.processAndStoreSensorData(bufferCopy)
-                    Log.d("SensorBufferManager", "Data processed successfully:.")
+                    safeLog { Log.d("SensorBufferManager", "Data processed successfully:.") }
                 }
             } catch (e: Exception) {
-                Log.e("SensorBufferManager", "Error in processAndStoreSensorData", e)
+                safeLog { Log.e("SensorBufferManager", "Error in processAndStoreSensorData", e) }
+            } finally {
+                isProcessing = false
+                processingJob = null
             }
         }
     }
@@ -154,10 +175,13 @@ class SensorDataBufferManager @Inject constructor(
         repositoryMutex.withLock {
             withContext(Dispatchers.IO) {
                 try {
+                    isProcessing = true
                     rawSensorDataRepository.processAndStoreSensorData(bufferCopy)
-                    Log.d("SensorBufferManager", "Data processed successfully (sync).")
+                    safeLog { Log.d("SensorBufferManager", "Data processed successfully (sync).") }
                 } catch (e: Exception) {
-                    Log.e("SensorBufferManager", "Error in processAndStoreSensorDataSync", e)
+                    safeLog { Log.e("SensorBufferManager", "Error in processAndStoreSensorDataSync", e) }
+                } finally {
+                    isProcessing = false
                 }
             }
         }
@@ -168,6 +192,7 @@ class SensorDataBufferManager @Inject constructor(
      * and waits for it to finish before returning.
      */
     suspend fun flushBufferToDatabase() {
+        processingJob?.join()
         processAndStoreSensorDataSynchronous()
     }
 
@@ -184,9 +209,9 @@ class SensorDataBufferManager @Inject constructor(
             try {
                 // If you have a repository method to finalize a trip, call it here:
                 // e.g.: rawSensorDataRepository.markTripAsFinished(tripId)
-                Log.d("SensorDataBufferManager", "Trip $tripId finalized successfully.")
+                safeLog { Log.d("SensorDataBufferManager", "Trip $tripId finalized successfully.") }
             } catch (e: Exception) {
-                Log.e("SensorDataBufferManager", "Error finalizing trip $tripId", e)
+                safeLog { Log.e("SensorDataBufferManager", "Error finalizing trip $tripId", e) }
             }
         }
     }
@@ -197,6 +222,6 @@ class SensorDataBufferManager @Inject constructor(
      * Used to stop the buffer's background flushing if necessary (e.g. shutting down).
      */
     fun clear() {
-        bufferHandler.removeCallbacksAndMessages(null)
+        bufferHandler?.removeCallbacksAndMessages(null)
     }
 }

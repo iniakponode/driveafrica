@@ -9,7 +9,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.uoa.sensor.presentation.ui.SensorControlScreenRoute
 import com.uoa.core.utils.SENSOR_CONTROL_SCREEN_ROUTE
 import com.uoa.sensor.presentation.viewModel.SensorViewModel
-import com.uoa.sensor.presentation.viewModel.TripViewModel
 
 
 @RequiresApi(Build.VERSION_CODES.Q)
@@ -17,8 +16,7 @@ fun NavGraphBuilder.sensorControlScreen(navController: NavController) {
     composable(route = SENSOR_CONTROL_SCREEN_ROUTE) {
         SensorControlScreenRoute(
             navController = navController,
-            sensorViewModel = hiltViewModel<SensorViewModel>(),
-            tripViewModel = hiltViewModel<TripViewModel>()
+            sensorViewModel = hiltViewModel<SensorViewModel>()
         )
     }
 }

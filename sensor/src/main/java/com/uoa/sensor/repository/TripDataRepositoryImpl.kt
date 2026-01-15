@@ -4,11 +4,13 @@ import android.util.Log
 import com.uoa.core.database.daos.TripDao
 import com.uoa.core.database.entities.TripEntity
 import com.uoa.core.database.repository.TripDataRepository
+import com.uoa.core.model.SyncState
 import com.uoa.core.model.Trip
 import com.uoa.core.utils.toDomainModel
 import com.uoa.core.utils.toEntity
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
+import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
 
@@ -91,12 +93,24 @@ class TripDataRepositoryImpl @Inject constructor(private val tripDataDao: TripDa
         return tripDataDao.updateUploadStatus(id, sync)
     }
 
+    override suspend fun updateSyncState(id: UUID, state: SyncState) {
+        tripDataDao.updateSyncState(id, state)
+    }
+
     override suspend fun getTripsByDriverProfileId(driverProfileId: UUID): List<Trip> {
         return tripDataDao.getTripsByDriverProfileId(driverProfileId).map { it.toDomainModel() }
     }
 
+    override suspend fun getTripsByDriverAndStartDate(driverProfileId: UUID, tripDate: Date): List<Trip> {
+        return tripDataDao.getTripsByDriverAndStartDate(driverProfileId, tripDate).map { it.toDomainModel() }
+    }
+
     override suspend fun getTripsBySyncStatus(synced: Boolean): List<Trip> {
         return tripDataDao.getTripsBySyncStatus(synced).map { it.toDomainModel() }
+    }
+
+    override suspend fun getTripsBySyncState(state: SyncState): List<Trip> {
+        return tripDataDao.getTripsBySyncState(state).map { it.toDomainModel() }
     }
 
     override suspend fun getLastInsertedTrip(): TripEntity? {

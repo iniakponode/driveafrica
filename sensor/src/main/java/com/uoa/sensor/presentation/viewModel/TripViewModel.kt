@@ -1,4 +1,5 @@
 package com.uoa.sensor.presentation.viewModel
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -6,11 +7,14 @@ import androidx.lifecycle.viewModelScope
 import com.uoa.core.apiServices.models.tripModels.TripCreate
 import com.uoa.core.apiServices.models.tripModels.TripResponse
 import com.uoa.core.apiServices.services.tripApiService.TripApiRepository
+import com.uoa.core.database.daos.AlcoholQuestionnaireResponseDao
 import com.uoa.core.database.repository.DriverProfileRepository
 import com.uoa.core.database.repository.TripDataRepository
 import com.uoa.core.mlclassifier.data.InferenceResult
 import com.uoa.core.model.Trip
+import com.uoa.core.notifications.VehicleNotificationManager
 import com.uoa.core.utils.Resource
+import com.uoa.core.utils.DateUtils
 import com.uoa.core.utils.toTrip
 import com.uoa.ml.domain.RunClassificationUseCase
 import com.uoa.sensor.domain.usecases.trip.GetTripByIdUseCase
@@ -27,6 +31,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import java.util.UUID
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -36,10 +41,13 @@ class TripViewModel @Inject constructor(
     private val getTripByIdUseCase: GetTripByIdUseCase,
     private val runClassificationUseCase: RunClassificationUseCase,
     private val tripApiRepository: TripApiRepository,
-    private val localTripRepository: TripDataRepository
+    private val localTripRepository: TripDataRepository,
+    private val questionnaireDao: AlcoholQuestionnaireResponseDao,
+    @ApplicationContext private val appContext: Context
 
 
 ) : ViewModel() {
+    private val notificationManager = VehicleNotificationManager(appContext)
 
     private val _currentTripId = MutableStateFlow<UUID?>(null)
     val currentTripId: StateFlow<UUID?> get() = _currentTripId
@@ -58,7 +66,7 @@ class TripViewModel @Inject constructor(
                 endDate = null,
                 id = tripId,
                 influence = "",
-                sync = true
+                sync = false
             )
 
             val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
@@ -72,24 +80,32 @@ class TripViewModel @Inject constructor(
                 endDate = null,
                 startTime = startTime,
                 endTime = null,
+                timeZoneId = timeZoneId(),
+                timeZoneOffsetMinutes = timeZoneOffsetMinutes(startTime),
                 influence = "",
                 sync = true
             )
 
             // 1) Insert the trip locally first
             insertTripUseCase(trip)
-            _tripUploadSuccess.value = true
+            _tripUploadSuccess.value = false
             _currentTripId.value = tripId
             _currentTripId.emit(tripId)
 
             // 2) Now attempt remote creation
             val uploadResult = tripApiRepository.createTrip(tripCreate)
             if (uploadResult is Resource.Success) {
+                localTripRepository.updateUploadStatus(tripId, true)
                 _tripUploadSuccess.value = true
                 Log.i("TripViewModel", "Remote trip creation succeeded for tripId: $tripId")
             } else {
                 _tripUploadSuccess.value = false
                 Log.e("TripViewModel", "Remote trip creation failed for tripId: $tripId")
+                if (uploadResult is Resource.Error) {
+                    notificationManager.displayUploadFailure(
+                        "Trip start upload failed. Will retry."
+                    )
+                }
             }
         }
     }
@@ -123,12 +139,14 @@ class TripViewModel @Inject constructor(
                         Log.i("TripViewModel", "Got into successful inference")
                         // Decide whether it's "alcohol" or "No influence"
                         val alcInfluence = inferenceResult.isAlcoholInfluenced
+                        val probability = inferenceResult.probability
                         val influenceLabel = if (alcInfluence) "alcohol" else "No influence"
 
                         // Update local + remote with final classification
                         val uploadSucceeded = finalizeTripClassification(
                             tripId = tripId,
                             influenceLabel = influenceLabel,
+                            alcoholProbability = probability,
                             getTripByIdUseCase = getTripByIdUseCase,
                             updateTripUseCase = updateTripUseCase,
                             tripApiRepository = tripApiRepository,
@@ -137,7 +155,11 @@ class TripViewModel @Inject constructor(
                         )
 
                         // Additional logic if needed
-                        Log.i("TripViewModel", "Inference result was: $influenceLabel. Upload success? $uploadSucceeded")
+                        Log.i(
+                            "TripViewModel",
+                            "Inference result was: $influenceLabel (prob=$probability). " +
+                                "Upload success? $uploadSucceeded"
+                        )
                     }
 
                     is InferenceResult.NotEnoughData -> {
@@ -149,6 +171,7 @@ class TripViewModel @Inject constructor(
                         val uploadSucceeded = finalizeTripClassification(
                             tripId = tripId,
                             influenceLabel = influenceLabel,
+                            alcoholProbability = null,
                             getTripByIdUseCase = getTripByIdUseCase,
                             updateTripUseCase = updateTripUseCase,
                             tripApiRepository = tripApiRepository,
@@ -172,6 +195,7 @@ class TripViewModel @Inject constructor(
                         val uploadSucceeded = finalizeTripClassification(
                             tripId = tripId,
                             influenceLabel = influenceLabel,
+                            alcoholProbability = null,
                             getTripByIdUseCase = getTripByIdUseCase,
                             updateTripUseCase = updateTripUseCase,
                             tripApiRepository = tripApiRepository,
@@ -197,6 +221,7 @@ class TripViewModel @Inject constructor(
     suspend fun finalizeTripClassification(
         tripId: UUID,
         influenceLabel: String, // "alcohol", "No influence", or "Not enough data for model classification"
+        alcoholProbability: Float?,
         getTripByIdUseCase: GetTripByIdUseCase,
         updateTripUseCase: UpdateTripUseCase,
         tripApiRepository: TripApiRepository,
@@ -214,13 +239,19 @@ class TripViewModel @Inject constructor(
             return false
         }
 
-        // Prepare date/time fields. Example: UTC+1 zone
+        // Prepare date/time fields in UTC.
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault()).apply {
-            timeZone = TimeZone.getTimeZone("UTC+1")
+            timeZone = TimeZone.getTimeZone("UTC")
         }
         val isoStartDate = updatedTrip.startDate?.let { sdf.format(it) }
-        val isoEndDate = sdf.format(Date()) // Current date in ISO-8601
-        val endTime = System.currentTimeMillis() // Current time in ms
+        val tripEndTime = System.currentTimeMillis()
+        val isoEndDate = sdf.format(Date(tripEndTime)) // Current date in ISO-8601
+        val endTime = tripEndTime // Current time in ms
+        val userAlcoholResponse = resolveUserAlcoholResponse(
+            updatedTrip.driverPId,
+            updatedTrip.startDate,
+            tripEndTime
+        )
 
         // 2) Build the TripCreate payload, setting the `influence` to our label
         val tripCreate = TripCreate(
@@ -231,12 +262,16 @@ class TripViewModel @Inject constructor(
             startTime = updatedTrip.startTime, // BigInteger on server
             endTime = endTime,                 // Current time as BigInteger
             influence = influenceLabel,
-            sync = true
+            timeZoneId = timeZoneId(),
+            timeZoneOffsetMinutes = timeZoneOffsetMinutes(updatedTrip.startTime),
+            sync = true,
+            userAlcoholResponse = userAlcoholResponse,
+            alcoholProbability = alcoholProbability
         )
 
         // 3) Update local data first (on IO)
         withContext(Dispatchers.IO) {
-            updateTripUseCase.invoke(tripId, influenceLabel)
+            updateTripUseCase.invoke(tripId, influenceLabel, alcoholProbability, userAlcoholResponse)
             Log.i("TripViewModel", "Locally updated trip with '$influenceLabel'.")
         }
 
@@ -256,10 +291,36 @@ class TripViewModel @Inject constructor(
         } else {
             tripUploadSuccess.value = false
             Log.e("TripViewModel", "Remote update failed for tripId: $tripId")
+            if (uploadResult is Resource.Error) {
+                notificationManager.displayUploadFailure(
+                    "Trip update upload failed. Will retry."
+                )
+            }
             false
         }
     }
 
+    private suspend fun resolveUserAlcoholResponse(
+        driverId: UUID?,
+        tripStartDate: Date?,
+        tripEndTime: Long
+    ): String {
+        if (driverId == null) return "00"
+        val tripDay = tripStartDate?.let { DateUtils.convertToLocalDate(it.time) }
+            ?: DateUtils.convertToLocalDate(tripEndTime)
+        val tripDate = DateUtils.convertLocalDateToDate(tripDay)
+        val response = questionnaireDao.getQuestionnaireResponseForDate(driverId, tripDate)
+        return when {
+            response == null -> "00"
+            response.drankAlcohol -> "1"
+            else -> "0"
+        }
     }
+
+    private fun timeZoneId(): String = TimeZone.getDefault().id
+
+    private fun timeZoneOffsetMinutes(epochMs: Long): Int =
+        TimeZone.getDefault().getOffset(epochMs) / 60000
+}
 
 

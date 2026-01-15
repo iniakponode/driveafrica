@@ -43,8 +43,12 @@ class SensorDataBufferManagerConcurrencyTest {
 
         jobAdd.join()
         jobProcess.join()
+        bufferManager.addToSensorBuffer(sampleData.copy(id = UUID.randomUUID()))
+        bufferManager.processAndStoreSensorData()
         bufferManager.flushBufferToDatabase()
 
-        verify(repository, atLeastOnce()).processAndStoreSensorData(any())
+        verifyBlocking(repository, atLeastOnce()) {
+            processAndStoreSensorData(any())
+        }
     }
 }

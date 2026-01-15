@@ -7,14 +7,13 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.uoa.sensor.hardware.HardwareModule
-import com.uoa.sensor.presentation.TripTimer
 import com.uoa.sensor.repository.SensorDataColStateRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlinx.parcelize.Parcelize
+import java.util.UUID
 
 @Stable
 @Parcelize
@@ -51,10 +50,11 @@ data class VehicleDetectionUiState(
     val lastUpdate: Long = 0L
 ) : Parcelable
 
+private data class Quad<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+
 @HiltViewModel
 class VehicleDetectionViewModel @Inject constructor(
     private val sensorDataColStateRepository: SensorDataColStateRepository,
-    private val hardwareModule: com.uoa.sensor.hardware.HardwareModule,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -66,35 +66,31 @@ class VehicleDetectionViewModel @Inject constructor(
     // Make the UI state survive process death and configuration changes.
     val uiState: StateFlow<VehicleDetectionUiState> = savedStateHandle.getStateFlow(KEY_UI_STATE, VehicleDetectionUiState())
 
-    // Get DrivingStateManager for real-time data
-    private val drivingStateManager = hardwareModule.getDrivingStateManager()
-
     init {
         Log.d(TAG, "ViewModel initialized")
         observeSensorState()
-        observeDrivingStateManager()
-        setupUiCallback()
+        observeDrivingStateState()
         observeTripDuration()
     }
 
     private fun observeTripDuration() {
         viewModelScope.launch {
-            TripTimer.tripDuration.collect { duration ->
+            sensorDataColStateRepository.tripDuration.collect { duration ->
                 savedStateHandle[KEY_UI_STATE] = uiState.value.copy(tripDuration = duration)
             }
         }
     }
 
-    private fun observeDrivingStateManager() {
-        // Combine all flows for efficient updates
+    private fun observeDrivingStateState() {
         viewModelScope.launch {
             combine(
-                drivingStateManager.currentState,
-                drivingStateManager.currentVariance,
-                sensorDataColStateRepository.fusedSpeedMps // Use the fused speed
-            ) { state, variance, speedMps ->
-                Triple(state, variance, speedMps)
-            }.collect { (state, variance, speedMps) ->
+                sensorDataColStateRepository.drivingState,
+                sensorDataColStateRepository.drivingVariance,
+                sensorDataColStateRepository.drivingSpeedMps,
+                sensorDataColStateRepository.drivingAccuracy
+            ) { state, variance, speedMps, accuracy ->
+                Quad(state, variance, speedMps, accuracy)
+            }.collect { (state, variance, speedMps, accuracy) ->
                 val now = System.currentTimeMillis()
                 savedStateHandle[KEY_UI_STATE] = uiState.value.copy(
                     currentState = state.name,
@@ -102,6 +98,7 @@ class VehicleDetectionViewModel @Inject constructor(
                     speedMs = speedMps,
                     speedKmh = speedMps * 3.6,
                     speedMph = speedMps * 2.23694,
+                    accuracy = accuracy,
                     lastUpdate = now
                 )
 
@@ -113,43 +110,20 @@ class VehicleDetectionViewModel @Inject constructor(
         }
     }
 
-    private fun setupUiCallback() {
-        drivingStateManager.setUiUpdateCallback { variance, speedMph, accuracy ->
-            viewModelScope.launch {
-                val now = System.currentTimeMillis()
-                savedStateHandle[KEY_UI_STATE] = uiState.value.copy(
-                    variance = variance,
-                    accuracy = accuracy,
-                    speedMs = speedMph / 2.23694,
-                    speedKmh = (speedMph / 2.23694) * 3.6,
-                    speedMph = speedMph,
-                    lastUpdate = now
-                )
-
-                Log.v(TAG, "GPS update: $speedMph mph, accuracy: $accuracy m")
-            }
-        }
-    }
-
     private fun observeSensorState() {
         // Observe collection status
         viewModelScope.launch {
             sensorDataColStateRepository.collectionStatus.collect { isCollecting ->
                 savedStateHandle[KEY_UI_STATE] = uiState.value.copy(isRecording = isCollecting)
 
-                // Handle trip timing
                 if (isCollecting) {
-                    TripTimer.start()
                     startDurationTimer()
-                } else {
-                    TripTimer.stop()
                 }
             }
         }
 
-        // Observe trip ID from HardwareModule
         viewModelScope.launch {
-            hardwareModule.currentTripIdFlow().collect { tripId ->
+            sensorDataColStateRepository.currentTripId.collect { tripId ->
                 savedStateHandle[KEY_UI_STATE] = uiState.value.copy(tripId = tripId?.toString() ?: "")
                 Log.d(TAG, "Trip ID updated: $tripId")
             }
@@ -171,15 +145,8 @@ class VehicleDetectionViewModel @Inject constructor(
 
     private fun startDurationTimer() {
         viewModelScope.launch {
-            while (TripTimer.tripStartTime != 0L) {
-                val duration = System.currentTimeMillis() - TripTimer.tripStartTime
-                val hours = duration / 3600000
-                val minutes = (duration % 3600000) / 60000
-                val seconds = (duration % 60000) / 1000
-                val durationStr = "%02d:%02d:%02d".format(hours, minutes, seconds)
-                TripTimer.updateDuration(durationStr)
-                kotlinx.coroutines.delay(1000)
-            }
+            // Trip duration is updated by SensorDataColStateRepository.
+            kotlinx.coroutines.delay(0)
         }
     }
 
@@ -221,7 +188,7 @@ class VehicleDetectionViewModel @Inject constructor(
     /**
      * Update trip ID
      */
-    fun updateTripId(tripId: String) {
-        savedStateHandle[KEY_UI_STATE] = uiState.value.copy(tripId = tripId)
+    fun updateTripId(tripId: UUID) {
+        savedStateHandle[KEY_UI_STATE] = uiState.value.copy(tripId = tripId.toString())
     }
 }

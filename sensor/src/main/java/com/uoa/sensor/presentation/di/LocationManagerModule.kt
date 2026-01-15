@@ -6,7 +6,6 @@ import com.uoa.core.database.repository.LocationRepository
 import com.uoa.core.database.repository.RoadRepository
 import com.uoa.core.network.apiservices.OSMRoadApiService
 import com.uoa.core.network.apiservices.OSMSpeedLimitApiService
-import com.uoa.sensor.hardware.MotionDetection
 import com.uoa.sensor.location.LocationDataBufferManager
 import com.uoa.sensor.location.LocationManager
 import com.uoa.sensor.repository.SensorDataColStateRepository
@@ -26,7 +25,6 @@ object LocationManagerModule {
         @ApplicationContext context: Context,
         locationDataBufferManager: LocationDataBufferManager,
         fusedLocationProviderClient: FusedLocationProviderClient,
-        motionDector: MotionDetection,
         osmSpeedLimitApiService: OSMSpeedLimitApiService,
         osmRoadApiService: OSMRoadApiService,
         roadRepository: RoadRepository,
@@ -36,7 +34,6 @@ object LocationManagerModule {
         return LocationManager(
             locationDataBufferManager,
             fusedLocationProviderClient,
-            motionDector,
             osmSpeedLimitApiService,
             context,
             osmRoadApiService,

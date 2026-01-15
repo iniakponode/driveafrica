@@ -1,10 +1,8 @@
 package com.uoa.sensor.location
 
 import android.content.Context
-import android.location.Geocoder
 import android.location.Location
 import android.os.Build
-import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
@@ -16,21 +14,15 @@ import com.uoa.core.model.Road
 import com.uoa.core.network.apiservices.OSMRoadApiService
 import com.uoa.core.network.apiservices.OSMSpeedLimitApiService
 import com.uoa.core.utils.PreferenceUtils
-import com.uoa.core.utils.buildSpeedLimitQuery
-import com.uoa.core.utils.formatDateToUTCPlusOne
 import com.uoa.core.utils.getRoadDataForLocation
-import com.uoa.sensor.repository.LocationRepositoryImpl
+import com.uoa.sensor.motion.DrivingStateManager
 import com.uoa.sensor.repository.SensorDataColStateRepository
-import com.uoa.core.utils.toEntity
-import com.uoa.sensor.hardware.MotionDetection
-//import com.uoa.sensor.hardware.MotionDetector
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.io.IOException
-import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -43,13 +35,12 @@ import org.osmdroid.util.GeoPoint
 class LocationManager @Inject constructor(
     private val bufferManager: LocationDataBufferManager,
     private val fusedLocationProviderClient: FusedLocationProviderClient,
-    private val motionDetector: MotionDetection, // Injected so we can register as a listener
     private val osmSpeedLimitApiService: OSMSpeedLimitApiService,
     private val context: Context,
     private val osmRoadApiService: OSMRoadApiService,
     private val roadRepository: RoadRepository,
     private val sensorDataColStateRepository: SensorDataColStateRepository
-) : MotionDetection.MotionListener {
+) {
 
     val driverProfileId: UUID? = PreferenceUtils.getDriverProfileId(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -61,9 +52,56 @@ class LocationManager @Inject constructor(
     // not necessarily the one that's persisted or flushed yet.
     @Volatile
     private var latestLocationId: UUID? = null
+    private var updatesEnabled = false
 
     // Callback for forwarding location updates to DrivingStateManager
     private var externalLocationCallback: ((Location) -> Unit)? = null
+
+    private data class RoadCacheEntry(
+        val roadName: String?,
+        val speedLimit: Int?,
+        val expiresAtMs: Long
+    )
+
+    private val roadCache = object : LinkedHashMap<String, RoadCacheEntry>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, RoadCacheEntry>?): Boolean {
+            return size > 256
+        }
+    }
+
+    private val roadCacheHitTtlMs = 12 * 60 * 60 * 1000L
+    private val roadCacheMissTtlMs = 10 * 60 * 1000L
+    private val roadCacheRadius = 0.01
+
+    private fun roadCacheKey(latitude: Double, longitude: Double): String {
+        return "%s:%s".format(
+            Locale.US,
+            "%.3f".format(Locale.US, latitude),
+            "%.3f".format(Locale.US, longitude)
+        )
+    }
+
+    private fun getCachedRoadData(latitude: Double, longitude: Double): RoadCacheEntry? {
+        val key = roadCacheKey(latitude, longitude)
+        val now = System.currentTimeMillis()
+        synchronized(roadCache) {
+            val entry = roadCache[key] ?: return null
+            if (now > entry.expiresAtMs) {
+                roadCache.remove(key)
+                return null
+            }
+            return entry
+        }
+    }
+
+    private fun putCachedRoadData(latitude: Double, longitude: Double, roadName: String?, speedLimit: Int?) {
+        val hasData = roadName != null || (speedLimit != null && speedLimit > 0)
+        val ttl = if (hasData) roadCacheHitTtlMs else roadCacheMissTtlMs
+        val entry = RoadCacheEntry(roadName, speedLimit, System.currentTimeMillis() + ttl)
+        synchronized(roadCache) {
+            roadCache[roadCacheKey(latitude, longitude)] = entry
+        }
+    }
 
     /**
      * Set a callback to receive location updates (for DrivingStateManager)
@@ -75,7 +113,7 @@ class LocationManager @Inject constructor(
 
     // Two different intervals for location updates:
     private val intervalMovingMillis: Long = 20_000 // 20 seconds
-    private val intervalStationaryMillis: Long = 5 * 60_000 // 5 minutes
+    private val intervalStationaryMillis: Long = 60_000 // 1 minute
 
     // Example thresholds
     private val MAX_HORIZONTAL_ACCURACY = 10f     // meters
@@ -98,46 +136,36 @@ class LocationManager @Inject constructor(
         }
     }
 
-    init {
-        // Register as a motion listener, so we can switch intervals
-        motionDetector.addMotionListener(this)
-    }
-
     // -----------------------------------------------------------------------
     //                       Public Lifecycle Methods
     // -----------------------------------------------------------------------
 
     /**
-     * Start location updates at the "stationary" interval by default.
-     * Then, if motion is detected, onMotionDetected() calls updateLocationRequest(true).
+     * Start location updates at the moving interval while driving state is active.
      */
     fun startLocationUpdates() {
-        updateLocationRequest(isVehicleMoving = false)
+        updatesEnabled = true
+        updateLocationRequest(isVehicleMoving = true)
     }
 
     /**
      * Stop location updates entirely. Also cancels background coroutines if needed.
      */
     fun stopLocationUpdates() {
+        updatesEnabled = false
         fusedLocationProviderClient.removeLocationUpdates(locationCallback)
-        bufferManager.stopBufferHandler() // Stop the periodic location buffer flush in LocationDataBufferManager
-        scope.cancel()
     }
 
-    // -----------------------------------------------------------------------
-    //               Implementing MotionListener for MotionDetector
-    // -----------------------------------------------------------------------
-
-    override fun onMotionDetected() {
-        Log.d("LocationManager", "Motion detected → switching to 'moving' location interval")
-        updateLocationRequest(isVehicleMoving = true)
+    fun setDrivingState(state: DrivingStateManager.DrivingState) {
+        if (!updatesEnabled) return
+        val isMovingInterval = when (state) {
+            DrivingStateManager.DrivingState.IDLE -> false
+            DrivingStateManager.DrivingState.VERIFYING,
+            DrivingStateManager.DrivingState.RECORDING,
+            DrivingStateManager.DrivingState.POTENTIAL_STOP -> true
+        }
+        updateLocationRequest(isVehicleMoving = isMovingInterval)
     }
-
-    override fun onMotionStopped() {
-        Log.d("LocationManager", "Motion stopped → switching to 'stationary' location interval")
-        updateLocationRequest(isVehicleMoving = false)
-    }
-
     // -----------------------------------------------------------------------
     //                        Location Request / Updates
     // -----------------------------------------------------------------------
@@ -155,7 +183,7 @@ class LocationManager @Inject constructor(
         }
 
         val locationRequest = LocationRequest.Builder(priority, interval)
-            .setWaitForAccurateLocation(true)
+            .setWaitForAccurateLocation(isVehicleMoving)
             .setMinUpdateIntervalMillis(interval / 2)
             .setMaxUpdateDelayMillis(interval)
             .build()
@@ -219,20 +247,25 @@ class LocationManager @Inject constructor(
             val clampedSpeed = speed.toDouble().takeIf { it.isFinite() }?.coerceAtLeast(0.0) ?: 0.0
             sensorDataColStateRepository.updateSpeed(clampedSpeed)
 
-            // Attempt to fetch speed limit from Overpass
-            val query = buildSpeedLimitQuery(location.latitude, location.longitude, radius = 200.0)
-            val response = try {
-                osmSpeedLimitApiService.fetchSpeedLimits(query)
-            } catch (e: Exception) {
-                Log.e("LocationManager", "Error fetching speed limits", e)
-                null
+            var roadName: String? = null
+            var speedLimit: Int? = null
+            val cachedEntry = getCachedRoadData(location.latitude, location.longitude)
+            if (cachedEntry != null) {
+                roadName = cachedEntry.roadName
+                speedLimit = cachedEntry.speedLimit
+            } else {
+                val cachedRoad = roadRepository.getRoadByCoordinates(
+                    location.latitude,
+                    location.longitude,
+                    roadCacheRadius
+                )
+                if (cachedRoad != null) {
+                    roadName = cachedRoad.name
+                    speedLimit = cachedRoad.speedLimit
+                    putCachedRoadData(location.latitude, location.longitude, roadName, speedLimit)
+                }
             }
-            val speedLimit = response?.elements?.firstOrNull()
-                ?.tags?.get("maxspeed")
-                ?.filter { it.isDigit() }
-                ?.toIntOrNull() ?: 0
 
-            val speedLimitMps = speedLimit * 0.44704 // Convert mph to m/s if speedLimit is in mph
             val roads = roadRepository.getNearByRoad(location.latitude, location.longitude, 0.05)
             sensorDataColStateRepository.updateLocation(
                 GeoPoint(location.latitude, location.longitude),
@@ -241,9 +274,54 @@ class LocationManager @Inject constructor(
                 speedLimit ?: 0
             )
 
+            val shouldFetchRoadData =
+                (roadName.isNullOrBlank() || (speedLimit ?: 0) <= 0) && cachedEntry == null
+            if (shouldFetchRoadData) {
+                if (driverProfileId == null) {
+                    Log.e(
+                        "LocationManager",
+                        "Driver profile ID is null or invalid; skipping road data retrieval"
+                    )
+                }
+                val locationDataForLookup = LocationData(
+                    id = UUID.randomUUID(),
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    altitude = location.altitude,
+                    speed = speed.toDouble(),
+                    distance = distance,
+                    timestamp = location.time,
+                    date = Date(location.time),
+                    speedLimit = 0.0,
+                    sync = false
+                )
+                val (fetchedRoadName, fetchedSpeedLimit) = driverProfileId?.let {
+                    getRoadDataForLocation(
+                        context = context,
+                        location = locationDataForLookup,
+                        osmApiService = osmRoadApiService,
+                        speedLimitApiService = osmSpeedLimitApiService,
+                        roadRepository = roadRepository,
+                        profileId = it
+                    )
+                } ?: (null to null)
+                if (fetchedRoadName != null || fetchedSpeedLimit != null) {
+                    roadName = fetchedRoadName ?: roadName
+                    speedLimit = fetchedSpeedLimit ?: speedLimit
+                    putCachedRoadData(location.latitude, location.longitude, roadName, speedLimit)
+                    val refreshedRoads =
+                        roadRepository.getNearByRoad(location.latitude, location.longitude, 0.05)
+                    sensorDataColStateRepository.updateRoadContext(
+                        refreshedRoads,
+                        speedLimit ?: 0
+                    )
+                }
+            }
+
             // Decide if we want to record the new location
             if (shouldRecordNewLocation(location)) {
                 val locationId = UUID.randomUUID()
+                val speedLimitMps = speedLimit?.let { it * 0.277778 } ?: 0.0
                 val locationData = LocationData(
                     id = locationId,
                     latitude = location.latitude,
@@ -257,27 +335,8 @@ class LocationManager @Inject constructor(
                     sync = false
                 )
 
-                // 1) Call our new function to fetch road data (road name + speed limit) for this location
-                //    only if we have a valid driver profile ID.
-                if (driverProfileId == null) {
-                    Log.e(
-                        "LocationManager",
-                        "Driver profile ID is null or invalid; skipping road data retrieval"
-                    )
-                }
-                val (roadName, speedLimit) = driverProfileId?.let {
-                    getRoadDataForLocation(
-                        context = context,
-                        location = locationData,
-                        osmApiService = osmRoadApiService,
-                        speedLimitApiService = osmSpeedLimitApiService,
-                        roadRepository = roadRepository,
-                        profileId = it
-                    )
-                } ?: (null to null)
-
                 // 2) Update the locationData with speed limit from Overpass (if available)
-                val finalSpeedLimitMps: Double? = speedLimit?.let { it * 0.44704 } // mph→m/s if needed
+                val finalSpeedLimitMps: Double? = speedLimit?.let { it * 0.277778 } // km/h→m/s
                 val updatedLocationData = locationData.copy(
                     speedLimit = finalSpeedLimitMps?.toDouble() ?: 0.0
                 )

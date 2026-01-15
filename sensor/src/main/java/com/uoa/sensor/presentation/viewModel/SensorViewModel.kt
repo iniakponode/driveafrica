@@ -35,6 +35,14 @@ class SensorViewModel @Inject constructor(
     val speedLimit: StateFlow<Int> = sensorDataColStateRepository.speedLimit
     val currentLocation: StateFlow<GeoPoint?> = sensorDataColStateRepository.currentLocation
     val fusedSpeedMps: StateFlow<Double> = sensorDataColStateRepository.fusedSpeedMps
+    val currentTripId: StateFlow<UUID?> = sensorDataColStateRepository.currentTripId
+    val drivingState: StateFlow<com.uoa.sensor.motion.DrivingStateManager.DrivingState> =
+        sensorDataColStateRepository.drivingState
+    val drivingVariance: StateFlow<Double> = sensorDataColStateRepository.drivingVariance
+    val drivingSpeedMps: StateFlow<Double> = sensorDataColStateRepository.drivingSpeedMps
+    val drivingAccuracy: StateFlow<Float> = sensorDataColStateRepository.drivingAccuracy
+    val drivingLastUpdate: StateFlow<Long> = sensorDataColStateRepository.drivingLastUpdate
+    val isGpsStale: StateFlow<Boolean> = sensorDataColStateRepository.isGpsStale
 
     // Expose one‐off “start trip” and “stop trip” events
     private val _startTripEvent = MutableSharedFlow<UUID>(replay = 0)

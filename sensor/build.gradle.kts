@@ -90,6 +90,7 @@ dependencies {
     implementation(libs.hilt.ext.work)
     implementation(libs.androidx.navigation.runtime.ktx)
     implementation(libs.navigation.compose)
+    implementation(libs.androidx.dataStore.preferences)
     implementation(project(":ml"))
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.room.runtime)

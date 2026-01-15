@@ -1,18 +1,27 @@
 package com.uoa.sensor.motion
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.Location
+import android.os.SystemClock
 import android.util.Log
+import com.uoa.sensor.repository.SensorDataColStateRepository
+import com.uoa.sensor.hardware.MotionFFTClassifier
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.UUID
 import java.util.concurrent.ConcurrentLinkedQueue
 import javax.inject.Inject
 import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.core.utils.Constants.Companion.TRIP_DETECTION_SENSITIVITY
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -30,7 +39,10 @@ import kotlin.math.sqrt
  * - POTENTIAL_STOP: Detecting if vehicle is parked vs traffic light
  */
 @Singleton
-class DrivingStateManager @Inject constructor() : SensorEventListener {
+class DrivingStateManager @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val sensorDataColStateRepository: SensorDataColStateRepository
+) : SensorEventListener {
 
     companion object {
         private const val TAG = "DrivingStateManager"
@@ -41,21 +53,39 @@ class DrivingStateManager @Inject constructor() : SensorEventListener {
         private const val SAMPLES_PER_WINDOW = ACCEL_SAMPLING_HZ * ACCEL_WINDOW_SIZE_SEC
 
         // Variance thresholds for vehicle motion (m/s²)
-        private const val VARIANCE_MIN_VEHICLE = 0.15
         private const val VARIANCE_MAX_VEHICLE = 1.5
         private const val VARIANCE_WALKING = 2.5
 
         // Speed thresholds (m/s) - REDUCED for better detection
-        private const val SPEED_VEHICLE_THRESHOLD = 4.0 // ~14.4 km/h (~9 mph) - REDUCED from 15 km/h
         private const val SPEED_STOPPED_THRESHOLD = 1.39 // ~5 km/h (~3 mph)
 
         // Timing constants
-        private const val SMOOTH_MOTION_DURATION_MS = 5_000L
         private const val GPS_FALSE_ALARM_TIMEOUT_MS = 30_000L
         private const val GPS_TIMEOUT_FOR_FALLBACK_MS = 5_000L // 5 seconds for computed speed fallback
         private const val WALKING_EXIT_DURATION_MS = 5_000L
         private const val PARKING_TIMEOUT_MS = 180_000L // 3 minutes
+        private const val MIN_RECORDING_DURATION_MS = 60_000L
+
+        // GPS verification hardening
+        private const val VERIFYING_REQUIRED_GPS_UPDATES = 2
+        private const val VERIFYING_MAX_LOCATION_AGE_MS = 30_000L
+        private const val VERIFYING_MAX_ACCURACY_M = 50f
+        private const val VERIFYING_MAX_SPEED_ACCURACY_MPS = 5.0f
+        private const val VERIFYING_ACCEPTABLE_LOCATION_AGE_MS = 30_000L
+        private const val VERIFYING_ACCEPTABLE_ACCURACY_M = 100f
+        private const val VERIFYING_ACCEPTABLE_SPEED_ACCURACY_MPS = 7.5f
+        private const val VERIFYING_STRONG_SPEED_MULTIPLIER = 1.5
+
+        // Fallback confirmation (when GPS is stale)
+        private const val VERIFYING_FALLBACK_CONFIRMATION_MS = 5_000L
     }
+
+    private data class SensitivityConfig(
+        val label: String,
+        val varianceMinVehicle: Double,
+        val speedVehicleThreshold: Double,
+        val smoothMotionDurationMs: Long
+    )
 
     /**
      * Driving detection states
@@ -90,11 +120,19 @@ class DrivingStateManager @Inject constructor() : SensorEventListener {
     private val _currentSpeedMph = MutableStateFlow(0.0)
     val currentSpeedMph: StateFlow<Double> = _currentSpeedMph.asStateFlow()
 
+    private val _currentAccuracy = MutableStateFlow(0f)
+    val currentAccuracy: StateFlow<Float> = _currentAccuracy.asStateFlow()
+
     private var callback: StateCallback? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
-    // UI update callback (optional)
-    private var uiUpdateCallback: ((variance: Double, speedMph: Double, accuracy: Float) -> Unit)? = null
+    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private var sensitivityConfig = loadSensitivityConfig()
+    private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == TRIP_DETECTION_SENSITIVITY) {
+            sensitivityConfig = loadSensitivityConfig()
+            Log.i(TAG, "Trip detection sensitivity set to ${sensitivityConfig.label}")
+        }
+    }
 
     // Accelerometer data
     private val accelWindow = ConcurrentLinkedQueue<Double>()
@@ -107,6 +145,10 @@ class DrivingStateManager @Inject constructor() : SensorEventListener {
     private var lastGpsUpdateTime = 0L
     private var computedSpeed = 0.0 // m/s - computed from accelerometer as fallback
     private var isUsingComputedSpeed = false
+    private val motionClassifier = MotionFFTClassifier(
+        sampleRate = ACCEL_SAMPLING_HZ,
+        bufferSize = 64
+    )
 
     // Timing jobs
     private var smoothMotionJob: Job? = null
@@ -118,6 +160,16 @@ class DrivingStateManager @Inject constructor() : SensorEventListener {
     private var smoothMotionStartTime = 0L
     private var highVarianceStartTime = 0L
     private var stoppedStartTime = 0L
+    private var recordingStartTime = 0L
+    private var verifyingGoodFixCount = 0
+    private var fallbackAboveThresholdStartTime = 0L
+
+    private val _currentTripId = MutableStateFlow<UUID?>(null)
+    val currentTripId: StateFlow<UUID?> = _currentTripId.asStateFlow()
+
+    init {
+        prefs.registerOnSharedPreferenceChangeListener(preferenceListener)
+    }
 
     /**
      * Initialize the state manager with callback
@@ -128,30 +180,49 @@ class DrivingStateManager @Inject constructor() : SensorEventListener {
     }
 
     /**
-     * Set UI update callback for real-time monitoring screen
-     */
-    fun setUiUpdateCallback(callback: (variance: Double, speedMph: Double, accuracy: Float) -> Unit) {
-        uiUpdateCallback = callback
-    }
-
-    /**
-     * Start monitoring for vehicle motion
+     * Start monitoring for vehicle motion using the accelerometer.
      */
     fun startMonitoring() {
         if (_currentState.value == DrivingState.IDLE) {
             Log.d(TAG, "Starting vehicle motion monitoring")
-            // Callback should register this as SensorEventListener
-            // GPS remains disabled in IDLE state
+            val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+            val accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+            if (accelSensor != null) {
+                try {
+                    sensorManager.registerListener(this, accelSensor, SensorManager.SENSOR_DELAY_GAME)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to register accelerometer listener", e)
+                }
+            } else {
+                Log.w(TAG, "Accelerometer sensor not available; motion detection disabled.")
+            }
         }
     }
 
     /**
-     * Stop all monitoring and cleanup
+     * Stop all monitoring and cleanup.
      */
     fun stopMonitoring() {
         Log.d(TAG, "Stopping vehicle motion monitoring")
+        val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        try {
+            sensorManager.unregisterListener(this)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to unregister accelerometer listener", e)
+        }
         cancelAllJobs()
         accelWindow.clear()
+        transitionTo(DrivingState.IDLE)
+        callback?.requestGpsDisable()
+    }
+
+    fun startTrip(tripId: UUID) {
+        _currentTripId.value = tripId
+        startMonitoring()
+    }
+
+    fun stopTrip() {
+        _currentTripId.value = null
         transitionTo(DrivingState.IDLE)
         callback?.requestGpsDisable()
     }
@@ -163,6 +234,7 @@ class DrivingStateManager @Inject constructor() : SensorEventListener {
         stopMonitoring()
         scope.cancel()
         callback = null
+        prefs.unregisterOnSharedPreferenceChangeListener(preferenceListener)
     }
 
     // =====================================================================
@@ -193,6 +265,20 @@ class DrivingStateManager @Inject constructor() : SensorEventListener {
             accelWindow.poll()
         }
 
+        if (motionClassifier.addSample(dynamicAccel)) {
+            val classification = motionClassifier.classify()
+            val state = _currentState.value
+            if (state == DrivingState.IDLE || state == DrivingState.VERIFYING) {
+                scope.launch {
+                    sensorDataColStateRepository.updateMovementType(classification.label)
+                }
+            }
+        }
+
+        scope.launch {
+            sensorDataColStateRepository.updateLinearAcceleration(dynamicAccel)
+        }
+
         // Process based on current state
         when (_currentState.value) {
             DrivingState.IDLE -> processIdleState()
@@ -217,6 +303,8 @@ class DrivingStateManager @Inject constructor() : SensorEventListener {
     fun updateLocation(location: Location) {
         lastLocation = location
         currentSpeed = location.speed.toDouble() // m/s
+        lastGpsUpdateTime = System.currentTimeMillis()
+        isUsingComputedSpeed = false
 
         // Calculate speeds in different units for dashboard comparison
         val speedKmh = currentSpeed * 3.6
@@ -225,8 +313,7 @@ class DrivingStateManager @Inject constructor() : SensorEventListener {
         // Update state flow for UI
         _currentSpeedMph.value = speedMph
 
-        // Call UI update callback with latest data
-        uiUpdateCallback?.invoke(_currentVariance.value, speedMph, location.accuracy)
+        _currentAccuracy.value = location.accuracy
 
         // Log comprehensive GPS data for dashboard comparison
         Log.i(TAG, "═══════════════════════════════════════════════════════")
@@ -236,14 +323,65 @@ class DrivingStateManager @Inject constructor() : SensorEventListener {
         Log.i(TAG, "   Speed (mph):  %.1f mph ⬅ COMPARE WITH DASHBOARD".format(speedMph))
         Log.i(TAG, "   Accuracy:     %.1f meters".format(location.accuracy))
         Log.i(TAG, "   State:        ${_currentState.value}")
-        Log.i(TAG, "   Threshold:    > %.1f mph (%.1f km/h) to confirm vehicle".format(SPEED_VEHICLE_THRESHOLD * 2.23694, SPEED_VEHICLE_THRESHOLD * 3.6))
+        val speedThreshold = speedVehicleThreshold()
+        Log.i(TAG, "   Threshold:    > %.1f mph (%.1f km/h) to confirm vehicle".format(speedThreshold * 2.23694, speedThreshold * 3.6))
         Log.i(TAG, "═══════════════════════════════════════════════════════")
 
         when (_currentState.value) {
-            DrivingState.VERIFYING -> handleVerifyingGpsUpdate()
+            DrivingState.IDLE -> {
+                val strongSpeed = currentSpeed >= speedThreshold * VERIFYING_STRONG_SPEED_MULTIPLIER
+                val gpsCandidate = (isGoodGpsFix(location) ||
+                    (strongSpeed && isAcceptableGpsFix(location))) &&
+                    currentSpeed >= speedThreshold &&
+                    (!isWalkingMotion() || strongSpeed)
+                if (gpsCandidate) {
+                    if (!isVehicleMotion()) {
+                        scope.launch { sensorDataColStateRepository.updateMovementType("vehicle") }
+                    }
+                    Log.i(TAG, "IDLE -> VERIFYING: GPS speed above threshold, verifying")
+                    transitionTo(DrivingState.VERIFYING)
+                    callback?.requestGpsEnable()
+                    handleVerifyingGpsUpdate(location)
+                }
+            }
+            DrivingState.VERIFYING -> handleVerifyingGpsUpdate(location)
             DrivingState.RECORDING -> handleRecordingGpsUpdate()
             DrivingState.POTENTIAL_STOP -> handlePotentialStopGpsUpdate()
-            else -> {}
+        }
+    }
+
+    /**
+     * Update fallback speed (computed/fused) when GPS is stale.
+     */
+    fun updateFallbackSpeed(speedMps: Double, isGpsStale: Boolean) {
+        if (!isGpsStale) return
+        if (System.currentTimeMillis() - lastGpsUpdateTime < GPS_TIMEOUT_FOR_FALLBACK_MS) return
+
+        val speedThreshold = speedVehicleThreshold()
+        computedSpeed = speedMps
+        if (!isUsingComputedSpeed) {
+            Log.i(TAG, "Using computed speed fallback for movement detection")
+        }
+        isUsingComputedSpeed = true
+        currentSpeed = computedSpeed
+        _currentSpeedMph.value = currentSpeed * 2.23694
+
+        when (_currentState.value) {
+            DrivingState.IDLE -> {
+                val strongSpeed = currentSpeed >= speedThreshold * VERIFYING_STRONG_SPEED_MULTIPLIER
+                if (currentSpeed >= speedThreshold && (!isWalkingMotion() || strongSpeed)) {
+                    if (!isVehicleMotion()) {
+                        scope.launch { sensorDataColStateRepository.updateMovementType("vehicle") }
+                    }
+                    Log.i(TAG, "IDLE -> VERIFYING: Fallback speed above threshold, verifying")
+                    transitionTo(DrivingState.VERIFYING)
+                    callback?.requestGpsEnable()
+                    handleVerifyingFallbackSpeedUpdate()
+                }
+            }
+            DrivingState.VERIFYING -> handleVerifyingFallbackSpeedUpdate()
+            DrivingState.RECORDING -> handleRecordingGpsUpdate()
+            DrivingState.POTENTIAL_STOP -> handlePotentialStopGpsUpdate()
         }
     }
 
@@ -265,12 +403,12 @@ class DrivingStateManager @Inject constructor() : SensorEventListener {
             Log.i(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
             Log.i(TAG, "🔍 MOTION ANALYSIS (IDLE State):")
             Log.i(TAG, "   Variance:     %.3f m/s²".format(variance))
-            Log.i(TAG, "   Vehicle Range: %.2f - %.2f m/s²".format(VARIANCE_MIN_VEHICLE, VARIANCE_MAX_VEHICLE))
+            Log.i(TAG, "   Vehicle Range: %.2f - %.2f m/s²".format(varianceMinVehicle(), VARIANCE_MAX_VEHICLE))
             Log.i(TAG, "   Walking Threshold: > %.2f m/s²".format(VARIANCE_WALKING))
             Log.i(TAG, "   Classification: %s".format(
                 when {
-                    variance < VARIANCE_MIN_VEHICLE -> "Too Smooth (Stationary)"
-                    variance in VARIANCE_MIN_VEHICLE..VARIANCE_MAX_VEHICLE -> "✅ VEHICLE MOTION DETECTED"
+                    variance < varianceMinVehicle() -> "Too Smooth (Stationary)"
+                    variance in varianceMinVehicle()..VARIANCE_MAX_VEHICLE -> "✅ VEHICLE MOTION DETECTED"
                     variance > VARIANCE_WALKING -> "Walking/Running (Filtered)"
                     else -> "Unknown"
                 }
@@ -282,21 +420,48 @@ class DrivingStateManager @Inject constructor() : SensorEventListener {
             Log.i(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         }
 
-        // Check if variance indicates vehicle motion
-        if (variance in VARIANCE_MIN_VEHICLE..VARIANCE_MAX_VEHICLE) {
-            // Start or continue tracking smooth motion
+        val motionLabel = sensorDataColStateRepository.movementLabel.value
+        val hasVehicleLabel = motionLabel == "vehicle"
+        val motionCandidate =
+            variance in varianceMinVehicle()..VARIANCE_MAX_VEHICLE || hasVehicleLabel
+        if (isWalkingMotion()) {
+            if (smoothMotionStartTime != 0L) {
+                Log.v(TAG, "IDLE - Walking/running label detected, resetting timer")
+                smoothMotionStartTime = 0L
+            }
+            return
+        }
+
+        if (variance > VARIANCE_WALKING) {
+            if (smoothMotionStartTime != 0L) {
+                Log.v(TAG, "IDLE - High variance (walking/running), resetting timer")
+                smoothMotionStartTime = 0L
+            }
+            return
+        }
+
+        // Check if variance indicates motion worth verifying with GPS
+        if (motionCandidate) {
+            // Start or continue tracking sustained motion
             if (smoothMotionStartTime == 0L) {
                 smoothMotionStartTime = System.currentTimeMillis()
-                Log.d(TAG, "IDLE - Smooth motion detected, starting timer")
+                Log.d(TAG, "IDLE - Motion detected, starting timer")
             }
 
             val duration = System.currentTimeMillis() - smoothMotionStartTime
-            if (duration >= SMOOTH_MOTION_DURATION_MS) {
-                // Sustained smooth motion for 5 seconds -> transition to VERIFYING
-                Log.i(TAG, "IDLE -> VERIFYING: Sustained smooth motion detected")
-                smoothMotionStartTime = 0L
-                transitionTo(DrivingState.VERIFYING)
-                callback?.requestGpsEnable()
+            if (duration >= smoothMotionDurationMs()) {
+                val gpsCandidate = lastLocation?.let { isGoodGpsFix(it) } == true &&
+                    currentSpeed >= speedVehicleThreshold()
+                if (!isVehicleMotion() && gpsCandidate) {
+                    scope.launch { sensorDataColStateRepository.updateMovementType("vehicle") }
+                }
+                if (isVehicleMotion() || gpsCandidate) {
+                    // Sustained motion for 5 seconds -> transition to VERIFYING
+                    Log.i(TAG, "IDLE -> VERIFYING: Sustained motion detected")
+                    smoothMotionStartTime = 0L
+                    transitionTo(DrivingState.VERIFYING)
+                    callback?.requestGpsEnable()
+                }
             }
         } else {
             // Reset smooth motion timer if variance is out of range
@@ -308,284 +473,277 @@ class DrivingStateManager @Inject constructor() : SensorEventListener {
 
         // Check for high variance (walking/running) - should NOT trigger
         if (variance > VARIANCE_WALKING) {
-            Log.v(TAG, "IDLE - High variance detected (walking/running), ignoring")
-            smoothMotionStartTime = 0L
+            Log.v(TAG, "IDLE - High variance (walking/running) detected, ignoring")
         }
     }
 
     /**
-     * VERIFYING State: GPS check to confirm vehicle motion
+     * VERIFYING State: Use GPS speed to confirm vehicle motion
      */
     private fun processVerifyingState(dynamicAccel: Double) {
-        // Check for walking exit
-        if (dynamicAccel > VARIANCE_WALKING) {
-            if (highVarianceStartTime == 0L) {
-                highVarianceStartTime = System.currentTimeMillis()
+        if (!isVehicleMotion()) {
+            if (hasStrongGpsCandidate()) {
+                scope.launch { sensorDataColStateRepository.updateMovementType("vehicle") }
+                return
             }
-
-            val duration = System.currentTimeMillis() - highVarianceStartTime
-            if (duration >= WALKING_EXIT_DURATION_MS) {
-                Log.i(TAG, "VERIFYING -> IDLE: Walking detected")
+            Log.i(TAG, "VERIFYING -> IDLE: Motion label is not vehicle")
+            transitionTo(DrivingState.IDLE)
+            callback?.requestGpsDisable()
+            return
+        }
+        // Handle case where GPS is slow to start up
+        if (falseAlarmJob?.isActive == true) return
+        falseAlarmJob = scope.launch {
+            delay(GPS_FALSE_ALARM_TIMEOUT_MS)
+            if (_currentState.value == DrivingState.VERIFYING) {
+                Log.w(TAG, "VERIFYING -> IDLE: GPS timeout, no speed confirmation")
                 transitionTo(DrivingState.IDLE)
                 callback?.requestGpsDisable()
-                highVarianceStartTime = 0L
-                return
-            }
-        } else {
-            highVarianceStartTime = 0L
-        }
-
-        // Check if GPS has timed out (no GPS update for 5 seconds)
-        val now = System.currentTimeMillis()
-        val timeSinceLastGpsUpdate = now - lastGpsUpdateTime
-
-        if (timeSinceLastGpsUpdate >= GPS_TIMEOUT_FOR_FALLBACK_MS && lastGpsUpdateTime > 0) {
-            // GPS timeout - fall back to computed speed from accelerometer variance
-            Log.w(TAG, "GPS timeout after 5 seconds, falling back to computed speed")
-
-            val variance = calculateVariance()
-
-            // Use variance as a proxy for motion - if we have sustained vehicle variance, assume moving
-            if (variance in VARIANCE_MIN_VEHICLE..VARIANCE_MAX_VEHICLE) {
-                Log.i(TAG, "")
-                Log.i(TAG, "✅ VEHICLE CONFIRMED (Computed from sensors - GPS unavailable)")
-                Log.i(TAG, "   Variance: %.3f m/s² (Vehicle range)".format(variance))
-                Log.i(TAG, "   ➡️  VERIFYING -> RECORDING")
-                Log.i(TAG, "   🚗 Starting trip automatically...")
-                Log.i(TAG, "")
-
-                cancelJob(falseAlarmJob)
-                transitionTo(DrivingState.RECORDING)
-                callback?.onDriveStarted()
-                isUsingComputedSpeed = true
-                return
-            } else {
-                Log.d(TAG, "GPS timeout but variance (%.3f) not in vehicle range, reverting to IDLE".format(variance))
-                transitionTo(DrivingState.IDLE)
-                callback?.requestGpsDisable()
-                return
-            }
-        }
-
-        // Start false alarm timer when entering VERIFYING
-        if (falseAlarmJob == null) {
-            falseAlarmJob = scope.launch {
-                delay(GPS_FALSE_ALARM_TIMEOUT_MS)
-                if (_currentState.value == DrivingState.VERIFYING && currentSpeed < SPEED_VEHICLE_THRESHOLD) {
-                    Log.i(TAG, "VERIFYING -> IDLE: False alarm timeout")
-                    transitionTo(DrivingState.IDLE)
-                    callback?.requestGpsDisable()
-                }
             }
         }
     }
 
     /**
-     * Handle GPS updates in VERIFYING state
-     */
-    private fun handleVerifyingGpsUpdate() {
-        val speedKmh = currentSpeed * 3.6
-        val speedMph = currentSpeed * 2.23694
-
-        if (currentSpeed >= SPEED_VEHICLE_THRESHOLD) {
-            // Speed confirms vehicle motion -> start recording
-            Log.i(TAG, "")
-            Log.i(TAG, "✅ VEHICLE CONFIRMED!")
-            Log.i(TAG, "   Current Speed: %.1f mph (%.1f km/h)".format(speedMph, speedKmh))
-            Log.i(TAG, "   Threshold: > %.1f mph".format(SPEED_VEHICLE_THRESHOLD * 2.23694))
-            Log.i(TAG, "   ➡️  VERIFYING -> RECORDING")
-            Log.i(TAG, "   🚗 Starting trip automatically...")
-            Log.i(TAG, "")
-
-            cancelJob(falseAlarmJob)
-            transitionTo(DrivingState.RECORDING)
-            callback?.onDriveStarted()
-        } else if (currentSpeed < SPEED_STOPPED_THRESHOLD) {
-            // Low speed maintained - check if false alarm timeout is close
-            Log.d(TAG, "VERIFYING: Low speed (%.1f mph / %.1f km/h), waiting for confirmation or timeout".format(speedMph, speedKmh))
-        } else {
-            // Speed is between stopped and vehicle threshold
-            Log.d(TAG, "VERIFYING: Speed (%.1f mph) close to threshold (%.1f mph), monitoring...".format(speedMph, SPEED_VEHICLE_THRESHOLD * 2.23694))
-        }
-    }
-
-    /**
-     * RECORDING State: Active data collection
+     * RECORDING State: Monitor for stops or non-vehicle motion
      */
     private fun processRecordingState(dynamicAccel: Double) {
-        // Check for walking exit
-        if (dynamicAccel > VARIANCE_WALKING) {
-            if (highVarianceStartTime == 0L) {
-                highVarianceStartTime = System.currentTimeMillis()
-                Log.d(TAG, "RECORDING: High variance detected, starting walking timer")
-            }
+        if (accelWindow.size < SAMPLES_PER_WINDOW) return
 
-            val duration = System.currentTimeMillis() - highVarianceStartTime
-            if (duration >= WALKING_EXIT_DURATION_MS) {
-                Log.i(TAG, "RECORDING -> IDLE: User walked away")
-                stopDriveAndTransitionToIdle()
-                return
-            }
+        val variance = calculateVariance()
+        val now = System.currentTimeMillis()
+        val recordingDurationMs = if (recordingStartTime > 0L) {
+            now - recordingStartTime
         } else {
-            if (highVarianceStartTime != 0L) {
-                Log.v(TAG, "RECORDING: High variance ended, resetting walking timer")
-            }
-            highVarianceStartTime = 0L
+            0L
         }
-    }
 
-    /**
-     * Handle GPS updates in RECORDING state
-     */
-    private fun handleRecordingGpsUpdate() {
-        val speedKmh = currentSpeed * 3.6
-        val speedMph = currentSpeed * 2.23694
-
-        if (currentSpeed < SPEED_STOPPED_THRESHOLD) {
-            // Vehicle slowing down or stopped
-            if (stoppedStartTime == 0L) {
-                stoppedStartTime = System.currentTimeMillis()
-                Log.i(TAG, "")
-                Log.i(TAG, "⚠️ VEHICLE SLOWING/STOPPED")
-                Log.i(TAG, "   Speed: %.1f mph (%.1f km/h)".format(speedMph, speedKmh))
-                Log.i(TAG, "   Below threshold: < %.1f mph".format(SPEED_STOPPED_THRESHOLD * 2.23694))
-                Log.i(TAG, "   ➡️  RECORDING -> POTENTIAL_STOP")
-                Log.i(TAG, "   ⏱  Starting 3-minute parking timer...")
-                Log.i(TAG, "")
-
-                transitionTo(DrivingState.POTENTIAL_STOP)
-                startParkingTimer()
-            }
-        } else {
-            // Vehicle moving normally, reset any potential stop tracking
-            if (stoppedStartTime != 0L) {
-                Log.i(TAG, "RECORDING: Speed resumed (%.1f mph), canceling stop timer".format(speedMph))
-                stoppedStartTime = 0L
-            }
-        }
-    }
-
-    /**
-     * POTENTIAL_STOP State: Determine if parked or at traffic light
-     */
-    private fun processPotentialStopState() {
-        // Monitoring continues, main logic is in GPS updates and parking timer
-    }
-
-    /**
-     * Handle GPS updates in POTENTIAL_STOP state
-     */
-    private fun handlePotentialStopGpsUpdate() {
-        val speedKmh = currentSpeed * 3.6
-        val speedMph = currentSpeed * 2.23694
-
-        if (currentSpeed >= SPEED_VEHICLE_THRESHOLD) {
-            // Vehicle resumed motion -> back to RECORDING
-            Log.i(TAG, "")
-            Log.i(TAG, "🚦 MOTION RESUMED (Traffic light/Stop sign)")
-            Log.i(TAG, "   Speed: %.1f mph (%.1f km/h)".format(speedMph, speedKmh))
-            Log.i(TAG, "   Above threshold: > %.1f mph".format(SPEED_VEHICLE_THRESHOLD * 2.23694))
-            Log.i(TAG, "   ➡️  POTENTIAL_STOP -> RECORDING")
-            Log.i(TAG, "   🚗 Continuing trip...")
-            Log.i(TAG, "")
-
-            cancelJob(parkingTimerJob)
-            stoppedStartTime = 0L
-            transitionTo(DrivingState.RECORDING)
-        } else {
-            // Log parking timer countdown
-            if (stoppedStartTime != 0L) {
-                val elapsed = System.currentTimeMillis() - stoppedStartTime
-                val remaining = (PARKING_TIMEOUT_MS - elapsed) / 1000
-                if (remaining > 0 && remaining % 30 == 0L) { // Log every 30 seconds
-                    Log.i(TAG, "POTENTIAL_STOP: Speed %.1f mph, parking timer: %d seconds remaining".format(speedMph, remaining))
+        // If high variance (walking), start exit timer
+        if (variance > VARIANCE_WALKING &&
+            currentSpeed < SPEED_STOPPED_THRESHOLD &&
+            recordingDurationMs >= MIN_RECORDING_DURATION_MS
+        ) {
+            if (walkingExitJob == null || walkingExitJob?.isActive == false) {
+                walkingExitJob = scope.launch {
+                    delay(WALKING_EXIT_DURATION_MS)
+                    Log.w(TAG, "RECORDING -> IDLE: Confirmed walking/running, stopping trip")
+                    transitionTo(DrivingState.IDLE)
                 }
             }
+        } else {
+            walkingExitJob?.cancel()
         }
-        // If speed remains low, parking timer will eventually trigger
+
+        // If low variance and low speed, potential stop
+        if (variance < varianceMinVehicle() && currentSpeed < SPEED_STOPPED_THRESHOLD) {
+            Log.i(TAG, "RECORDING -> POTENTIAL_STOP: Low speed and variance")
+            transitionTo(DrivingState.POTENTIAL_STOP)
+        }
     }
 
     /**
-     * Start parking timer (3 minutes)
+     * POTENTIAL_STOP State: Determine if parked or brief stop
      */
-    private fun startParkingTimer() {
-        cancelJob(parkingTimerJob)
+    private fun processPotentialStopState() {
+        if (parkingTimerJob?.isActive == true) return
+        // Start a timer to check if we are parked
         parkingTimerJob = scope.launch {
             delay(PARKING_TIMEOUT_MS)
             if (_currentState.value == DrivingState.POTENTIAL_STOP) {
-                Log.i(TAG, "POTENTIAL_STOP -> IDLE: Vehicle parked (3 min timeout)")
-                stopDriveAndTransitionToIdle()
+                Log.i(TAG, "POTENTIAL_STOP -> IDLE: Parked for 3 minutes, stopping trip")
+                transitionTo(DrivingState.IDLE)
             }
         }
     }
 
     // =====================================================================
-    // Utility Methods
+    // GPS Update Handlers (for each state)
     // =====================================================================
 
-    /**
-     * Calculate variance of acceleration magnitude
-     */
+    private fun handleVerifyingGpsUpdate(location: Location) {
+        val strongSpeed = currentSpeed >= speedVehicleThreshold() * VERIFYING_STRONG_SPEED_MULTIPLIER
+        if (!isGoodGpsFix(location) && !(strongSpeed && isAcceptableGpsFix(location))) {
+            verifyingGoodFixCount = 0
+            return
+        }
+        if (currentSpeed >= speedVehicleThreshold()) {
+            if (!isVehicleMotion()) {
+                scope.launch { sensorDataColStateRepository.updateMovementType("vehicle") }
+            }
+            verifyingGoodFixCount++
+            if (verifyingGoodFixCount >= VERIFYING_REQUIRED_GPS_UPDATES) {
+                Log.i(TAG, "VERIFYING -> RECORDING: GPS speed confirmed in $verifyingGoodFixCount updates")
+                falseAlarmJob?.cancel()
+                transitionTo(DrivingState.RECORDING)
+                callback?.onDriveStarted()
+            }
+        } else {
+            verifyingGoodFixCount = 0
+        }
+    }
+
+    private fun handleVerifyingFallbackSpeedUpdate() {
+        if (!isVehicleMotion()) {
+            fallbackAboveThresholdStartTime = 0L
+            return
+        }
+        val now = System.currentTimeMillis()
+        if (currentSpeed >= speedVehicleThreshold()) {
+            if (fallbackAboveThresholdStartTime == 0L) {
+                fallbackAboveThresholdStartTime = now
+            }
+            if (now - fallbackAboveThresholdStartTime >= VERIFYING_FALLBACK_CONFIRMATION_MS) {
+                Log.i(TAG, "VERIFYING -> RECORDING: Fallback speed sustained above threshold")
+                falseAlarmJob?.cancel()
+                transitionTo(DrivingState.RECORDING)
+                callback?.onDriveStarted()
+            }
+        } else {
+            fallbackAboveThresholdStartTime = 0L
+        }
+    }
+
+    private fun handleRecordingGpsUpdate() {
+        if (currentSpeed < SPEED_STOPPED_THRESHOLD) {
+            Log.i(TAG, "RECORDING -> POTENTIAL_STOP: GPS speed dropped below threshold")
+            transitionTo(DrivingState.POTENTIAL_STOP)
+        }
+    }
+
+    private fun handlePotentialStopGpsUpdate() {
+        if (currentSpeed >= speedVehicleThreshold()) {
+            Log.i(TAG, "POTENTIAL_STOP -> RECORDING: GPS speed recovered, resuming trip")
+            parkingTimerJob?.cancel()
+            transitionTo(DrivingState.RECORDING)
+        }
+    }
+
+    // =====================================================================
+    // Utility Functions
+    // =====================================================================
+
+    private fun loadSensitivityConfig(): SensitivityConfig {
+        val value = prefs.getString(TRIP_DETECTION_SENSITIVITY, "balanced")
+        return when (value) {
+            "high" -> SensitivityConfig(
+                label = "high",
+                varianceMinVehicle = 0.03,
+                speedVehicleThreshold = 1.5,
+                smoothMotionDurationMs = 1_500L
+            )
+            "low" -> SensitivityConfig(
+                label = "low",
+                varianceMinVehicle = 0.08,
+                speedVehicleThreshold = 4.0,
+                smoothMotionDurationMs = 3_000L
+            )
+            else -> SensitivityConfig(
+                label = "balanced",
+                varianceMinVehicle = 0.05,
+                speedVehicleThreshold = 2.5,
+                smoothMotionDurationMs = 2_000L
+            )
+        }
+    }
+
+    private fun varianceMinVehicle(): Double = sensitivityConfig.varianceMinVehicle
+
+    private fun speedVehicleThreshold(): Double = sensitivityConfig.speedVehicleThreshold
+
+    private fun smoothMotionDurationMs(): Long = sensitivityConfig.smoothMotionDurationMs
+
+    private fun transitionTo(newState: DrivingState) {
+        val previousState = _currentState.value
+        if (_currentState.value == newState) return
+        val now = System.currentTimeMillis()
+        _currentState.value = newState
+        callback?.onStateChanged(newState)
+        Log.d(TAG, "State changed to: $newState")
+        if (newState == DrivingState.IDLE &&
+            (previousState == DrivingState.RECORDING ||
+                previousState == DrivingState.POTENTIAL_STOP ||
+                previousState == DrivingState.VERIFYING)
+        ) {
+            callback?.onDriveStopped()
+        }
+        if (newState == DrivingState.RECORDING && recordingStartTime == 0L) {
+            recordingStartTime = now
+        } else if (newState == DrivingState.IDLE) {
+            recordingStartTime = 0L
+        }
+
+        // Reset timers on state change
+        cancelAllJobs()
+        smoothMotionStartTime = 0L
+        highVarianceStartTime = 0L
+        stoppedStartTime = 0L
+        verifyingGoodFixCount = 0
+        fallbackAboveThresholdStartTime = 0L
+    }
+
+    private fun cancelAllJobs() {
+        smoothMotionJob?.cancel()
+        falseAlarmJob?.cancel()
+        walkingExitJob?.cancel()
+        parkingTimerJob?.cancel()
+    }
+
     private fun calculateVariance(): Double {
         if (accelWindow.isEmpty()) return 0.0
 
-        val values = accelWindow.toList()
-        val mean = values.average()
-        val variance = values.map { (it - mean).pow(2) }.average()
-
-        // Update state flow for UI
+        val mean = accelWindow.average()
+        val variance = accelWindow.map { (it - mean).pow(2) }.average()
         _currentVariance.value = variance
-
         return variance
     }
 
-    /**
-     * Transition to new state
-     */
-    private fun transitionTo(newState: DrivingState) {
-        val oldState = _currentState.value
-        if (oldState == newState) return
+    private fun isVehicleMotion(): Boolean {
+        val label = sensorDataColStateRepository.movementLabel.value
+        if (label == "walking" || label == "running") return false
+        if (_currentState.value == DrivingState.VERIFYING) return true
+        return label == "vehicle" || label == "verifying"
+    }
 
-        Log.i(TAG, "State Transition: $oldState -> $newState")
-        _currentState.value = newState
-
-        // Reset GPS update timestamp when entering VERIFYING to start timeout counter
-        if (newState == DrivingState.VERIFYING) {
-            lastGpsUpdateTime = System.currentTimeMillis()
+    private fun isWalkingMotion(): Boolean {
+        return when (sensorDataColStateRepository.movementLabel.value) {
+            "walking", "running" -> true
+            else -> false
         }
-
-        callback?.onStateChanged(newState)
     }
 
-    /**
-     * Stop drive and transition to IDLE
-     */
-    private fun stopDriveAndTransitionToIdle() {
-        callback?.onDriveStopped()
-        callback?.requestGpsDisable()
-        cancelAllJobs()
-        stoppedStartTime = 0L
-        highVarianceStartTime = 0L
-        smoothMotionStartTime = 0L
-        accelWindow.clear()
-        transitionTo(DrivingState.IDLE)
+    private fun isGoodGpsFix(location: Location): Boolean {
+        val nowNanos = SystemClock.elapsedRealtimeNanos()
+        val ageMs = if (location.elapsedRealtimeNanos > 0) {
+            (nowNanos - location.elapsedRealtimeNanos) / 1_000_000
+        } else {
+            Long.MAX_VALUE
+        }
+        if (ageMs > VERIFYING_MAX_LOCATION_AGE_MS) return false
+        if (location.hasAccuracy() && location.accuracy > VERIFYING_MAX_ACCURACY_M) return false
+        if (location.hasSpeedAccuracy() &&
+            location.speedAccuracyMetersPerSecond > VERIFYING_MAX_SPEED_ACCURACY_MPS
+        ) return false
+        return true
     }
 
-    /**
-     * Cancel all timing jobs
-     */
-    private fun cancelAllJobs() {
-        cancelJob(smoothMotionJob)
-        cancelJob(falseAlarmJob)
-        cancelJob(walkingExitJob)
-        cancelJob(parkingTimerJob)
+    private fun isAcceptableGpsFix(location: Location): Boolean {
+        val nowNanos = SystemClock.elapsedRealtimeNanos()
+        val ageMs = if (location.elapsedRealtimeNanos > 0) {
+            (nowNanos - location.elapsedRealtimeNanos) / 1_000_000
+        } else {
+            Long.MAX_VALUE
+        }
+        if (ageMs > VERIFYING_ACCEPTABLE_LOCATION_AGE_MS) return false
+        if (location.hasAccuracy() && location.accuracy > VERIFYING_ACCEPTABLE_ACCURACY_M) return false
+        if (location.hasSpeedAccuracy() &&
+            location.speedAccuracyMetersPerSecond > VERIFYING_ACCEPTABLE_SPEED_ACCURACY_MPS
+        ) return false
+        return true
     }
 
-    /**
-     * Cancel a specific job
-     */
-    private fun cancelJob(job: Job?) {
-        job?.cancel()
+    private fun hasStrongGpsCandidate(): Boolean {
+        val location = lastLocation ?: return false
+        if (currentSpeed < speedVehicleThreshold()) return false
+        val strongSpeed = currentSpeed >= speedVehicleThreshold() * VERIFYING_STRONG_SPEED_MULTIPLIER
+        return isGoodGpsFix(location) || (strongSpeed && isAcceptableGpsFix(location))
     }
 }
-

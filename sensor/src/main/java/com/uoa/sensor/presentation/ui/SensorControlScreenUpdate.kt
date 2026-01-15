@@ -30,22 +30,21 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.google.accompanist.permissions.*
-import com.uoa.core.utils.DRIVER_PROFILE_ID
 import com.uoa.sensor.presentation.viewModel.SensorViewModel
-import com.uoa.sensor.presentation.viewModel.TripViewModel
 import com.uoa.sensor.services.VehicleMovementServiceUpdate
 import com.uoa.sensor.R
+import com.uoa.sensor.utils.displaySpeedLimitKmh
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-import java.util.UUID
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun SensorControlScreenUpdate(
     navController: NavController,
-    driverProfileId: UUID,
-    sensorViewModel: SensorViewModel = hiltViewModel(),
-    tripViewModel: TripViewModel = hiltViewModel()
+    sensorViewModel: SensorViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
 
@@ -67,9 +66,7 @@ fun SensorControlScreenUpdate(
 
     LaunchedEffect(permissionsGranted) {
         if (permissionsGranted && !serviceStarted) {
-            Intent(context, VehicleMovementServiceUpdate::class.java).apply {
-                putExtra(DRIVER_PROFILE_ID, driverProfileId.toString())
-            }.also { intent ->
+            Intent(context, VehicleMovementServiceUpdate::class.java).also { intent ->
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
                 else context.startService(intent)
             }
@@ -80,13 +77,16 @@ fun SensorControlScreenUpdate(
     // 3) State
     val tripStarted by sensorViewModel.tripStartStatus.collectAsState()
     val collecting by sensorViewModel.collectionStatus.collectAsState()
-    val movementType by sensorViewModel.movementType
+    val drivingState by sensorViewModel.drivingState.collectAsState()
+    val drivingLastUpdate by sensorViewModel.drivingLastUpdate.collectAsState()
+    val isGpsStale by sensorViewModel.isGpsStale.collectAsState()
     val distanceTravelled by sensorViewModel.distanceTravelled.collectAsState()
     val pathPoints by sensorViewModel.pathPoints.collectAsState()
     val roads by sensorViewModel.nearbyRoads.collectAsState()
     val speedLimit by sensorViewModel.speedLimit.collectAsState()
     val currentLocation by sensorViewModel.currentLocation.collectAsState()
-    val fusedSpeedMps by sensorViewModel.fusedSpeedMps.collectAsState()
+    val drivingSpeedMps by sensorViewModel.drivingSpeedMps.collectAsState()
+    val isVehicleMoving by sensorViewModel.isVehicleMoving.collectAsState()
 
     // ✅ Make whole screen scrollable
     val scroll = rememberScrollState()
@@ -101,13 +101,19 @@ fun SensorControlScreenUpdate(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         if (!permissionsGranted) {
-            Text("This app requires location, activity, and notification permissions to function.")
+            Text(stringResource(R.string.sensor_permission_explanation))
             Button(onClick = { permissionState.launchMultiplePermissionRequest() }) {
                 Icon(Icons.Filled.CheckCircle, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text("Grant Permissions")
             }
             return@Column
+        }
+
+        val lastUpdateText = if (drivingLastUpdate > 0L) {
+            SimpleDateFormat("HH:mm:ss", Locale.US).format(Date(drivingLastUpdate))
+        } else {
+            "No updates yet"
         }
 
         // Navigation button to Vehicle Detection Monitor
@@ -117,55 +123,37 @@ fun SensorControlScreenUpdate(
         ) {
             Text("🚗 Open Vehicle Monitor")
         }
-        Spacer(Modifier.height(16.dp))
-
-        // Movement status
-        Text(
-            text = when (movementType) {
-                "stationary" -> "No movement detected"
-                "walking"    -> "You are walking"
-                "running"    -> "You are running"
-                "vehicle"    -> "Now in a moving vehicle"
-                else         -> "Unknown movement"
-            }
-        )
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(8.dp))
 
         // Trip status
         when {
-            movementType == "vehicle" && tripStarted && collecting ->
+            drivingState == com.uoa.sensor.motion.DrivingStateManager.DrivingState.RECORDING && tripStarted && collecting ->
                 Text("Trip now active and data collection is ongoing.")
-            movementType == "vehicle" && tripStarted && !collecting ->
+            drivingState == com.uoa.sensor.motion.DrivingStateManager.DrivingState.RECORDING && tripStarted && !collecting ->
                 Text("Trip started, waiting to start data collection.")
-            movementType == "vehicle" && !tripStarted && collecting ->
+            drivingState == com.uoa.sensor.motion.DrivingStateManager.DrivingState.RECORDING && !tripStarted && collecting ->
                 Text("Vehicle movement detected, starting trip.... Data is being collected.")
-            movementType == "vehicle" && !tripStarted && !collecting ->
+            drivingState == com.uoa.sensor.motion.DrivingStateManager.DrivingState.RECORDING && !tripStarted && !collecting ->
                 Text("Vehicle movement detected, waiting to start trip and data collection....")
-            movementType == "stationary" && !tripStarted ->
+            drivingState == com.uoa.sensor.motion.DrivingStateManager.DrivingState.IDLE && !tripStarted ->
                 Text("Yet to start trip:\nTrip will start automatically when you start driving.")
-            movementType == "stationary" && tripStarted && collecting ->
+            drivingState == com.uoa.sensor.motion.DrivingStateManager.DrivingState.IDLE && tripStarted && collecting ->
                 Text("Trip Ended\nBecause vehicle has stopped.\n")
-            movementType == "stationary" && tripStarted && !collecting ->
+            drivingState == com.uoa.sensor.motion.DrivingStateManager.DrivingState.IDLE && tripStarted && !collecting ->
                 Text("Trip ongoing but data collection is paused while vehicle is being stopped.")
-            movementType == "stationary" && !tripStarted && collecting ->
+            drivingState == com.uoa.sensor.motion.DrivingStateManager.DrivingState.IDLE && !tripStarted && collecting ->
                 Text("Vehicle is stopped, processing las collected data.")
-            movementType == "stationary" && !tripStarted && !collecting ->
+            drivingState == com.uoa.sensor.motion.DrivingStateManager.DrivingState.IDLE && !tripStarted && !collecting ->
                 Text("Vehicle is stopped and no trip or data collection in progress.")
-            movementType in listOf("walking", "running") && tripStarted && collecting ->
-                Text("Trip ongoing and data collection is active while on foot.")
-            movementType in listOf("walking", "running") && tripStarted && !collecting ->
-                Text("Trip ongoing on foot, but data collection is not active.")
-            movementType in listOf("walking", "running") && !tripStarted && collecting ->
-                Text("Walking/running detected, data being collected without trip start.")
-            movementType in listOf("walking", "running") && !tripStarted && !collecting ->
-                Text("Walking/running detected, trip not started and no data collection.")
-            movementType !in listOf("stationary", "walking", "running", "vehicle") && collecting ->
-                Text("Unknown movement detected so trip is stopped.\nNow processing collected data from last trip.")
-            movementType !in listOf("stationary", "walking", "running", "vehicle") && !collecting ->
-                Text("Unknown movement detected\nApp cannot start Trip and or Data collection.")
+            drivingState == com.uoa.sensor.motion.DrivingStateManager.DrivingState.POTENTIAL_STOP && tripStarted && collecting ->
+                Text("Vehicle stopped, monitoring before ending trip.")
+            drivingState == com.uoa.sensor.motion.DrivingStateManager.DrivingState.POTENTIAL_STOP && tripStarted && !collecting ->
+                Text("Vehicle stopped; data collection paused.")
+            drivingState == com.uoa.sensor.motion.DrivingStateManager.DrivingState.VERIFYING ->
+                Text("Verifying movement before starting trip.")
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(12.dp))
 
         // Use the last known point if the current location becomes null
         val displayLocation = currentLocation ?: pathPoints.lastOrNull()
@@ -175,14 +163,19 @@ fun SensorControlScreenUpdate(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(250.dp)
+                    .height(360.dp)
             ) {
+                val roadName = roads.firstOrNull()?.name
+                val displaySpeedLimit = displaySpeedLimitKmh(context, speedLimit)
                 MapComposable(
                     context = context,
                     latitude = location.latitude,
                     longitude = location.longitude,
                     roads = roads,
+                    currentRoadName = roadName,
+                    speedLimitKmh = displaySpeedLimit,
                     path = pathPoints,
+                    isVehicleMoving = isVehicleMoving,
                     modifier = Modifier
                         .matchParentSize()
                         .clipToBounds()
@@ -245,22 +238,31 @@ fun SensorControlScreenUpdate(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
         ) {
-            Row(
-                modifier = Modifier.padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Speed,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.width(8.dp))
-                val speedText = if (currentLocation == null) "--" else "%.1f".format(fusedSpeedMps * 3.6)
-                Text(
-                    text = "Current Speed: $speedText ${stringResource(R.string.unit_kilometers_per_hour)}",
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+            Column(modifier = Modifier.padding(8.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Speed,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    val speedText = if (drivingSpeedMps <= 0.0) "--" else "%.1f".format(drivingSpeedMps * 3.6)
+                    Text(
+                        text = "Current Speed: $speedText ${stringResource(R.string.unit_kilometers_per_hour)}",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                if (isGpsStale) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "GPS stale - using fallback speed",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
 
@@ -278,7 +280,8 @@ fun SensorControlScreenUpdate(
                     tint = MaterialTheme.colorScheme.secondary
                 )
                 Spacer(Modifier.width(8.dp))
-                val speedText = if (currentLocation == null) "--" else speedLimit.toString()
+                val displaySpeedLimit = displaySpeedLimitKmh(context, speedLimit)
+                val speedText = if (displaySpeedLimit <= 0) "--" else displaySpeedLimit.toString()
                 Text(
                     text = stringResource(
                         R.string.speed_limit,

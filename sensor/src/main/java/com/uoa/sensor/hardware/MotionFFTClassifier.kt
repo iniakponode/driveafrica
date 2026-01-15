@@ -24,12 +24,13 @@ class MotionFFTClassifier(
     companion object {
         private const val TAG = "MotionFFTClassifier"
         // ———– TUNABLE THRESHOLDS ———–
-        private const val STATIONARY_ENERGY = 1_000.0
+        private const val STATIONARY_ENERGY = 200.0
         private val WALKING_FREQ_RANGE = 0.8..4.5
-        private val WALKING_ENERGY_RANGE = 1_000.0..10_000.0
+        private val WALKING_ENERGY_RANGE = 200.0..4_000.0
         private val RUNNING_FREQ_RANGE = 4.5..8.0
-        private val RUNNING_ENERGY_RANGE = 10_000.0..20_000.0
-        private const val VEHICLE_ENERGY = 20_000.0
+        private val RUNNING_ENERGY_RANGE = 4_000.0..12_000.0
+        private const val VEHICLE_ENERGY = 4_000.0
+        private const val LOW_FREQ_VEHICLE_MAX = 0.8
     }
 
     /**
@@ -86,6 +87,7 @@ class MotionFFTClassifier(
             energy < STATIONARY_ENERGY -> "stationary"
             freq in WALKING_FREQ_RANGE && energy in WALKING_ENERGY_RANGE -> "walking"
             freq in RUNNING_FREQ_RANGE && energy in RUNNING_ENERGY_RANGE -> "running"
+            freq < LOW_FREQ_VEHICLE_MAX && energy >= STATIONARY_ENERGY -> "vehicle"
             energy >= VEHICLE_ENERGY -> "vehicle"
             else -> "unknown"
         }

@@ -17,6 +17,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.uoa.sensor.presentation.viewModel.VehicleDetectionViewModel
 import com.uoa.sensor.presentation.viewModel.VehicleDetectionUiState
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Real-time vehicle detection monitoring screen
@@ -32,7 +35,7 @@ fun VehicleDetectionMonitorScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Vehicle Detection Monitor") },
+                title = { Text("Driving Dashboard") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
@@ -47,6 +50,27 @@ fun VehicleDetectionMonitorScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            val lastUpdateText = if (uiState.lastUpdate > 0L) {
+                SimpleDateFormat("HH:mm:ss", Locale.US).format(Date(uiState.lastUpdate))
+            } else {
+                "No updates yet"
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = "Last update: $lastUpdateText",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
             // Current State Card
             StateCard(state = uiState.currentState)
 
@@ -59,24 +83,9 @@ fun VehicleDetectionMonitorScreen(
                 threshold = uiState.speedThresholdMph
             )
 
-            // Motion Analysis Card
-            MotionAnalysisCard(
-                variance = uiState.variance,
-                classification = uiState.classification,
-                timerProgress = uiState.timerProgress
-            )
-
-            // Detection Thresholds Card
-            ThresholdsCard(
-                vehicleMin = uiState.varianceMin,
-                vehicleMax = uiState.varianceMax,
-                walkingThreshold = uiState.walkingThreshold,
-                speedThreshold = uiState.speedThresholdMph,
-                stoppedThreshold = uiState.stoppedThresholdMph
-            )
-
             // Trip Info Card
-            if (uiState.isRecording) {
+            val showTripInfo = uiState.isRecording || uiState.currentState == "RECORDING"
+            if (showTripInfo) {
                 TripInfoCard(
                     tripDuration = uiState.tripDuration,
                     tripId = uiState.tripId
@@ -110,8 +119,13 @@ fun StateCard(state: String) {
                 color = Color.Gray
             )
             Spacer(modifier = Modifier.height(8.dp))
+            val displayState = when (state) {
+                "IDLE" -> "NOT DRIVING"
+                "RECORDING" -> "DRIVING"
+                else -> state
+            }
             Text(
-                text = state,
+                text = displayState,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = when (state) {
@@ -125,10 +139,10 @@ fun StateCard(state: String) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = when (state) {
-                    "IDLE" -> "Waiting for motion"
+                    "IDLE" -> "Waiting to start driving"
                     "VERIFYING" -> "Checking GPS speed..."
-                    "RECORDING" -> "🚗 Recording trip"
-                    "POTENTIAL_STOP" -> "Vehicle stopped"
+                    "RECORDING" -> "Driving: trip active"
+                    "POTENTIAL_STOP" -> "Vehicle stopped: Trip will end \nif no driving in 3 minutes"
                     else -> ""
                 },
                 style = MaterialTheme.typography.bodyMedium,
@@ -165,13 +179,13 @@ fun GpsSpeedCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "📍 GPS SPEED",
+                    text = "GPS SPEED",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 12.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
             // Speed in m/s
             SpeedRow(
@@ -182,16 +196,16 @@ fun GpsSpeedCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Speed in km/h
+            // Speed in mph
             SpeedRow(
-                label = "Speed (km/h)",
-                value = "%.1f km/h".format(speedKmh),
-                subtitle = "Metric"
+                label = "Speed (mph)",
+                value = "%.1f mph".format(speedMph),
+                subtitle = "Imperial"
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Speed in mph - HIGHLIGHTED
+            // Speed in km/h - HIGHLIGHTED
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -208,19 +222,19 @@ fun GpsSpeedCard(
                     ) {
                         Column {
                             Text(
-                                text = "Speed (mph)",
+                                text = "Speed (km/h)",
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "⬅ COMPARE WITH DASHBOARD",
+                                text = "COMPARE WITH DASHBOARD",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color(0xFFE65100), // Orange
                                 fontWeight = FontWeight.Bold
                             )
                         }
                         Text(
-                            text = "%.1f mph".format(speedMph),
+                            text = "%.1f km/h".format(speedKmh),
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFE65100)
@@ -333,7 +347,7 @@ fun MotionAnalysisCard(
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 12.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
             // Variance
             Row(
@@ -381,7 +395,7 @@ fun MotionAnalysisCard(
                     color = Color.Gray
                 )
                 LinearProgressIndicator(
-                    progress = timerProgress,
+                    progress = { timerProgress },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -411,7 +425,7 @@ fun ThresholdsCard(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
             )
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             ThresholdRow("Vehicle Variance", "$vehicleMin - $vehicleMax m/s²")
             ThresholdRow("Walking Variance", "> $walkingThreshold m/s²")
             ThresholdRow("Speed Threshold", "> $speedThreshold mph")

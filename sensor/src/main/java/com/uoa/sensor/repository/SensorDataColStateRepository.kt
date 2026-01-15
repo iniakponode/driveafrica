@@ -16,24 +16,35 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.osmdroid.util.GeoPoint
+import java.util.UUID
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.absoluteValue
+import com.uoa.sensor.motion.DrivingStateManager
 
 @Singleton
-class SensorDataColStateRepository @Inject constructor() {
+class SensorDataColStateRepository @Inject constructor(
+    private val drivingStateStore: DrivingStateStore
+) {
 
     private val MOVING_SPEED_THRESHOLD = 1.2          // m/s – anything above ~4.3 km/h implies motion
     private val VEHICLE_SPEED_THRESHOLD = 4.5         // m/s – ~16 km/h strongly suggests a vehicle
     private val VEHICLE_SPEED_LOWER_BOUND = 3.0       // m/s – light vehicle movement when paired with accel/label
     private val VEHICLE_ACCEL_THRESHOLD = 1.2         // m/s^2 – bursty acceleration typical for vehicles
     private val FOOT_SPEED_CUTOFF = 3.0               // m/s – classify walking/running below this as non-vehicle
+    private val GPS_FRESHNESS_THRESHOLD = 30_000L     // ms - consider GPS stale if older than 30 seconds
+    private val ACCEL_NOISE_THRESHOLD = 0.15          // m/s^2 – ignore tiny accel noise
+    private val MAX_COMPUTED_SPEED = 60.0             // m/s – cap fallback speed (~216 km/h)
+    private val COMPUTED_SPEED_DECAY = 0.90           // decay factor when no motion
+    private val MAX_INTEGRATION_DT_SEC = 2.0          // seconds – avoid large integration jumps
 
     // Scope for internal background tasks (like the timer)
     private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var timerJob: Job? = null
     private var tripStartTime = 0L
+    private var lastMetricsPersistTime = 0L
+    private val metricsPersistIntervalMs = 5_000L
 
     // Tracks whether data collection is active (e.g., sensors running)
     private val _collectionStatus = MutableStateFlow(false)
@@ -65,8 +76,13 @@ class SensorDataColStateRepository @Inject constructor() {
     private val _computedSpeedMps = MutableStateFlow(0.0)
     private val _fusedSpeedMps = MutableStateFlow(0.0)
     val fusedSpeedMps: StateFlow<Double> = _fusedSpeedMps.asStateFlow()
+    private var computedSpeedEma = 0.0
+    private val computedSpeedSmoothingAlpha = 0.2
 
     private var lastAccelTimestamp = 0L
+    private var lastGpsTimestamp = 0L
+    private val _isGpsStale = MutableStateFlow(true)
+    val isGpsStale: StateFlow<Boolean> = _isGpsStale.asStateFlow()
 
     // --- Trip Duration ---
     private val _tripDuration = MutableStateFlow("00:00:00")
@@ -88,6 +104,29 @@ class SensorDataColStateRepository @Inject constructor() {
     private val _speedLimit = MutableStateFlow(0)
     val speedLimit: StateFlow<Int> get() = _speedLimit
 
+    private val _currentTripId = MutableStateFlow<UUID?>(null)
+    val currentTripId: StateFlow<UUID?> = _currentTripId.asStateFlow()
+
+    // --- Driving state from DrivingStateManager ---
+    private val _drivingState = MutableStateFlow(DrivingStateManager.DrivingState.IDLE)
+    val drivingState: StateFlow<DrivingStateManager.DrivingState> = _drivingState.asStateFlow()
+
+    private val _drivingVariance = MutableStateFlow(0.0)
+    val drivingVariance: StateFlow<Double> = _drivingVariance.asStateFlow()
+
+    private val _drivingSpeedMps = MutableStateFlow(0.0)
+    val drivingSpeedMps: StateFlow<Double> = _drivingSpeedMps.asStateFlow()
+
+    private val _drivingAccuracy = MutableStateFlow(0f)
+    val drivingAccuracy: StateFlow<Float> = _drivingAccuracy.asStateFlow()
+
+    private val _drivingLastUpdate = MutableStateFlow(0L)
+    val drivingLastUpdate: StateFlow<Long> = _drivingLastUpdate.asStateFlow()
+
+    init {
+        observePersistedState()
+    }
+
 
     /**
      * Update the data collection status
@@ -95,15 +134,18 @@ class SensorDataColStateRepository @Inject constructor() {
     suspend fun updateCollectionStatus(status: Boolean) {
         _collectionStatus.emit(status)
         if (status) {
-            startTimer()
+            val now = System.currentTimeMillis()
+            startTimer(now)
+            drivingStateStore.updateCollectionStatus(true, now)
         } else {
             stopTimer()
+            drivingStateStore.updateCollectionStatus(false, 0L)
         }
     }
 
-    private fun startTimer() {
+    private fun startTimer(startTimeMs: Long) {
         if (timerJob?.isActive == true) return
-        tripStartTime = System.currentTimeMillis()
+        tripStartTime = startTimeMs
         timerJob = repoScope.launch {
             while (isActive) {
                 val duration = System.currentTimeMillis() - tripStartTime
@@ -144,13 +186,40 @@ class SensorDataColStateRepository @Inject constructor() {
     suspend fun updateLinearAcceleration(linAcceleReading: Double) {
         withContext(Dispatchers.IO) {
             val currentTime = System.currentTimeMillis()
-            if (lastAccelTimestamp > 0) {
-                val deltaTime = (currentTime - lastAccelTimestamp) / 1000.0 // in seconds
-                val newSpeed = _computedSpeedMps.value + (linAcceleReading * deltaTime)
-                _computedSpeedMps.emit(newSpeed.coerceAtLeast(0.0))
-            } else {
-                // Reset computed speed if there's a long gap in accelerometer readings
+            val isGpsFresh = (currentTime - lastGpsTimestamp) < GPS_FRESHNESS_THRESHOLD
+            val drivingState = _drivingState.value
+            val accelMagnitude = linAcceleReading.absoluteValue
+            val allowIntegration =
+                drivingState == DrivingStateManager.DrivingState.RECORDING ||
+                    drivingState == DrivingStateManager.DrivingState.VERIFYING ||
+                    _movementStatus.value ||
+                    accelMagnitude >= VEHICLE_ACCEL_THRESHOLD
+
+            if (!isGpsFresh && drivingState == DrivingStateManager.DrivingState.IDLE) {
+                computedSpeedEma = 0.0
                 _computedSpeedMps.emit(0.0)
+            } else if (lastAccelTimestamp > 0 && allowIntegration) {
+                val deltaTime = ((currentTime - lastAccelTimestamp) / 1000.0)
+                    .coerceAtMost(MAX_INTEGRATION_DT_SEC)
+                val effectiveAccel = if (linAcceleReading.absoluteValue < ACCEL_NOISE_THRESHOLD) {
+                    0.0
+                } else {
+                    linAcceleReading
+                }
+                val newSpeed = _computedSpeedMps.value + (effectiveAccel * deltaTime)
+                val clamped = newSpeed.coerceIn(0.0, MAX_COMPUTED_SPEED)
+                computedSpeedEma = if (computedSpeedEma == 0.0) {
+                    clamped
+                } else {
+                    (computedSpeedSmoothingAlpha * clamped) +
+                        ((1 - computedSpeedSmoothingAlpha) * computedSpeedEma)
+                }
+                _computedSpeedMps.emit(computedSpeedEma)
+            } else {
+                // Decay computed speed when no motion/integration is expected.
+                computedSpeedEma *= COMPUTED_SPEED_DECAY
+                if (computedSpeedEma < 0.2) computedSpeedEma = 0.0
+                _computedSpeedMps.emit(computedSpeedEma)
             }
             lastAccelTimestamp = currentTime
 
@@ -189,9 +258,10 @@ class SensorDataColStateRepository @Inject constructor() {
      * Update last known device speed in meters/second from GPS.
      */
     suspend fun updateSpeed(speedMps: Double) {
-        if (speedMps > 0) {
-            _computedSpeedMps.emit(0.0) // Reset computed speed when GPS is available
-        }
+        lastGpsTimestamp = System.currentTimeMillis()
+        // Reset computed speed when we have a valid GPS reading (even if 0)
+        _computedSpeedMps.emit(speedMps)
+        computedSpeedEma = speedMps
         _currentSpeedMps.emit(speedMps)
         recomputeMovementSignals()
     }
@@ -201,6 +271,58 @@ class SensorDataColStateRepository @Inject constructor() {
      */
     suspend fun startTripStatus(tripStarted: Boolean) {
         _tripStartStatus.emit(tripStarted)
+        drivingStateStore.updateTripStartStatus(tripStarted)
+    }
+
+    suspend fun updateCurrentTripId(tripId: UUID?) {
+        val shouldResetPath = tripId != null && tripId != _currentTripId.value
+        if (shouldResetPath) {
+            _distanceTravelled.emit(0.0)
+            _pathPoints.emit(emptyList())
+            _currentLocation.emit(null)
+        }
+        _currentTripId.emit(tripId)
+        drivingStateStore.updateCurrentTripId(tripId)
+    }
+
+    suspend fun updateDrivingState(state: DrivingStateManager.DrivingState) {
+        _drivingState.emit(state)
+        when (state) {
+            DrivingStateManager.DrivingState.IDLE -> {
+                _movementLabel.value = "stationary"
+                _explicitVehicleSignal.emit(false)
+                _movementStatus.value = false
+            }
+            DrivingStateManager.DrivingState.VERIFYING -> {
+                _movementLabel.value = "verifying"
+                _explicitVehicleSignal.emit(false)
+                _movementStatus.value = true
+            }
+            DrivingStateManager.DrivingState.RECORDING -> {
+                _movementLabel.value = "vehicle"
+                _explicitVehicleSignal.emit(true)
+                _movementStatus.value = true
+            }
+            DrivingStateManager.DrivingState.POTENTIAL_STOP -> {
+                _movementLabel.value = "stopped"
+                _explicitVehicleSignal.emit(true)
+                _movementStatus.value = true
+            }
+        }
+        recomputeMovementSignals()
+        drivingStateStore.updateDrivingState(state.name)
+    }
+
+    suspend fun updateDrivingMetrics(variance: Double, speedMps: Double, accuracy: Float) {
+        _drivingVariance.emit(variance)
+        _drivingSpeedMps.emit(speedMps)
+        _drivingAccuracy.emit(accuracy)
+        val now = System.currentTimeMillis()
+        _drivingLastUpdate.emit(now)
+        if (now - lastMetricsPersistTime >= metricsPersistIntervalMs) {
+            lastMetricsPersistTime = now
+            drivingStateStore.updateDrivingMetrics(variance, speedMps, accuracy, now)
+        }
     }
 
     // ------------------------------------------------------------
@@ -218,12 +340,23 @@ class SensorDataColStateRepository @Inject constructor() {
         _nearbyRoads.value = roads
         _speedLimit.value = speedLimit
     }
+
+    fun updateRoadContext(
+        roads: List<Road>,
+        speedLimit: Int
+    ) {
+        _nearbyRoads.value = roads
+        _speedLimit.value = speedLimit
+    }
     private fun recomputeMovementSignals() {
         val label = _movementLabel.value
         val gpsSpeed = _currentSpeedMps.value
         val computedSpeed = _computedSpeedMps.value
+        val isGpsFresh = (System.currentTimeMillis() - lastGpsTimestamp) < GPS_FRESHNESS_THRESHOLD
+        _isGpsStale.value = !isGpsFresh
 
-        val finalSpeed = if (gpsSpeed > 0) gpsSpeed else computedSpeed
+        // Use GPS speed if fresh (even if 0), otherwise fallback to computed
+        val finalSpeed = if (isGpsFresh) gpsSpeed else computedSpeed
         _fusedSpeedMps.value = finalSpeed
 
         val accel = _linAcceleReading.floatValue.toDouble().absoluteValue
@@ -244,6 +377,92 @@ class SensorDataColStateRepository @Inject constructor() {
 
         _movementStatus.value = movingBySpeed || movingByLabel || explicitVehicle || resolvedVehicle
         _isVehicleMoving.value = resolvedVehicle
+    }
+
+    private fun observePersistedState() {
+        repoScope.launch {
+            drivingStateStore.snapshotFlow.collect { snapshot ->
+                snapshot.drivingState?.let { stateName ->
+                    val restoredState = runCatching {
+                        DrivingStateManager.DrivingState.valueOf(stateName)
+                    }.getOrNull()
+                    if (restoredState != null && _drivingState.value != restoredState) {
+                        applyDrivingState(restoredState)
+                    }
+                }
+                snapshot.drivingVariance?.let { variance ->
+                    if (_drivingVariance.value != variance) {
+                        _drivingVariance.value = variance
+                    }
+                }
+                snapshot.drivingSpeedMps?.let { speedMps ->
+                    if (_drivingSpeedMps.value != speedMps) {
+                        _drivingSpeedMps.value = speedMps
+                    }
+                }
+                snapshot.drivingAccuracy?.let { accuracy ->
+                    if (_drivingAccuracy.value != accuracy) {
+                        _drivingAccuracy.value = accuracy
+                    }
+                }
+                snapshot.drivingLastUpdate?.let { lastUpdate ->
+                    if (_drivingLastUpdate.value != lastUpdate) {
+                        _drivingLastUpdate.value = lastUpdate
+                    }
+                }
+                snapshot.collectionStatus?.let { collection ->
+                    if (_collectionStatus.value != collection) {
+                        _collectionStatus.value = collection
+                    }
+                    if (!collection && timerJob?.isActive == true) {
+                        stopTimer()
+                    }
+                }
+                snapshot.tripStartStatus?.let { tripStarted ->
+                    if (_tripStartStatus.value != tripStarted) {
+                        _tripStartStatus.value = tripStarted
+                    }
+                }
+                snapshot.currentTripId?.let { tripIdString ->
+                    val tripId = runCatching { UUID.fromString(tripIdString) }.getOrNull()
+                    if (_currentTripId.value != tripId) {
+                        _currentTripId.value = tripId
+                    }
+                }
+                snapshot.tripStartTime?.let { startTime ->
+                    if (_collectionStatus.value && startTime > 0L && timerJob?.isActive != true) {
+                        startTimer(startTime)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun applyDrivingState(state: DrivingStateManager.DrivingState) {
+        _drivingState.value = state
+        when (state) {
+            DrivingStateManager.DrivingState.IDLE -> {
+                _movementLabel.value = "stationary"
+                _explicitVehicleSignal.value = false
+                _movementStatus.value = false
+            }
+            DrivingStateManager.DrivingState.VERIFYING -> {
+                _movementLabel.value = "verifying"
+                _explicitVehicleSignal.value = false
+                _movementStatus.value = true
+            }
+            DrivingStateManager.DrivingState.RECORDING -> {
+                _movementLabel.value = "vehicle"
+                _explicitVehicleSignal.value = true
+                _movementStatus.value = true
+            }
+            DrivingStateManager.DrivingState.POTENTIAL_STOP -> {
+                _movementLabel.value = "stopped"
+                _explicitVehicleSignal.value = true
+                _movementStatus.value = true
+            }
+        }
+        recomputeMovementSignals()
     }
 
 }

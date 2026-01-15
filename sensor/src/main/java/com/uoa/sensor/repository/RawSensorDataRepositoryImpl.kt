@@ -114,6 +114,18 @@ class RawSensorDataRepositoryImpl @Inject constructor(
         rawSensorDataDao.deleteRawSensorDataByIds(ids)
     }
 
+    override suspend fun deleteRawSensorDataByTripId(tripId: UUID) {
+        rawSensorDataDao.deleteRawSensorDataByTripId(tripId)
+    }
+
+    override suspend fun countUnsyncedRawSensorDataByTripId(tripId: UUID): Int {
+        return rawSensorDataDao.countUnsyncedRawSensorDataByTripId(tripId)
+    }
+
+    override suspend fun getLocationIdsByTripId(tripId: UUID): List<UUID> {
+        return rawSensorDataDao.getLocationIdsByTripId(tripId)
+    }
+
     override suspend fun getSensorDataBetweenDates(startDate: LocalDate, endDate: LocalDate): Flow<List<RawSensorDataEntity>> {
         return withContext(Dispatchers.IO){
 

@@ -4,4 +4,5 @@
     <string name="speed_limit">Speed limit: %1$s %2$s</string>
     <string name="unit_kilometers">km</string>
     <string name="unit_kilometers_per_hour">km/h</string>
+    <string name="sensor_permission_explanation">Safe Drive Africa records trips using GPS, activity recognition, and a foreground service so driving behavior can be analyzed; the notifications permission keeps you informed while logging only runs when you grant it.</string>
 </resources>

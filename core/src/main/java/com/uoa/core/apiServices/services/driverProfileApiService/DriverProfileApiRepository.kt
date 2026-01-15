@@ -38,7 +38,14 @@ class DriverProfileApiRepository @Inject constructor(
                         return@withContext Resource.Error("Body was null despite success code.")
                     }
                 } else {
-                    return@withContext Resource.Error("Failed: ${response.code()} - ${response.message()}")
+                    val errorBodyText = response.errorBody()?.string()
+                    val errorMessage = buildString {
+                        append("Failed: ${response.code()} - ${response.message()}")
+                        if (!errorBodyText.isNullOrBlank()) {
+                            append(" | Body: $errorBodyText")
+                        }
+                    }
+                    return@withContext Resource.Error(errorMessage)
                 }
             } catch (e: IOException) {
                 return@withContext Resource.Error("Network error: ${e.localizedMessage}")

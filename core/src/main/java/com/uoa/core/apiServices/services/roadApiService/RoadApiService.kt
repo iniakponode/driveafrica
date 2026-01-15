@@ -83,5 +83,5 @@ interface RoadApiService {
      * @return A map containing the status of each deletion.
      */
     @HTTP(method = "DELETE", path = "/api/roads/batch_delete", hasBody = true)
-    suspend fun batchDeleteRoads(@Body ids: List<String>): Map<String, String>
+    suspend fun batchDeleteRoads(@Body ids: List<String>): Unit
 }

@@ -56,4 +56,7 @@ interface AIModelInputDao {
 
     @Query("DELETE FROM ai_model_inputs WHERE id IN (:ids)")
     suspend fun deleteAIModelInputsByIds(ids: List<UUID>)
+
+    @Query("DELETE FROM ai_model_inputs WHERE tripId = :tripId")
+    suspend fun deleteAiModelInputsByTripId(tripId: UUID)
 }

@@ -1,6 +1,7 @@
 package com.uoa.core
 
 import android.os.Build
+import android.util.Base64
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.material3.DatePickerDefaults.dateFormatter
@@ -10,7 +11,13 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.uoa.core.model.BehaviourOccurrence
 import com.uoa.core.model.Trip
+import com.uoa.core.model.SyncState
 import java.text.SimpleDateFormat
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -63,17 +70,39 @@ class Converters {
 
     @TypeConverter
     fun fromFloatList(value: String?): List<Float>? {
+        if (value == null) return null
+        if (value.isBlank()) return emptyList()
         val listType = object : TypeToken<List<Float>>() {}.type
-        return Gson().fromJson(value, listType)
+        return try {
+            val json = if (value.startsWith(FLOAT_LIST_PREFIX)) {
+                val payload = value.removePrefix(FLOAT_LIST_PREFIX)
+                val compressed = Base64.decode(payload, Base64.NO_WRAP)
+                decompressToString(compressed)
+            } else {
+                value
+            }
+            Gson().fromJson(json, listType)
+        } catch (e: Exception) {
+            Log.e("Converters", "Failed to parse float list, falling back to empty list.", e)
+            emptyList()
+        }
     }
 
     @TypeConverter
     fun fromFloatList(list: List<Float>?): String? {
-        val gson = Gson()
-        return gson.toJson(list)
+        if (list == null) return null
+        val json = Gson().toJson(list)
+        return try {
+            val compressed = compressToBytes(json)
+            FLOAT_LIST_PREFIX + Base64.encodeToString(compressed, Base64.NO_WRAP)
+        } catch (e: Exception) {
+            Log.e("Converters", "Failed to compress float list; storing as JSON string.", e)
+            json
+        }
     }
 
     private val gson = Gson()
+    private val FLOAT_LIST_PREFIX = "gz:"
 
 //    // Convert LocalDate to String and back
     private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
@@ -109,6 +138,16 @@ class Converters {
     @TypeConverter
     fun toDuration(durationString: String?): java.time.Duration? {
         return durationString?.let { java.time.Duration.parse(it) }
+    }
+
+    @TypeConverter
+    fun fromSyncState(state: SyncState?): String? {
+        return state?.name
+    }
+
+    @TypeConverter
+    fun toSyncState(value: String?): SyncState? {
+        return value?.let { SyncState.valueOf(it) }
     }
 
     // Convert complex objects stored as JSON strings
@@ -163,6 +202,25 @@ class Converters {
     fun toTrip(json: String?): Trip? {
         return json?.let {
             gson.fromJson(json, Trip::class.java)
+        }
+    }
+
+    private fun compressToBytes(payload: String): ByteArray {
+        val byteStream = ByteArrayOutputStream()
+        GZIPOutputStream(byteStream).use { gzip ->
+            gzip.write(payload.toByteArray(Charsets.UTF_8))
+        }
+        return byteStream.toByteArray()
+    }
+
+    private fun decompressToString(payload: ByteArray): String {
+        return try {
+            GZIPInputStream(ByteArrayInputStream(payload)).use { gzip ->
+                gzip.readBytes().toString(Charsets.UTF_8)
+            }
+        } catch (e: IOException) {
+            Log.e("Converters", "Failed to decompress payload.", e)
+            ""
         }
     }
 

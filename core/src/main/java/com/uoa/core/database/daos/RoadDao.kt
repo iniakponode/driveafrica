@@ -11,7 +11,7 @@ import java.util.UUID
 
 @Dao
 interface RoadDao {
-    @Query("SELECT * FROM roads WHERE ABS(latitude - :latitude) < :radius AND ABS(longitude - :longitude) < :radius")
+    @Query("SELECT * FROM roads WHERE ABS(latitude - :latitude) < :radius AND ABS(longitude - :longitude) < :radius ORDER BY ((latitude - :latitude) * (latitude - :latitude) + (longitude - :longitude) * (longitude - :longitude)) ASC")
     fun getNearbyRoads(latitude: Double, longitude: Double, radius: Double): List<RoadEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

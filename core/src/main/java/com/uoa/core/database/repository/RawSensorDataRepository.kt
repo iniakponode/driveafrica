@@ -24,6 +24,9 @@ suspend fun getSensorDataBySyncStatus(synced: Boolean): List<RawSensorData>
 suspend fun updateRawSensorData(rawSensorData: RawSensorDataEntity)
 suspend fun deleteAllRawSensorData()
 suspend fun deleteRawSensorDataByIds(ids: List<UUID>)
+suspend fun deleteRawSensorDataByTripId(tripId: UUID)
+suspend fun countUnsyncedRawSensorDataByTripId(tripId: UUID): Int
+suspend fun getLocationIdsByTripId(tripId: UUID): List<UUID>
 suspend fun getAllRawSensorDataInChunks(tripId: UUID,
                                         chunkSize: Int = 1000): Flow<List<RawSensorDataEntity>>
     /**

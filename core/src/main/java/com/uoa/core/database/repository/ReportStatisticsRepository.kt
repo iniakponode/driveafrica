@@ -11,14 +11,23 @@ import java.util.UUID
 
 // Repository interface
 interface ReportStatisticsRepository {
-    suspend fun getReportsBetweenDates(startDate: LocalDate, endDate: LocalDate): ReportStatistics?
+    suspend fun getReportsBetweenDates(
+        driverProfileId: UUID,
+        startDate: LocalDate,
+        endDate: LocalDate
+    ): ReportStatistics?
     fun getAllReports(): Flow<List<ReportStatistics>>
     fun getReportById(id: UUID): ReportStatistics
-    suspend fun getReportByTripId(tripId: UUID): ReportStatisticsEntity
+    suspend fun getReportByTripId(tripId: UUID): ReportStatisticsEntity?
     suspend fun insertReportStatistics(reportStatistics: ReportStatistics)
     suspend fun updateReportStatistics(reportStatistics: ReportStatistics)
     suspend fun deleteReportStatistics(reportStatistics: ReportStatistics)
     suspend fun deleteReportStatisticsByIds(ids: List<UUID>)
     suspend fun getReportStatisticsBySyncStatus(status: Boolean): List<ReportStatisticsEntity>
     suspend fun getReportStatisticsBySyncAndProcessedStatus(synced: Boolean, processed: Boolean): List<ReportStatisticsEntity>
+    suspend fun deleteReportStatisticsByDriverAndDateRange(
+        driverProfileId: UUID,
+        startDate: LocalDate,
+        endDate: LocalDate
+    )
 }

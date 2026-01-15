@@ -7,8 +7,12 @@ import com.uoa.core.apiServices.services.aiModellInputApiService.AIModelInputApi
 import com.uoa.core.apiServices.services.aiModellInputApiService.AIModelInputApiService
 import com.uoa.core.apiServices.services.alcoholQuestionnaireService.QuestionnaireApiRepository
 import com.uoa.core.apiServices.services.alcoholQuestionnaireService.QuestionnaireApiService
+import com.uoa.core.apiServices.services.auth.AuthApiService
+import com.uoa.core.apiServices.services.auth.AuthRepository
 import com.uoa.core.apiServices.services.driverProfileApiService.DriverProfileApiRepository
 import com.uoa.core.apiServices.services.driverProfileApiService.DriverProfileApiService
+import com.uoa.core.apiServices.services.driverSyncApiService.DriverSyncApiRepository
+import com.uoa.core.apiServices.services.driverSyncApiService.DriverSyncApiService
 import com.uoa.core.apiServices.services.drivingTipApiService.DrivingTipApiRepository
 import com.uoa.core.apiServices.services.drivingTipApiService.DrivingTipApiService
 import com.uoa.core.apiServices.services.embeddingApiService.EmbeddingApiRepository
@@ -27,7 +31,11 @@ import com.uoa.core.apiServices.services.tripApiService.TripApiRepository
 import com.uoa.core.apiServices.services.tripApiService.TripApiService
 import com.uoa.core.apiServices.services.unsafeBehaviourApiService.UnsafeBehaviourApiRepository
 import com.uoa.core.apiServices.services.unsafeBehaviourApiService.UnsafeBehaviourApiService
+import com.uoa.core.apiServices.interceptor.AuthInterceptor
+import com.uoa.core.apiServices.interceptor.ErrorBodyLoggingInterceptor
+import com.uoa.core.apiServices.interceptor.TokenExpiredInterceptor
 import com.uoa.core.database.repository.DriverProfileRepository
+import com.uoa.core.utils.SecureTokenStorage
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -36,6 +44,8 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
@@ -52,44 +62,46 @@ object ProvideApiServiceRetrofitInstanceModule {
     @Provides
     fun provideUUIDTypeAdapter(): UUIDTypeAdapter = UUIDTypeAdapter()
 
+    @Provides
+    fun provideLocalDateTypeAdapter(): LocalDateTypeAdapter = LocalDateTypeAdapter()
+
+    @Provides
+    fun provideLocalDateTimeTypeAdapter(): LocalDateTimeTypeAdapter = LocalDateTimeTypeAdapter()
+
     // 2) Provide Gson with your UUID adapter
     @Provides
     @Singleton
-    fun provideGson(uuidTypeAdapter: UUIDTypeAdapter): Gson {
+    fun provideGson(
+        uuidTypeAdapter: UUIDTypeAdapter,
+        localDateTypeAdapter: LocalDateTypeAdapter,
+        localDateTimeTypeAdapter: LocalDateTimeTypeAdapter
+    ): Gson {
         return GsonBuilder()
             .registerTypeAdapter(UUID::class.java, uuidTypeAdapter)
+            .registerTypeAdapter(LocalDate::class.java, localDateTypeAdapter)
+            .registerTypeAdapter(LocalDateTime::class.java, localDateTimeTypeAdapter)
             .create()
     }
 
     // 3) Provide OkHttpClient (logging, token interceptors, etc.)
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideOkHttpClient(
+        authInterceptor: AuthInterceptor,
+        tokenExpiredInterceptor: TokenExpiredInterceptor
+    ): OkHttpClient {
         val clientBuilder = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(authInterceptor)
+            .addInterceptor(tokenExpiredInterceptor)
+            .addInterceptor(ErrorBodyLoggingInterceptor())
             .addInterceptor(HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BODY
             })
 
-        // Example of adding an Authorization header (if token is non-null)
-        clientBuilder.addInterceptor { chain ->
-            val requestBuilder = chain.request().newBuilder()
-            val token = getAuthToken()
-            if (!token.isNullOrEmpty()) {
-                requestBuilder.addHeader("Authorization", "Bearer $token")
-            }
-            chain.proceed(requestBuilder.build())
-        }
-
         return clientBuilder.build()
-    }
-
-    // Replace this with your secure token retrieval if needed
-    private fun getAuthToken(): String? {
-        // e.g. read from encrypted shared prefs or some other store
-        return null
     }
 
     // 4) Provide a single Retrofit instance
@@ -248,6 +260,35 @@ object ProvideApiServiceRetrofitInstanceModule {
 
     @Provides
     @Singleton
+    fun provideAuthApiService(retrofit: Retrofit): AuthApiService {
+        return retrofit.create(AuthApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAuthRepository(
+        authApiService: AuthApiService,
+        secureTokenStorage: SecureTokenStorage
+    ): AuthRepository {
+        return AuthRepository(authApiService, secureTokenStorage)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDriverSyncApiService(retrofit: Retrofit): DriverSyncApiService {
+        return retrofit.create(DriverSyncApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDriverSyncApiRepository(
+        driverSyncApiService: DriverSyncApiService
+    ): DriverSyncApiRepository {
+        return DriverSyncApiRepository(driverSyncApiService)
+    }
+
+    @Provides
+    @Singleton
     fun provideReportStatisticsApiService(retrofit: Retrofit): ReportStatisticsApiService {
         return retrofit.create(ReportStatisticsApiService::class.java)
     }
@@ -274,3 +315,4 @@ object ProvideApiServiceRetrofitInstanceModule {
         return RoadApiRepository(roadApiService)
     }
 }
+

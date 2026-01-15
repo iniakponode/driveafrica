@@ -7,9 +7,11 @@ import androidx.room.Update
 import com.uoa.core.database.entities.LocationEntity
 import com.uoa.core.database.entities.RawSensorDataEntity
 import com.uoa.core.database.entities.TripEntity
+import com.uoa.core.model.SyncState
 import com.uoa.core.model.Trip
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
+import java.util.Date
 import java.util.UUID
 
 @Dao
@@ -27,6 +29,9 @@ interface TripDao {
 
     @Query("UPDATE trip_data SET sync=:synced WHERE id = :id")
     suspend fun updateUploadStatus(id: UUID, synced: Boolean)
+
+    @Query("UPDATE trip_data SET syncState=:state WHERE id = :id")
+    suspend fun updateSyncState(id: UUID, state: SyncState)
 
     @Query("""
         SELECT * FROM trip_data
@@ -52,12 +57,18 @@ interface TripDao {
     @Query("SELECT * FROM trip_data WHERE driverPId = :driverProfileId")
     suspend fun getTripsByDriverProfileId(driverProfileId: UUID): List<TripEntity>
 
+    @Query("SELECT * FROM trip_data WHERE driverPId = :driverProfileId AND startDate = :tripDate")
+    suspend fun getTripsByDriverAndStartDate(driverProfileId: UUID, tripDate: Date): List<TripEntity>
+
     @Query("SELECT * FROM trip_data WHERE endDate BETWEEN :startDate AND :endDate")
     suspend fun getTripDataBetween(startDate: LocalDate, endDate: LocalDate): List<TripEntity>
 
 
     @Query("SELECT * FROM trip_data WHERE sync = :synced")
     suspend fun getTripsBySyncStatus(synced: Boolean): List<TripEntity>
+
+    @Query("SELECT * FROM trip_data WHERE syncState = :state")
+    suspend fun getTripsBySyncState(state: SyncState): List<TripEntity>
 
     @Query("DELETE FROM trip_data WHERE id = :id")
     suspend fun deleteTripById(id: UUID)

@@ -33,5 +33,5 @@ interface EmbeddingApiService {
     suspend fun batchCreateEmbeddings(@Body embeddings: List<EmbeddingCreate>): Map<String, String>
 
     @HTTP(method = "DELETE", path = "/api/embeddings/batch_delete", hasBody = true)
-    suspend fun batchDeleteEmbeddings(@Body ids: List<String>): Map<String, String>
+    suspend fun batchDeleteEmbeddings(@Body ids: List<String>): Unit
 }

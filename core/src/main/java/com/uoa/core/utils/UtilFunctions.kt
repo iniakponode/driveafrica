@@ -5,10 +5,12 @@ import android.location.Geocoder
 import android.util.Log
 import com.uoa.core.database.repository.LocationRepository
 import com.uoa.core.database.repository.RoadRepository
+import com.uoa.core.database.repository.TripSummaryRepository
 import com.uoa.core.model.UnsafeBehaviourModel
 import com.uoa.core.model.ReportStatistics
 import com.uoa.core.database.repository.TripDataRepository
 import com.uoa.core.model.LocationData
+import com.uoa.core.model.TripSummary
 import com.uoa.core.network.apiservices.OSMRoadApiService
 import com.uoa.core.model.AggregationLevel
 import com.uoa.core.model.BehaviourOccurrence
@@ -32,11 +34,13 @@ import java.time.temporal.ChronoUnit
 import java.time.*
 import java.time.temporal.WeekFields
 import java.util.Locale
+import java.util.Date
 import java.util.UUID
 import kotlin.collections.get
 import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -51,14 +55,9 @@ suspend fun computeReportStatistics(
     unsafeBehaviours: List<UnsafeBehaviourModel>,
     tripRepository: TripDataRepository,
     locationRepository: LocationRepository,
-    lastInsertedUnsafeBehaviour: com.uoa.core.utils.GetLastInsertedUnsafeBehaviourUseCase
+    lastInsertedUnsafeBehaviour: com.uoa.core.utils.GetLastInsertedUnsafeBehaviourUseCase,
+    tripSummaryRepository: TripSummaryRepository
 ): ReportStatistics? {
-    // For non-LAST_TRIP, if no unsafe behaviours exist, return null.
-    if (unsafeBehaviours.isEmpty() && periodType != PeriodType.LAST_TRIP) {
-        Log.w("computeReportStatistics", "No unsafe behaviours available for periodType: $periodType")
-        return null
-    }
-
     // Retrieve driver profile ID from shared preferences.
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     val profileIdString = prefs.getString(DRIVER_PROFILE_ID, null)
@@ -67,12 +66,39 @@ suspend fun computeReportStatistics(
         return null
     }
     val driverProfileId = UUID.fromString(profileIdString)
+    val hasUnsafeBehaviours = unsafeBehaviours.isNotEmpty()
+    val zoneId = ZoneId.systemDefault()
 
     // Helper: Compute the most frequent behaviour and its count.
     fun computeMostFrequentBehaviourInfo(behaviours: List<UnsafeBehaviourModel>): Pair<String?, Int> {
         val behaviourCounts = behaviours.groupingBy { it.behaviorType }.eachCount()
         val maxEntry = behaviourCounts.maxByOrNull { it.value }
         return maxEntry?.toPair() ?: (null to 0)
+    }
+
+    fun totalIncidencesFromSummary(summary: TripSummary): Int {
+        return summary.harshBrakingEvents +
+            summary.harshAccelerationEvents +
+            summary.speedingEvents +
+            summary.swervingEvents
+    }
+
+    fun computeMostFrequentBehaviourFromSummaries(summaries: List<TripSummary>): Pair<String?, Int> {
+        if (summaries.isEmpty()) {
+            return null to 0
+        }
+        val counts = mapOf(
+            "Harsh Braking" to summaries.sumOf { it.harshBrakingEvents },
+            "Harsh Acceleration" to summaries.sumOf { it.harshAccelerationEvents },
+            "Speeding" to summaries.sumOf { it.speedingEvents },
+            "Swerving" to summaries.sumOf { it.swervingEvents }
+        ).filterValues { it > 0 }
+        val maxEntry = counts.maxByOrNull { it.value }
+        return maxEntry?.let { it.key to it.value } ?: (null to 0)
+    }
+
+    fun summaryStartDate(summary: TripSummary): LocalDate {
+        return Instant.ofEpochMilli(summary.startTime).atZone(zoneId).toLocalDate()
     }
 
     // Helper: Build a list of occurrences for the given behaviour type.
@@ -95,31 +121,45 @@ suspend fun computeReportStatistics(
     // ------------------- LAST_TRIP branch -------------------
     if (periodType == PeriodType.LAST_TRIP) {
         val lastInserted = lastInsertedUnsafeBehaviour.execute()
-        if (lastInserted == null) {
-            Log.e("computeReportStatistics", "No last inserted unsafe behaviour found.")
+        val lastTripId = lastInserted?.tripId ?: tripRepository.getLastInsertedTrip()?.id
+        if (lastTripId == null) {
+            Log.e("computeReportStatistics", "No last trip id available for LAST_TRIP report.")
             return null
         }
-        val lastTrip = tripRepository.getTripById(lastInserted.tripId)
+        val lastTrip = tripRepository.getTripById(lastTripId)
+            ?: tripRepository.getLastInsertedTrip()?.toDomainModel()
         if (lastTrip == null) {
-            Log.e("computeReportStatistics", "No trip found for unsafe behaviour: ${lastInserted.tripId}")
+            Log.e("computeReportStatistics", "No trip found for last trip id: $lastTripId")
             return null
         }
+        val tripSummary = tripSummaryRepository.getTripSummaryByTripId(lastTrip.id)
         // Check critical trip data
-        val tripEndTime = lastTrip.endTime
+        val tripEndTime = lastTrip.endTime ?: tripSummary?.endTime
         if (tripEndTime == null) {
-            Log.e("computeReportStatistics", "Trip end time is null for trip: ${lastTrip.id}")
-            return null
+            Log.w("computeReportStatistics", "Trip end time is null for trip: ${lastTrip.id}")
         }
-        val lastTripId = lastTrip.id
+        val resolvedLastTripId = lastTrip.id
 
         // Filter unsafe behaviours to those from the last trip.
-        val unsafeBehavioursLastTrip = unsafeBehaviours.filter { it.tripId == lastTripId }
-        val totalIncidences = unsafeBehavioursLastTrip.size
-        val (mostFrequentType, mostFrequentCount) = computeMostFrequentBehaviourInfo(unsafeBehavioursLastTrip)
+        val unsafeBehavioursLastTrip = unsafeBehaviours.filter { it.tripId == resolvedLastTripId }
+        val totalIncidences = if (unsafeBehavioursLastTrip.isNotEmpty()) {
+            unsafeBehavioursLastTrip.size
+        } else {
+            tripSummary?.let { totalIncidencesFromSummary(it) } ?: 0
+        }
+        val (mostFrequentType, mostFrequentCount) = if (unsafeBehavioursLastTrip.isNotEmpty()) {
+            computeMostFrequentBehaviourInfo(unsafeBehavioursLastTrip)
+        } else {
+            computeMostFrequentBehaviourFromSummaries(tripSummary?.let { listOf(it) } ?: emptyList())
+        }
 
         // Gather all location IDs from behaviours.
         val relevantLocationIds = unsafeBehavioursLastTrip.mapNotNull { it.locationId }.toSet()
-        val locations = locationRepository.getLocationsByIds(relevantLocationIds.toList())
+        val locations = if (relevantLocationIds.isNotEmpty()) {
+            locationRepository.getLocationsByIds(relevantLocationIds.toList())
+        } else {
+            emptyList()
+        }
         val locationMap = locations.associateBy { it.id }
 
         // If we have location data, process further.
@@ -148,12 +188,16 @@ suspend fun computeReportStatistics(
             val locationIdToRoadNameNonNull = roadDataMap.mapValues { it.value.first ?: "Unknown Road" }
             val occurrences = buildOccurrences(unsafeBehavioursLastTrip, mostFrequentType, locationIdToRoadNameNonNull)
 
-            val tripDuration = Duration.between(
-                Instant.ofEpochMilli(lastTrip.startTime).atZone(ZoneId.systemDefault()).toLocalDateTime(),
-                Instant.ofEpochMilli(tripEndTime).atZone(ZoneId.systemDefault()).toLocalDateTime()
-            )
+            val tripDuration = tripEndTime?.let {
+                Duration.between(
+                    Instant.ofEpochMilli(lastTrip.startTime).atZone(zoneId).toLocalDateTime(),
+                    Instant.ofEpochMilli(it).atZone(zoneId).toLocalDateTime()
+                )
+            } ?: tripSummary?.let { Duration.ofSeconds(it.durationSeconds) }
             val startTime = Instant.ofEpochMilli(lastTrip.startTime).atZone(ZoneId.systemDefault()).toLocalDateTime()
-            val endTime = Instant.ofEpochMilli(tripEndTime).atZone(ZoneId.systemDefault()).toLocalDateTime()
+            val endTime = tripEndTime?.let {
+                Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDateTime()
+            }
 
             val startLocationName = roadDataMap[startLocationData?.id]?.first ?: "Unknown Location"
             val endLocationName = roadDataMap[endLocationData?.id]?.first ?: "Unknown Location"
@@ -179,19 +223,38 @@ suspend fun computeReportStatistics(
                 lastTripEndLocation = endLocationName,
                 lastTripStartTime = startTime,
                 lastTripEndTime = endTime,
-                lastTripInfluence = lastTrip.influence
+                lastTripInfluence = lastTrip.influence ?: tripSummary?.classificationLabel
             )
         } else {
             Log.w("computeReportStatistics", "No location data available for last trip; using fallbacks.")
-            val occurrences = buildOccurrences(unsafeBehavioursLastTrip, mostFrequentType, emptyMap())
-            val tripDuration = Duration.between(
-                Instant.ofEpochMilli(lastTrip.startTime).atZone(ZoneId.systemDefault()).toLocalDateTime(),
-                Instant.ofEpochMilli(tripEndTime).atZone(ZoneId.systemDefault()).toLocalDateTime()
-            )
+            val occurrences = if (unsafeBehavioursLastTrip.isNotEmpty()) {
+                buildOccurrences(unsafeBehavioursLastTrip, mostFrequentType, emptyMap())
+            } else {
+                emptyList()
+            }
+            val tripDuration = tripEndTime?.let {
+                Duration.between(
+                    Instant.ofEpochMilli(lastTrip.startTime).atZone(ZoneId.systemDefault()).toLocalDateTime(),
+                    Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDateTime()
+                )
+            } ?: tripSummary?.let { Duration.ofSeconds(it.durationSeconds) }
             val startTime = Instant.ofEpochMilli(lastTrip.startTime).atZone(ZoneId.systemDefault()).toLocalDateTime()
-            val endTime = Instant.ofEpochMilli(tripEndTime).atZone(ZoneId.systemDefault()).toLocalDateTime()
+            val endTime = tripEndTime?.let {
+                Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDateTime()
+            }
             val reportingPeriodToday = PeriodUtils.getReportingPeriod(PeriodType.TODAY)
             val createdDate = reportingPeriodToday?.first ?: LocalDate.now()
+            val fallbackDistanceKm = tripSummary?.distanceMeters?.div(1000.0)
+            val fallbackAverageSpeed = if (tripSummary != null && tripSummary.durationSeconds > 0) {
+                val hours = tripSummary.durationSeconds / 3600.0
+                if (hours > 0.0) {
+                    (fallbackDistanceKm ?: 0.0) / hours
+                } else {
+                    0.0
+                }
+            } else {
+                null
+            }
             return ReportStatistics(
                 id = UUID.randomUUID(),
                 driverProfileId = driverProfileId,
@@ -204,9 +267,9 @@ suspend fun computeReportStatistics(
                 mostFrequentBehaviourCount = mostFrequentCount,
                 mostFrequentBehaviourOccurrences = occurrences,
                 lastTripDuration = tripDuration,
-                lastTripInfluence = lastTrip.influence,
-                lastTripDistance = null,
-                lastTripAverageSpeed = null,
+                lastTripInfluence = lastTrip.influence ?: tripSummary?.classificationLabel,
+                lastTripDistance = fallbackDistanceKm,
+                lastTripAverageSpeed = fallbackAverageSpeed,
                 lastTripStartLocation = null,
                 lastTripEndLocation = null,
                 lastTripStartTime = startTime,
@@ -216,44 +279,82 @@ suspend fun computeReportStatistics(
     }
     // ------------------- Non-LAST_TRIP branch -------------------
     else {
-        // Get unique location IDs and fetch locations.
-        val uniqueLocationIds = unsafeBehaviours.mapNotNull { it.locationId }.distinct()
-        val locations = locationRepository.getLocationsByIds(uniqueLocationIds)
-        val locationMap = locations.associateBy { it.id }
-        // Get road data for these locations.
-        val roadDataMap = getRoadDataForLocations(
-            context,
-            locationMap,
-            osmRoadApiService,
-            osmSpeedLimitApiService,
-            roadRepository,
-            driverProfileId
-        )
-        val (mostFrequentType, mostFrequentCount) = computeMostFrequentBehaviourInfo(unsafeBehaviours)
-        val locationIdToRoadNameNonNull = roadDataMap.mapValues { it.value.first ?: "Unknown Road" }
-        val occurrences = buildOccurrences(unsafeBehaviours, mostFrequentType, locationIdToRoadNameNonNull)
-
         // Determine reporting periods.
         val reportingPeriodToday = PeriodUtils.getReportingPeriod(PeriodType.TODAY)
-        val reportingPeriod = PeriodUtils.getReportingPeriod(periodType)
-        val computedStartDate = reportingPeriod?.first ?: LocalDate.now()
-        val computedEndDate = reportingPeriod?.second ?: LocalDate.now()
+        val computedStartDate = startDate
+        val computedEndDate = endDate
         val createdDate = reportingPeriodToday?.first ?: LocalDate.now()
 
         // Get trips in this period.
         val tripsInPeriod = tripRepository.getTripsBetweenDates(computedStartDate, computedEndDate)
-        val numberOfTrips = tripsInPeriod.size
 
-        val tripsWithIncidences = tripsInPeriod.filter { trip ->
-            unsafeBehaviours.any { it.tripId == trip.id }
+        val endDateInclusive = Date.from(
+            computedEndDate.plusDays(1).atStartOfDay(zoneId).toInstant().minusMillis(1)
+        )
+        val summariesInPeriod = tripSummaryRepository.getTripSummariesByDriverAndDateRange(
+            driverProfileId,
+            DateUtils.convertLocalDateToDate(computedStartDate),
+            endDateInclusive
+        )
+
+        if (!hasUnsafeBehaviours && tripsInPeriod.isEmpty() && summariesInPeriod.isEmpty()) {
+            Log.w("computeReportStatistics", "No data available for periodType: $periodType")
+            return null
         }
-        val numberOfTripsWithIncidences = tripsWithIncidences.size
-        val tripsWithAlcoholInfluence = tripsInPeriod.filter { it.influence == "alcohol" }
-        val numberOfTripsWithAlcoholInfluence = tripsWithAlcoholInfluence.size
-        val totalIncidences = unsafeBehaviours.size
-        val incidencesPerTrip = unsafeBehaviours.groupBy { it.tripId }.mapValues { it.value.size }
+
+        val (mostFrequentType, mostFrequentCount) = if (hasUnsafeBehaviours) {
+            computeMostFrequentBehaviourInfo(unsafeBehaviours)
+        } else {
+            computeMostFrequentBehaviourFromSummaries(summariesInPeriod)
+        }
+
+        val occurrences = if (hasUnsafeBehaviours) {
+            val uniqueLocationIds = unsafeBehaviours.mapNotNull { it.locationId }.distinct()
+            val locations = locationRepository.getLocationsByIds(uniqueLocationIds)
+            val locationMap = locations.associateBy { it.id }
+            val roadDataMap = getRoadDataForLocations(
+                context,
+                locationMap,
+                osmRoadApiService,
+                osmSpeedLimitApiService,
+                roadRepository,
+                driverProfileId
+            )
+            val locationIdToRoadNameNonNull = roadDataMap.mapValues { it.value.first ?: "Unknown Road" }
+            buildOccurrences(unsafeBehaviours, mostFrequentType, locationIdToRoadNameNonNull)
+        } else {
+            emptyList()
+        }
+
+        val incidencesPerTrip = if (hasUnsafeBehaviours) {
+            unsafeBehaviours.groupBy { it.tripId }.mapValues { it.value.size }
+        } else {
+            summariesInPeriod.associate { it.tripId to totalIncidencesFromSummary(it) }
+        }
+        val totalIncidences = if (hasUnsafeBehaviours) unsafeBehaviours.size else incidencesPerTrip.values.sum()
+        val tripIdsWithIncidences = incidencesPerTrip.filterValues { it > 0 }.keys
+        val tripsWithIncidences = tripsInPeriod.filter { tripIdsWithIncidences.contains(it.id) }
+        val numberOfTripsWithIncidences = if (tripsInPeriod.isNotEmpty()) {
+            tripsWithIncidences.size
+        } else {
+            tripIdsWithIncidences.size
+        }
+
+        val tripsWithAlcoholInfluenceDates = if (tripsInPeriod.isNotEmpty()) {
+            tripsInPeriod.filter { it.influence == "alcohol" }
+                .map { Instant.ofEpochMilli(it.startTime).atZone(zoneId).toLocalDate() }
+        } else {
+            summariesInPeriod.filter { it.classificationLabel.equals("alcohol", ignoreCase = true) }
+                .map { summaryStartDate(it) }
+        }
+        val numberOfTripsWithAlcoholInfluence = tripsWithAlcoholInfluenceDates.size
+
+        val numberOfTrips = if (tripsInPeriod.isNotEmpty()) tripsInPeriod.size else summariesInPeriod.size
+
         val tripWithMostIncidencesId = incidencesPerTrip.maxByOrNull { it.value }?.key
-        val tripWithMostIncidences = tripsInPeriod.find { it.id == tripWithMostIncidencesId }
+        val tripWithMostIncidences = tripWithMostIncidencesId?.let { id ->
+            tripsInPeriod.find { it.id == id } ?: tripRepository.getTripById(id)
+        }
         val periodDurationDays = ChronoUnit.DAYS.between(computedStartDate, computedEndDate) + 1
         val aggregationLevel = getAggregationLevel(periodDurationDays)
         fun aggregateByLevel(date: LocalDate): LocalDate = when (aggregationLevel) {
@@ -261,13 +362,29 @@ suspend fun computeReportStatistics(
             AggregationLevel.WEEKLY -> date.with(WeekFields.ISO.dayOfWeek(), 1)
             AggregationLevel.MONTHLY -> date.withDayOfMonth(1)
         }
-        val tripsPerAggregationUnit = tripsInPeriod.groupBy { aggregateByLevel(
-            Instant.ofEpochMilli(it.startTime).atZone(ZoneId.systemDefault()).toLocalDate()
-        ) }.mapValues { it.value.size }
-        val incidencesPerAggregationUnit = unsafeBehaviours.groupBy {
-            val date = Instant.ofEpochMilli(it.timestamp).atZone(ZoneId.systemDefault()).toLocalDate()
-            aggregateByLevel(date)
-        }.mapValues { it.value.size }
+        val tripsPerAggregationUnit = when {
+            tripsInPeriod.isNotEmpty() -> tripsInPeriod.groupBy { aggregateByLevel(
+                Instant.ofEpochMilli(it.startTime).atZone(ZoneId.systemDefault()).toLocalDate()
+            ) }.mapValues { it.value.size }
+            summariesInPeriod.isNotEmpty() -> summariesInPeriod.groupBy { aggregateByLevel(summaryStartDate(it)) }
+                .mapValues { it.value.size }
+            else -> emptyMap()
+        }
+        val incidencesPerAggregationUnit = if (hasUnsafeBehaviours) {
+            unsafeBehaviours.groupBy {
+                val date = Instant.ofEpochMilli(it.timestamp).atZone(ZoneId.systemDefault()).toLocalDate()
+                aggregateByLevel(date)
+            }.mapValues { it.value.size }
+        } else {
+            summariesInPeriod.groupBy { aggregateByLevel(summaryStartDate(it)) }
+                .mapValues { entry -> entry.value.sumOf { totalIncidencesFromSummary(it) } }
+        }
+        val tripsWithAlcoholInfluencePerAggregationUnit = if (tripsWithAlcoholInfluenceDates.isNotEmpty()) {
+            tripsWithAlcoholInfluenceDates.groupingBy { aggregateByLevel(it) }.eachCount()
+        } else {
+            emptyMap()
+        }
+        val aggregationUnitsWithAlcoholInfluence = tripsWithAlcoholInfluencePerAggregationUnit.size
         val aggregationUnitWithMostIncidences = incidencesPerAggregationUnit.maxByOrNull { it.value }?.key
 
         return ReportStatistics(
@@ -288,7 +405,9 @@ suspend fun computeReportStatistics(
             aggregationLevel = aggregationLevel,
             tripsPerAggregationUnit = tripsPerAggregationUnit,
             incidencesPerAggregationUnit = incidencesPerAggregationUnit,
-            aggregationUnitWithMostIncidences = aggregationUnitWithMostIncidences
+            aggregationUnitWithMostIncidences = aggregationUnitWithMostIncidences,
+            aggregationUnitsWithAlcoholInfluence = aggregationUnitsWithAlcoholInfluence,
+            tripsWithAlcoholInfluencePerAggregationUnit = tripsWithAlcoholInfluencePerAggregationUnit
         )
     }
 }
@@ -390,10 +509,11 @@ private suspend fun getRoadDataForLocations(
                     // Initialize speedLimit with null
                     var speedLimit: Int? = null
                     val radius = 200.0
+                    val hasRoadName = roadName.isNotBlank() && roadName != "Unknown Road"
 
                     // If road name was successfully retrieved, attempt to fetch speed limit
                     // If road name was successfully retrieved, attempt to fetch speed limit
-                    if (roadName != null) {
+                    if (hasRoadName) {
                         // Build Overpass query for speed limit
                         val query = buildSpeedLimitQuery(
                             coordinate.first,
@@ -403,21 +523,21 @@ private suspend fun getRoadDataForLocations(
                         val response = speedLimitApiService.fetchSpeedLimits(query)
 
                         // Extract maxspeed from Overpass response (simple numeric parsing)
-                        val speedLimit = response.elements.firstOrNull()
+                        val rawMaxSpeed = response.elements.firstOrNull()
                             ?.tags?.get("maxspeed")
-                            ?.filter { it.isDigit() }
-                            ?.toIntOrNull() ?: 0
+                        speedLimit = parseSpeedLimitKmh(rawMaxSpeed)
 
                         val roadType = response.elements.firstOrNull()
                             ?.tags?.get("highway") ?: "unknown"
 
+                        val speedLimitValue = speedLimit ?: 0
                         // Create a Road object with the fetched data
                         val road = Road(
                             id = UUID.randomUUID(),
                             driverProfileId = profileId, // Ensure profileId is defined in context
                             name = roadName,
                             roadType = roadType,
-                            speedLimit = speedLimit,
+                            speedLimit = speedLimitValue,
                             latitude = coordinate.first,
                             longitude = coordinate.second,
                             radius = radius,
@@ -510,28 +630,29 @@ suspend fun getRoadDataForLocation(
 
         var speedLimit: Int? = null
 
-        if (roadName != null) {
+        val hasRoadName = roadName.isNotBlank() && roadName != "Unknown Road"
+        if (hasRoadName) {
             val radius = 200.0
             // Build Overpass API query to fetch speed limit information.
             val query = buildSpeedLimitQuery(location.latitude, location.longitude, radius)
             val response = speedLimitApiService.fetchSpeedLimits(query)
 
             // Extract the speed limit from the response.
-            speedLimit = response.elements.firstOrNull()
+            val rawMaxSpeed = response.elements.firstOrNull()
                 ?.tags?.get("maxspeed")
-                ?.filter { it.isDigit() }
-                ?.toIntOrNull() ?: 0
+            speedLimit = parseSpeedLimitKmh(rawMaxSpeed)
 
             // Optionally, retrieve the road type (defaulting to "unknown").
             val roadType = response.elements.firstOrNull()?.tags?.get("highway") ?: "unknown"
 
+            val speedLimitValue = speedLimit ?: 0
             // Build a Road object with the fetched data.
             val road = Road(
                 id = UUID.randomUUID(),
                 driverProfileId = profileId,
                 name = roadName,
                 roadType = roadType,
-                speedLimit = speedLimit,
+                speedLimit = speedLimitValue,
                 latitude = location.latitude,
                 longitude = location.longitude,
                 radius = radius,
@@ -570,6 +691,21 @@ suspend fun getRoadDataForLocation(
     }
 }
 
+private fun parseSpeedLimitKmh(rawMaxSpeed: String?): Int? {
+    if (rawMaxSpeed.isNullOrBlank()) return null
+    val normalized = rawMaxSpeed.trim().lowercase(Locale.ROOT)
+    val numeric = Regex("""\d+(\.\d+)?""")
+        .find(normalized)
+        ?.value
+        ?.toDoubleOrNull()
+        ?: return null
+    return when {
+        normalized.contains("mph") -> (numeric * 1.60934).roundToInt()
+        normalized.contains("km/h") || normalized.contains("kmh") || normalized.contains("kph") -> numeric.roundToInt()
+        else -> numeric.roundToInt()
+    }
+}
+
 
 
 
@@ -598,8 +734,8 @@ private suspend fun getSpeedLimitsForLocations(
                     val response = speedLimitApiService.fetchSpeedLimits(query)
 
                     // Extract the first found speed limit for this coordinate
-                    val maxSpeed = response.elements.firstOrNull()?.tags?.get("maxspeed")
-                    val speedLimit = maxSpeed?.filter { it.isDigit() }?.toIntOrNull()
+                    val rawMaxSpeed = response.elements.firstOrNull()?.tags?.get("maxspeed")
+                    val speedLimit = parseSpeedLimitKmh(rawMaxSpeed)
                     speedLimitCache[coordinate] = speedLimit
                 } catch (e: Exception) {
                     Log.e("SpeedLimitService", "Error fetching speed limit from Overpass", e)
@@ -659,6 +795,7 @@ private suspend fun getRoadNameFromOSM(
 }
 
 
+@Suppress("DEPRECATION")
 private fun getRoadNameInternally(context: Context, latitude: Double, longitude: Double): String? {
     val geocoder = Geocoder(context, Locale.getDefault())
     val addresses = geocoder.getFromLocation(latitude, longitude, 1)

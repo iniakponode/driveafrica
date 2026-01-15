@@ -69,7 +69,7 @@ interface ReportStatisticsApiService {
      * @return A map containing the status of each creation.
      */
     @POST("/api/report_statistics/batch_create")
-    suspend fun batchCreateReportStatistics(@Body reportStatisticsList: List<ReportStatisticsCreate>): Map<String, String>
+    suspend fun batchCreateReportStatistics(@Body reportStatisticsList: List<ReportStatisticsCreate>): Map<String, Int>
 
     /**
      * Batch deletes multiple ReportStatistics entries by their IDs.
@@ -78,5 +78,5 @@ interface ReportStatisticsApiService {
      * @return A map containing the status of each deletion.
      */
     @HTTP(method = "DELETE", path = "/api/report_statistics/batch_delete", hasBody = true)
-    suspend fun batchDeleteReportStatistics(@Body ids: List<String>): Map<String, String>
+    suspend fun batchDeleteReportStatistics(@Body ids: List<String>): Unit
 }

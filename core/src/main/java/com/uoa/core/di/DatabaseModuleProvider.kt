@@ -3,6 +3,13 @@ package com.uoa.core.di
 import android.app.Application
 import androidx.room.Room
 import com.uoa.core.Sdadb
+import com.uoa.core.database.MIGRATION_40_41
+import com.uoa.core.database.MIGRATION_41_42
+import com.uoa.core.database.MIGRATION_42_43
+import com.uoa.core.database.MIGRATION_43_44
+import com.uoa.core.database.MIGRATION_44_45
+import com.uoa.core.database.MIGRATION_45_46
+import com.uoa.core.database.daos.TripFeatureStateDao
 import com.uoa.core.database.entities.FFTFeatureDao
 import dagger.Module
 import dagger.Provides
@@ -21,6 +28,14 @@ object DatabaseModuleProvider {
 //            .setQueryCallback(RoomDatabase.QueryCallback { sqlQuery, bindArgs ->
 //                Log.d("RoomQuery", "SQL Query: $sqlQuery SQL Args: $bindArgs")
 //            }, Executors.newSingleThreadExecutor())
+            .addMigrations(
+                MIGRATION_40_41,
+                MIGRATION_41_42,
+                MIGRATION_42_43,
+                MIGRATION_43_44,
+                MIGRATION_44_45,
+                MIGRATION_45_46
+            )
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -87,6 +102,14 @@ object DatabaseModuleProvider {
     @Provides
     @Singleton
     fun provideReportStatisticsDao(db: Sdadb) = db.reportStatisticsDao()
+
+    @Provides
+    @Singleton
+    fun provideTripSummaryDao(db: Sdadb) = db.tripSummaryDao()
+
+    @Provides
+    @Singleton
+    fun provideTripFeatureStateDao(db: Sdadb): TripFeatureStateDao = db.tripFeatureStateDao()
 
 }
 

@@ -11,4 +11,5 @@ interface DrivingTipRepository {
     suspend fun insertDrivingTip(drivingTipEntity: DrivingTipEntity)
     suspend fun fetchDrivingTipsByDate(date: LocalDate): List<DrivingTipEntity>
     suspend fun updateDrivingTip(drivingTipEntity: DrivingTipEntity)
+    suspend fun getDrivingTipsBySyncStatus(synced: Boolean): List<DrivingTipEntity>
 }

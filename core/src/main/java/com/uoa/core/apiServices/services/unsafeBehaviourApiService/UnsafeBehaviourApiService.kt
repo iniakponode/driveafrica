@@ -33,5 +33,5 @@ interface UnsafeBehaviourApiService {
     suspend fun batchCreateUnsafeBehaviours(@Body unsafeBehaviours: List<UnsafeBehaviourCreate>): Map<String, String>
 
     @HTTP(method = "DELETE", path = "/api/unsafe_behaviours/batch_delete", hasBody = true)
-    suspend fun batchDeleteUnsafeBehaviours(@Body ids: List<String>): Map<String, String>
+    suspend fun batchDeleteUnsafeBehaviours(@Body ids: List<String>): Unit
 }

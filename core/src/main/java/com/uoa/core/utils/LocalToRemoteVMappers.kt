@@ -36,21 +36,27 @@ private val dateFormatUTC = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.
 fun Trip.toTripCreate(): TripCreate {
     val isoStartDate = dateFormatUTC.format(startDate!!)
     val isoEndDate = endDate?.let { dateFormatUTC.format(it) }
+    val tzId = TimeZone.getDefault().id
+    val tzOffsetMinutes = TimeZone.getDefault().getOffset(startTime) / 60000
     return TripCreate(
         id = id,
         driverProfileId = driverPId,
         startDate = isoStartDate,
-        endDate = isoEndDate!!,
+        endDate = isoEndDate,
         startTime = startTime,
         endTime = endTime,
+        timeZoneId = tzId,
+        timeZoneOffsetMinutes = tzOffsetMinutes,
         sync = sync,
-        influence = influence!!
+        influence = influence,
+        userAlcoholResponse = userAlcoholResponse,
+        alcoholProbability = alcoholProbability
     )
 }
 
 fun TripCreate.toTrip(): Trip {
-    val parsedStartDate = dateFormatUTC.parse(startDate)
-    val parsedEndDate = endDate.let { dateFormatUTC.parse(it) }
+    val parsedStartDate = startDate?.let { dateFormatUTC.parse(it) }
+    val parsedEndDate = endDate?.let { dateFormatUTC.parse(it) }
     return Trip(
         driverPId = driverProfileId,
         startTime = startTime!!,
@@ -59,7 +65,9 @@ fun TripCreate.toTrip(): Trip {
         endDate = parsedEndDate,
         id = UUID.randomUUID(), // Adjust as needed if you have a way to set the ID
         influence = influence,
-        sync =sync
+        sync =sync,
+        alcoholProbability = alcoholProbability,
+        userAlcoholResponse = userAlcoholResponse
     )
 }
 

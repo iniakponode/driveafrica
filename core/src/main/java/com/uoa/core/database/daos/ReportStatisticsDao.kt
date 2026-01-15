@@ -25,8 +25,12 @@ interface ReportStatisticsDao {
     @Delete
     suspend fun deleteReportStatistics(reportStatistics: ReportStatisticsEntity)
 
-    @Query("SELECT * FROM report_statistics WHERE startDate == :startDate AND endDate == :endDate")
-    fun getReportsBetweenDates(startDate: LocalDate, endDate: LocalDate): ReportStatisticsEntity
+    @Query("SELECT * FROM report_statistics WHERE driverProfileId = :driverProfileId AND startDate == :startDate AND endDate == :endDate LIMIT 1")
+    fun getReportsBetweenDates(
+        driverProfileId: UUID,
+        startDate: LocalDate,
+        endDate: LocalDate
+    ): ReportStatisticsEntity?
 
     @Query("SELECT * FROM report_statistics")
     fun getAllReports(): Flow<List<ReportStatisticsEntity>>
@@ -35,7 +39,7 @@ interface ReportStatisticsDao {
     fun getReportById(id: UUID): ReportStatisticsEntity
 
     @Query("SELECT * FROM report_statistics WHERE tripId = :tripId LIMIT 1")
-    fun getReportByTripId(tripId: UUID): ReportStatisticsEntity
+    fun getReportByTripId(tripId: UUID): ReportStatisticsEntity?
 
     @Query("SELECT * FROM report_statistics WHERE sync= :synced AND processed= :processed")
     suspend fun getReportStatisticsBySyncAndProcessedStatus(synced: Boolean, processed: Boolean): List<ReportStatisticsEntity>
@@ -45,4 +49,11 @@ interface ReportStatisticsDao {
 
     @Query("DELETE FROM report_statistics WHERE id IN (:ids)")
     suspend fun deleteReportStatisticsByIds(ids: List<UUID>)
+
+    @Query("DELETE FROM report_statistics WHERE driverProfileId = :driverProfileId AND startDate == :startDate AND endDate == :endDate")
+    suspend fun deleteReportStatisticsByDriverAndDateRange(
+        driverProfileId: UUID,
+        startDate: LocalDate,
+        endDate: LocalDate
+    )
 }

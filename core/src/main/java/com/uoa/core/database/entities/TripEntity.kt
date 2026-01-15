@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.uoa.core.model.SyncState
 import java.util.Date
 import java.util.UUID
 
@@ -29,6 +30,9 @@ data class TripEntity(
     val startTime: Long,
     var endTime: Long?,
     var influence: String?,
-    var sync: Boolean=false
+    var sync: Boolean=false,
+    val alcoholProbability: Float? = null,
+    val userAlcoholResponse: String? = null,
+    val syncState: SyncState? = null
     // Other trip data fields
 )

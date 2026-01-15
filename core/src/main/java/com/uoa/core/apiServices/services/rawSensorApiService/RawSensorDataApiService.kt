@@ -33,5 +33,5 @@ interface RawSensorDataApiService {
     suspend fun batchCreateRawSensorData(@Body dataList: List<RawSensorDataCreate>): Map<String, String>
 
     @HTTP(method = "DELETE", path = "/api/raw_sensor_data/batch_delete", hasBody = true)
-    suspend fun batchDeleteRawSensorData(@Body ids: List<String>): Map<String, String>
+    suspend fun batchDeleteRawSensorData(@Body ids: List<String>): Unit
 }

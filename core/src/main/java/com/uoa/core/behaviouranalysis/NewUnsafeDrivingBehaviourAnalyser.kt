@@ -25,13 +25,24 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
     private val locationRepository: LocationRepository
 ) {
 
-    // Sliding windows for each sensor type.
-    private val accelerometerWindow = ArrayDeque<RawSensorDataEntity>()
-    private val rotationWindow = ArrayDeque<RawSensorDataEntity>()
-    private val speedWindow = ArrayDeque<RawSensorDataEntity>()
+    private data class AnalysisWindow(
+        val accelerometerWindow: ArrayDeque<RawSensorDataEntity> = ArrayDeque(),
+        val rotationWindow: ArrayDeque<RawSensorDataEntity> = ArrayDeque(),
+        val speedWindow: ArrayDeque<RawSensorDataEntity> = ArrayDeque(),
+        var hasLinearAcceleration: Boolean = false,
+        var lastSpeedAnalysisTimeMs: Long = 0L,
+        var accelCandidateStartMs: Long = 0L,
+        var brakeCandidateStartMs: Long = 0L,
+        var lastAccelerationEventMs: Long = 0L,
+        var lastBrakingEventMs: Long = 0L,
+        var speedingStartMs: Long = 0L,
+        var lastSpeedingEventMs: Long = 0L,
+        var lastSwervingEventMs: Long = 0L
+    )
 
     // Maximum number of sensor events to hold in each window.
     private val windowSize = 100
+    private val speedAnalysisIntervalMs = 1_000L
 
     /**
      * Processes a Flow of raw sensor data in real time and emits unsafe behavior events.
@@ -44,8 +55,9 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
         context: Context
     ): Flow<UnsafeBehaviourModel> = flow {
         Log.d("NewUnsafeDrivingBehaviourAnalyser", "Starting analysis of sensor data flow")
+        val analysisWindow = AnalysisWindow()
         sensorDataFlow.collect { data ->
-            processSensorData(data, context)?.let { behavior ->
+            processSensorData(data, context, analysisWindow)?.let { behavior ->
                 emit(behavior)
             }
         }
@@ -56,67 +68,239 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
      */
     private suspend fun processSensorData(
         data: RawSensorDataEntity,
-        context: Context
+        context: Context,
+        window: AnalysisWindow
     ): UnsafeBehaviourModel? {
         Log.d(
             "NewUnsafeDrivingBehaviourAnalyser",
             "Processing sensor data: sensorType=${data.sensorType}, timestamp=${data.timestamp}"
         )
-        return when (data.sensorType) {
+        var behavior: UnsafeBehaviourModel? = when (data.sensorType) {
+            LINEAR_ACCELERATION_TYPE -> {
+                window.hasLinearAcceleration = true
+                addToWindow(window.accelerometerWindow, data)
+                analyzeAccelerometerData(window, context)
+            }
             ACCELEROMETER_TYPE -> {
-                accelerometerWindow.addLast(data)
-                if (accelerometerWindow.size > windowSize) accelerometerWindow.removeFirst()
-                analyzeAccelerometerData(accelerometerWindow, context)
+                if (!window.hasLinearAcceleration) {
+                    addToWindow(window.accelerometerWindow, data)
+                    analyzeAccelerometerData(window, context)
+                } else {
+                    null
+                }
             }
             ROTATION_VECTOR_TYPE -> {
-                rotationWindow.addLast(data)
-                if (rotationWindow.size > windowSize) rotationWindow.removeFirst()
-                analyzeRotationData(rotationWindow, context)
+                addToWindow(window.rotationWindow, data)
+                analyzeRotationData(window, context)
             }
-            SPEED_TYPE -> {
-                speedWindow.addLast(data)
-                if (speedWindow.size > windowSize) speedWindow.removeFirst()
-                analyzeSpeedData(speedWindow, context)
+            GYROSCOPE_TYPE -> {
+                addToWindow(window.rotationWindow, data)
+                analyzeRotationData(window, context)
             }
-            else -> {
-                Log.w("NewUnsafeDrivingBehaviourAnalyser", "Unknown sensor type: ${data.sensorType}")
-                null
+            else -> null
+        }
+
+        if (behavior != null) return behavior
+
+        if (data.locationId != null) {
+            addToWindow(window.speedWindow, data)
+            if (shouldAnalyzeSpeed(data.timestamp, window)) {
+                behavior = analyzeSpeedData(window, context)
             }
         }
+
+        if (behavior == null && data.locationId == null && data.sensorType != ACCELEROMETER_TYPE &&
+            data.sensorType != LINEAR_ACCELERATION_TYPE && data.sensorType != ROTATION_VECTOR_TYPE &&
+            data.sensorType != GYROSCOPE_TYPE
+        ) {
+            Log.w("NewUnsafeDrivingBehaviourAnalyser", "Skipping unsupported sensor type: ${data.sensorType}")
+        }
+
+        return behavior
+    }
+
+    private fun addToWindow(window: ArrayDeque<RawSensorDataEntity>, data: RawSensorDataEntity) {
+        window.addLast(data)
+        if (window.size > windowSize) {
+            window.removeFirst()
+        }
+    }
+
+    private fun shouldAnalyzeSpeed(timestamp: Long, window: AnalysisWindow): Boolean {
+        val last = window.lastSpeedAnalysisTimeMs
+        val shouldAnalyze = last == 0L || timestamp - last >= speedAnalysisIntervalMs
+        if (shouldAnalyze) {
+            window.lastSpeedAnalysisTimeMs = timestamp
+        }
+        return shouldAnalyze
+    }
+
+    private fun estimateSignedAcceleration(accelWindow: ArrayDeque<RawSensorDataEntity>): Double {
+        if (accelWindow.isEmpty()) return 0.0
+        val sampleCount = minOf(5, accelWindow.size)
+        val samples = accelWindow.takeLast(sampleCount)
+        val sums = DoubleArray(3)
+        var count = 0
+        for (sample in samples) {
+            if (sample.values.size < 3) continue
+            sums[0] += sample.values[0]
+            sums[1] += sample.values[1]
+            sums[2] += sample.values[2]
+            count++
+        }
+        if (count == 0) return 0.0
+        val avgX = sums[0] / count
+        val avgY = sums[1] / count
+        val absX = abs(avgX)
+        val absY = abs(avgY)
+        return if (absX >= absY) avgX else avgY
+    }
+
+    private fun recentSamples(
+        window: ArrayDeque<RawSensorDataEntity>,
+        durationMs: Long
+    ): List<RawSensorDataEntity> {
+        return recentSamples(window.toList(), durationMs)
+    }
+
+    private fun recentSamples(
+        samples: List<RawSensorDataEntity>,
+        durationMs: Long
+    ): List<RawSensorDataEntity> {
+        val last = samples.lastOrNull() ?: return emptyList()
+        val cutoff = last.timestamp - durationMs
+        return samples.filter { it.timestamp >= cutoff }
+    }
+
+    private fun computeStdDev(values: List<Double>): Double {
+        if (values.size < 2) return 0.0
+        val mean = values.average()
+        val variance = values.map { (it - mean).pow(2) }.average()
+        return sqrt(variance)
+    }
+
+    private fun computeZStdDev(samples: List<RawSensorDataEntity>): Double {
+        val zValues = samples.mapNotNull { it.values.getOrNull(2)?.toDouble() }
+        return computeStdDev(zValues)
+    }
+
+    private fun computeZPeakToPeak(samples: List<RawSensorDataEntity>): Double {
+        val zValues = samples.mapNotNull { it.values.getOrNull(2)?.toDouble() }
+        if (zValues.isEmpty()) return 0.0
+        val max = zValues.maxOrNull() ?: 0.0
+        val min = zValues.minOrNull() ?: 0.0
+        return max - min
+    }
+
+    private fun isPotholeLike(samples: List<RawSensorDataEntity>): Boolean {
+        val zStdDev = computeZStdDev(samples)
+        val zPeakToPeak = computeZPeakToPeak(samples)
+        return zStdDev > POTHOLE_Z_STDDEV_THRESHOLD || zPeakToPeak > POTHOLE_Z_PEAK_TO_PEAK
+    }
+
+    private fun computeWindowDurationMs(samples: List<RawSensorDataEntity>): Long {
+        if (samples.size < 2) return 0L
+        return samples.last().timestamp - samples.first().timestamp
+    }
+
+    private fun computeMaxYawRate(samples: List<RawSensorDataEntity>): Double {
+        val rates = samples.mapNotNull { it.values.getOrNull(2)?.let { value -> abs(value).toDouble() } }
+        return rates.maxOrNull() ?: 0.0
     }
 
     // -------------------------------------------------------------------------------
     // Accelerometer Analysis
     // -------------------------------------------------------------------------------
     private suspend fun analyzeAccelerometerData(
-        window: ArrayDeque<RawSensorDataEntity>,
+        window: AnalysisWindow,
         context: Context
     ): UnsafeBehaviourModel? {
-        if (window.isEmpty()) {
+        val accelWindow = window.accelerometerWindow
+        if (accelWindow.isEmpty()) {
             Log.d("NewUnsafeDrivingBehaviourAnalyser", "Accelerometer window is empty, skipping analysis")
             return null
         }
-        val rms = sqrt(window.map { calculateAccelerationMagnitude(it.values).pow(2) }.average())
-        Log.d("NewUnsafeDrivingBehaviourAnalyser", "Accelerometer RMS: $rms")
-        val currentSpeedMps = estimateCurrentSpeedMps()
+        val rms = sqrt(accelWindow.map { calculateAccelerationMagnitude(it.values).pow(2) }.average())
+        val now = accelWindow.last().timestamp
+        val currentSpeedMps = estimateCurrentSpeedMps(window)
         Log.d("NewUnsafeDrivingBehaviourAnalyser", "Current speed (m/s): $currentSpeedMps")
-        if (currentSpeedMps < 1.4) { // ~5 km/h threshold
+        if (currentSpeedMps < MIN_ACCELERATION_SPEED_MPS) {
             Log.d("NewUnsafeDrivingBehaviourAnalyser", "Speed under threshold. Skipping harsh accel/braking detection.")
+            window.accelCandidateStartMs = 0L
+            window.brakeCandidateStartMs = 0L
             return null
         }
-        val dynamicAccThreshold = ACCELERATION_THRESHOLD + dynamicThresholdAdjustment(currentSpeedMps)
-        val dynamicBrakeThreshold = BRAKING_THRESHOLD - dynamicThresholdAdjustment(currentSpeedMps)
+        val speedAdjustment = dynamicThresholdAdjustment(currentSpeedMps)
+        val roughnessSamples = recentSamples(accelWindow, ROUGHNESS_WINDOW_MS)
+        val roughness = computeZStdDev(roughnessSamples)
+        val roughnessAdjustment = (roughness * ROUGHNESS_MULTIPLIER).toFloat()
+            .coerceAtMost(MAX_ROUGHNESS_ADJUSTMENT)
+        val dynamicAccThreshold = (ACCELERATION_THRESHOLD - speedAdjustment + roughnessAdjustment)
+            .coerceAtLeast(MIN_ACCELERATION_THRESHOLD)
+        val dynamicBrakeThreshold = (kotlin.math.abs(BRAKING_THRESHOLD) - speedAdjustment + roughnessAdjustment)
+            .coerceAtLeast(MIN_BRAKING_THRESHOLD)
+        val signedAccel = estimateSignedAcceleration(accelWindow)
+        val supportsBraking = window.hasLinearAcceleration
+
         return when {
-            rms > dynamicAccThreshold -> {
-                Log.d("NewUnsafeDrivingBehaviourAnalyser", "RMS $rms > $dynamicAccThreshold => Harsh Acceleration")
-                createUnsafeBehavior("Harsh Acceleration", window.last(), rms.toFloat(), context)
+            signedAccel > dynamicAccThreshold -> {
+                if (window.accelCandidateStartMs == 0L) {
+                    window.accelCandidateStartMs = now
+                }
+                val elapsed = now - window.accelCandidateStartMs
+                if (elapsed >= ACCELERATION_MIN_DURATION_MS &&
+                    now - window.lastAccelerationEventMs >= EVENT_COOLDOWN_MS
+                ) {
+                    Log.d("NewUnsafeDrivingBehaviourAnalyser", "Signed accel $signedAccel > $dynamicAccThreshold => Harsh Acceleration")
+                    window.accelCandidateStartMs = 0L
+                    window.lastAccelerationEventMs = now
+                    createUnsafeBehavior("Harsh Acceleration", accelWindow.last(), signedAccel.toFloat(), context)
+                } else {
+                    null
+                }
             }
-            rms < dynamicBrakeThreshold -> {
-                Log.d("NewUnsafeDrivingBehaviourAnalyser", "RMS $rms < $dynamicBrakeThreshold => Harsh Braking")
-                createUnsafeBehavior("Harsh Braking", window.last(), rms.toFloat(), context)
+            supportsBraking && signedAccel < -dynamicBrakeThreshold -> {
+                val potholeSamples = recentSamples(accelWindow, POTHOLE_WINDOW_MS)
+                if (isPotholeLike(potholeSamples)) {
+                    window.brakeCandidateStartMs = 0L
+                    Log.d("NewUnsafeDrivingBehaviourAnalyser", "Braking spike vetoed as road anomaly (pothole signature).")
+                    return null
+                }
+                if (window.brakeCandidateStartMs == 0L) {
+                    window.brakeCandidateStartMs = now
+                }
+                val elapsed = now - window.brakeCandidateStartMs
+                if (elapsed >= ACCELERATION_MIN_DURATION_MS &&
+                    now - window.lastBrakingEventMs >= EVENT_COOLDOWN_MS
+                ) {
+                    Log.d("NewUnsafeDrivingBehaviourAnalyser", "Signed accel $signedAccel < -$dynamicBrakeThreshold => Harsh Braking")
+                    window.brakeCandidateStartMs = 0L
+                    window.lastBrakingEventMs = now
+                    createUnsafeBehavior("Harsh Braking", accelWindow.last(), kotlin.math.abs(signedAccel).toFloat(), context)
+                } else {
+                    null
+                }
+            }
+            !supportsBraking && rms > dynamicAccThreshold -> {
+                if (window.accelCandidateStartMs == 0L) {
+                    window.accelCandidateStartMs = now
+                }
+                val elapsed = now - window.accelCandidateStartMs
+                if (elapsed >= ACCELERATION_MIN_DURATION_MS &&
+                    now - window.lastAccelerationEventMs >= EVENT_COOLDOWN_MS
+                ) {
+                    Log.d("NewUnsafeDrivingBehaviourAnalyser", "RMS $rms > $dynamicAccThreshold => Harsh Acceleration (fallback)")
+                    window.accelCandidateStartMs = 0L
+                    window.lastAccelerationEventMs = now
+                    createUnsafeBehavior("Harsh Acceleration", accelWindow.last(), rms.toFloat(), context)
+                } else {
+                    null
+                }
             }
             else -> {
-                Log.d("NewUnsafeDrivingBehaviourAnalyser", "Accelerometer RMS $rms within safe limits")
+                window.accelCandidateStartMs = 0L
+                window.brakeCandidateStartMs = 0L
+                Log.d("NewUnsafeDrivingBehaviourAnalyser", "Acceleration within safe limits")
                 null
             }
         }
@@ -126,26 +310,40 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
     // Rotation Analysis
     // -------------------------------------------------------------------------------
     private suspend fun analyzeRotationData(
-        window: ArrayDeque<RawSensorDataEntity>,
+        window: AnalysisWindow,
         context: Context
     ): UnsafeBehaviourModel? {
-        if (window.isEmpty()) {
+        val rotationWindow = window.rotationWindow
+        if (rotationWindow.isEmpty()) {
             Log.d("NewUnsafeDrivingBehaviourAnalyser", "Rotation window is empty, skipping analysis")
             return null
         }
-        val rms = sqrt(window.map { calculateRotationMagnitude(it.values).pow(2) }.average())
-        Log.d("NewUnsafeDrivingBehaviourAnalyser", "Rotation RMS: $rms")
-        val currentSpeedMps = estimateCurrentSpeedMps()
-        val dynamicSwervingThreshold = if (currentSpeedMps > 5) {
-            SWERVING_THRESHOLD - 0.01f
-        } else {
-            SWERVING_THRESHOLD
+        val currentSpeedMps = estimateCurrentSpeedMps(window)
+        if (currentSpeedMps < MIN_SWERVE_SPEED_MPS) {
+            return null
         }
-        return if (rms > dynamicSwervingThreshold) {
-            Log.d("NewUnsafeDrivingBehaviourAnalyser", "RMS $rms > $dynamicSwervingThreshold => Swerving")
-            createUnsafeBehavior("Swerving", window.last(), rms.toFloat(), context)
+        val now = rotationWindow.last().timestamp
+        if (now - window.lastSwervingEventMs < SWERVE_COOLDOWN_MS) {
+            return null
+        }
+        val gyroSamples = rotationWindow.filter { it.sensorType == GYROSCOPE_TYPE }
+        val recentSamples = if (gyroSamples.isNotEmpty()) {
+            recentSamples(gyroSamples, SWERVE_MAX_DURATION_MS)
         } else {
-            Log.d("NewUnsafeDrivingBehaviourAnalyser", "Rotation RMS $rms within safe limits")
+            recentSamples(rotationWindow, SWERVE_MAX_DURATION_MS)
+        }
+        val durationMs = computeWindowDurationMs(recentSamples)
+        val yawRate = if (gyroSamples.isNotEmpty()) {
+            computeMaxYawRate(recentSamples)
+        } else {
+            sqrt(recentSamples.map { calculateRotationMagnitude(it.values).pow(2) }.average())
+        }
+        return if (yawRate > SWERVING_THRESHOLD && durationMs <= SWERVE_MAX_DURATION_MS) {
+            window.lastSwervingEventMs = now
+            Log.d("NewUnsafeDrivingBehaviourAnalyser", "Yaw rate $yawRate > $SWERVING_THRESHOLD => Swerving")
+            createUnsafeBehavior("Swerving", rotationWindow.last(), yawRate.toFloat(), context)
+        } else {
+            Log.d("NewUnsafeDrivingBehaviourAnalyser", "Rotation within safe limits")
             null
         }
     }
@@ -154,25 +352,47 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
     // Speed Analysis
     // -------------------------------------------------------------------------------
     private suspend fun analyzeSpeedData(
-        window: ArrayDeque<RawSensorDataEntity>,
+        window: AnalysisWindow,
         context: Context
     ): UnsafeBehaviourModel? {
-        if (window.isEmpty()) {
+        val speedWindow = window.speedWindow
+        if (speedWindow.isEmpty()) {
             Log.d("NewUnsafeDrivingBehaviourAnalyser", "Speed window is empty, skipping analysis")
             return null
         }
-        val (avgSpeed, locationData) = computeAverageSpeedAndLocation(window)
+        val (avgSpeed, locationData) = computeAverageSpeedAndLocation(speedWindow, window.accelerometerWindow)
         if (avgSpeed == 0.0) {
             Log.d("NewUnsafeDrivingBehaviourAnalyser", "Computed average speed is 0.0; skipping analysis")
             return null
         }
         val effectiveSpeedLimit: Double = locationData?.speedLimit?.takeIf { it.toInt() != 0 }
             ?.toDouble() ?: SPEED_LIMIT.toDouble()
+        val overspeedThreshold = effectiveSpeedLimit * SPEED_TOLERANCE_RATIO
         Log.d("NewUnsafeDrivingBehaviourAnalyser", "Effective speed limit: $effectiveSpeedLimit, avgSpeed=$avgSpeed")
-        return if (avgSpeed > effectiveSpeedLimit) {
-            Log.d("NewUnsafeDrivingBehaviourAnalyser", "Speeding detected")
-            createUnsafeBehavior("Speeding", window.last(), avgSpeed.toFloat(), context)
+        val now = speedWindow.last().timestamp
+        return if (avgSpeed > overspeedThreshold) {
+            if (window.speedingStartMs == 0L) {
+                window.speedingStartMs = now
+            }
+            val elapsed = now - window.speedingStartMs
+            if (elapsed >= SPEEDING_MIN_DURATION_MS &&
+                now - window.lastSpeedingEventMs >= SPEEDING_COOLDOWN_MS
+            ) {
+                window.lastSpeedingEventMs = now
+                window.speedingStartMs = 0L
+                Log.d("NewUnsafeDrivingBehaviourAnalyser", "Speeding detected")
+                createUnsafeBehavior(
+                    "Speeding",
+                    speedWindow.last(),
+                    avgSpeed.toFloat(),
+                    context,
+                    overspeedThreshold.toFloat()
+                )
+            } else {
+                null
+            }
         } else {
+            window.speedingStartMs = 0L
             Log.d("NewUnsafeDrivingBehaviourAnalyser", "No speeding detected")
             null
         }
@@ -187,53 +407,44 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
      * It also returns a representative LocationData (if available) for determining the effective speed limit.
      */
     private suspend fun computeAverageSpeedAndLocation(
-        speedWindow: ArrayDeque<RawSensorDataEntity>
+        speedWindow: ArrayDeque<RawSensorDataEntity>,
+        accelWindow: ArrayDeque<RawSensorDataEntity>
     ): Pair<Double, LocationData?> {
-        // Log the size and content of the speedWindow
-        Log.d("SpeedCalculation", "Speed window size: ${speedWindow.size}, contents: $speedWindow")
+        Log.d("SpeedCalculation", "Speed window size: ${speedWindow.size}")
 
-        // Log the location speeds before processing
-        val locationSpeeds = speedWindow.mapNotNull { data ->
-            data.locationId?.let { locationId ->
-                val locationData = fetchLocationDataById(locationId)
-                locationData?.speed?.also {
-                    Log.d("SpeedCalculation", "Found speed for locationId $locationId: $it")
-                }
+        val locationCache = mutableMapOf<UUID, LocationData>()
+        val locationSpeeds = mutableListOf<Double>()
+        for (data in speedWindow) {
+            val locationId = data.locationId ?: continue
+            val locationData = locationCache[locationId] ?: fetchLocationDataById(locationId)?.also {
+                locationCache[locationId] = it
+            }
+            val speed = locationData?.speed
+            if (speed != null && speed > 0) {
+                locationSpeeds.add(speed)
             }
         }
 
-        // Log if locationSpeeds is empty and accelerometer speeds are being considered
         val accelSpeeds = if (locationSpeeds.isEmpty()) {
-            accelerometerWindow.mapNotNull { calculateSpeedFromAccelerometer(it.values) }
-                .also {
-                    Log.d("SpeedCalculation", "Location speeds empty, falling back to accelerometer speeds: $it")
-                }
+            accelWindow.mapNotNull { calculateSpeedFromAccelerometer(it.values) }
         } else {
             emptyList<Double>()
         }
 
-        // Calculate the average speed
         var averageSpeed = 0.0
         if (locationSpeeds.isNotEmpty()) {
             val avgLocSpeed = locationSpeeds.average()
             if (avgLocSpeed > 0) {
                 averageSpeed = avgLocSpeed
-                Log.d("SpeedCalculation", "Average location speed: $avgLocSpeed")
             }
         }
 
         if (averageSpeed == 0.0 && accelSpeeds.isNotEmpty()) {
             averageSpeed = accelSpeeds.average()
-            Log.d("SpeedCalculation", "Average accelerometer speed: ${accelSpeeds.average()}")
         }
 
-        // Log the first location ID used
         val firstLocationId = speedWindow.firstNotNullOfOrNull { it.locationId }
-        Log.d("SpeedCalculation", "First location ID from window: $firstLocationId")
-
-        // Fetch the location data for the first location ID
-        val locationData = firstLocationId?.let { fetchLocationDataById(it) }
-        Log.d("SpeedCalculation", "Location data for locationId $firstLocationId: $locationData")
+        val locationData = firstLocationId?.let { locationCache[it] ?: fetchLocationDataById(it) }
 
         return Pair(averageSpeed, locationData)
     }
@@ -243,35 +454,24 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
      * Estimates the current speed (in m/s) from the most recent entry in the speedWindow.
      * Prefers location-based speed and falls back to an accelerometer estimate.
      */
-    private suspend fun estimateCurrentSpeedMps(): Double {
-        // Log the contents of the speedWindow
-        val recent = speedWindow.lastOrNull()
-        Log.d("SpeedEstimation", "Recent entry in speed window: $recent")
-
-        if (recent == null) {
-            Log.d("SpeedEstimation", "No recent data available, returning 0.0")
-            return 0.0
-        }
-
-        // Attempt to get speed from location data
-        recent.locationId?.let { locationId ->
-            val loc = fetchLocationDataById(locationId)
-            if (loc != null) {
-                Log.d("SpeedEstimation", "Using location-based speed for locationId $locationId: ${loc.speed}")
-                return loc.speed!!
-            } else {
-                Log.d("SpeedEstimation", "Location data for locationId $locationId is null")
+    private suspend fun estimateCurrentSpeedMps(window: AnalysisWindow): Double {
+        val recent = window.speedWindow.lastOrNull()
+        if (recent != null) {
+            recent.locationId?.let { locationId ->
+                val loc = fetchLocationDataById(locationId)
+                if (loc?.speed != null && loc.speed > 0) {
+                    Log.d("SpeedEstimation", "Using location-based speed for locationId $locationId: ${loc.speed}")
+                    return loc.speed
+                }
             }
         }
 
-        // Fallback to accelerometer speed calculation
-        if (recent.sensorType == ACCELEROMETER_TYPE) {
-            val speedFromAccel = calculateSpeedFromAccelerometer(recent.values)
+        val recentAccel = window.accelerometerWindow.lastOrNull()
+        if (recentAccel != null) {
+            val speedFromAccel = calculateSpeedFromAccelerometer(recentAccel.values)
             if (speedFromAccel != null) {
                 Log.d("SpeedEstimation", "Using accelerometer speed: $speedFromAccel")
                 return speedFromAccel
-            } else {
-                Log.d("SpeedEstimation", "Accelerometer speed calculation failed")
             }
         }
 
@@ -325,17 +525,28 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
         behaviorType: String,
         data: RawSensorDataEntity,
         measuredValue: Float,
-        context: Context
-    ): UnsafeBehaviourModel {
-        val severity = calculateSeverity(behaviorType, measuredValue)
+        context: Context,
+        speedLimit: Float? = null
+    ): UnsafeBehaviourModel? {
+        val tripId = data.tripId
+        if (tripId == null) {
+            Log.w("NewUnsafeDrivingBehaviourAnalyser", "Skipping unsafe behavior: missing tripId.")
+            return null
+        }
+        val driverProfileId = data.driverProfileId ?: PreferenceUtils.getDriverProfileId(context)
+        if (driverProfileId == null) {
+            Log.w("NewUnsafeDrivingBehaviourAnalyser", "Skipping unsafe behavior: missing driverProfileId.")
+            return null
+        }
+        val severity = calculateSeverity(behaviorType, measuredValue, speedLimit)
         Log.d(
             "NewUnsafeDrivingBehaviourAnalyser",
             "Creating unsafe behavior. Type=$behaviorType, measuredValue=$measuredValue, severity=$severity"
         )
         return UnsafeBehaviourModel(
             id = UUID.randomUUID(),
-            tripId = data.tripId ?: UUID.randomUUID(),
-            driverProfileId = PreferenceUtils.getDriverProfileId(context) ?: UUID.randomUUID(),
+            tripId = tripId,
+            driverProfileId = driverProfileId,
             behaviorType = behaviorType,
             timestamp = data.timestamp,
             date = data.date ?: Date(),
@@ -349,7 +560,11 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
     /**
      * Calculates a severity value (0 to 1) based on how much the measured value exceeds the threshold.
      */
-    private fun calculateSeverity(behaviorType: String, measuredValue: Float): Float {
+    private fun calculateSeverity(
+        behaviorType: String,
+        measuredValue: Float,
+        speedLimit: Float? = null
+    ): Float {
         val severity = when (behaviorType) {
             "Harsh Acceleration" -> {
                 val excess = measuredValue - ACCELERATION_THRESHOLD
@@ -364,7 +579,8 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
                 (excess / MAX_SWERVING_EXCESS).coerceIn(0f, 1f)
             }
             "Speeding" -> {
-                val excess = measuredValue - SPEED_LIMIT
+                val effectiveLimit = speedLimit ?: SPEED_LIMIT
+                val excess = measuredValue - effectiveLimit
                 (excess / MAX_SPEED_EXCESS).coerceIn(0f, 1f)
             }
             else -> 0f
@@ -408,31 +624,52 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
     companion object {
         const val ACCELEROMETER_TYPE = 1
         const val SPEED_TYPE = 2 // Magnetometer or fallback logic
+        const val GYROSCOPE_TYPE = 4
+        const val LINEAR_ACCELERATION_TYPE = 10
         const val ROTATION_VECTOR_TYPE = 11
-//
-        const val ACCELERATION_THRESHOLD = 3.5f  // m/s²
-        const val BRAKING_THRESHOLD = -3.5f      // m/s²
-        const val SWERVING_THRESHOLD = 0.2f      // rad/s
+
+        const val ACCELERATION_THRESHOLD = 4.0f // m/s^2
+        const val BRAKING_THRESHOLD = -4.5f // m/s^2
+        const val SWERVING_THRESHOLD = 0.14f // rad/s
         const val SPEED_LIMIT = 27.78f // m/s (~100 km/h)
+        const val SPEED_TOLERANCE_RATIO = 1.10
+
+        const val SPEEDING_MIN_DURATION_MS = 20_000L
+        const val SPEEDING_COOLDOWN_MS = 10_000L
+        const val MIN_ACCELERATION_SPEED_MPS = 1.4
+        const val MIN_SWERVE_SPEED_MPS = 5.56
+
+        const val ACCELERATION_MIN_DURATION_MS = 300L
+        const val EVENT_COOLDOWN_MS = 1_500L
+
+        const val POTHOLE_WINDOW_MS = 500L
+        const val POTHOLE_Z_STDDEV_THRESHOLD = 2.0
+        const val POTHOLE_Z_PEAK_TO_PEAK = 5.0
+
+        const val ROUGHNESS_WINDOW_MS = 1_000L
+        const val ROUGHNESS_MULTIPLIER = 0.35f
+        const val MAX_ROUGHNESS_ADJUSTMENT = 3.0f
+
+        const val SWERVE_MAX_DURATION_MS = 1_500L
+        const val SWERVE_COOLDOWN_MS = 2_000L
+
+        const val MIN_ACCELERATION_THRESHOLD = 1.5f
+        const val MIN_BRAKING_THRESHOLD = 1.5f
 
         const val MAX_ACCELERATION_EXCESS = 5.5f
         const val MAX_BRAKING_EXCESS = 5.5f
         const val MAX_SWERVING_EXCESS = 0.5f
         const val MAX_SPEED_EXCESS = 2.778f
-//
-//
-//// Testing values
-//// Testing Thresholds (very low values for emulator testing).
-//        const val ACCELERATION_THRESHOLD = 0.2f   // m/s².
-//        const val BRAKING_THRESHOLD = -0.2f       // m/s².
-//        const val SWERVING_THRESHOLD = 0.02f       // rad/s.
-//        const val SPEED_LIMIT = 0.02f            // 100 km/h in m/s (for demo).
-//
-//        // Maximum excess for severity normalization.
+
+        // Testing thresholds (very low values for emulator testing).
+//        const val ACCELERATION_THRESHOLD = 0.2f // m/s^2
+//        const val BRAKING_THRESHOLD = -0.2f // m/s^2
+//        const val SWERVING_THRESHOLD = 0.02f // rad/s
+//        const val SPEED_LIMIT = 0.02f // 100 km/h in m/s (for demo).
 //        const val MAX_ACCELERATION_EXCESS = 0.5f
 //        const val MAX_BRAKING_EXCESS = 0.5f
 //        const val MAX_SWERVING_EXCESS = 0.1f
-//        const val MAX_SPEED_EXCESS = 0.01f       // ~10 km/h above 100 km/h.
+//        const val MAX_SPEED_EXCESS = 0.01f // ~10 km/h above 100 km/h.
     }
 }
 

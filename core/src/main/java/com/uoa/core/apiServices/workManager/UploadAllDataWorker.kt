@@ -7,7 +7,9 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.uoa.core.apiServices.models.aiModelInputModels.AIModelInputCreate
 import com.uoa.core.apiServices.models.alcoholquestionnaireModels.AlcoholQuestionnaireCreate
-import com.uoa.core.apiServices.models.driverProfile.DriverProfileCreate
+import com.uoa.core.apiServices.models.auth.RegisterRequest
+import com.uoa.core.apiServices.models.driverSyncModels.DriverProfileReference
+import com.uoa.core.apiServices.models.driverSyncModels.DriverSyncPayload
 import com.uoa.core.apiServices.models.locationModels.LocationCreate
 import com.uoa.core.apiServices.models.rawSensorModels.RawSensorDataCreate
 import com.uoa.core.apiServices.models.roadModels.RoadCreate
@@ -15,7 +17,8 @@ import com.uoa.core.apiServices.models.tripModels.TripCreate
 import com.uoa.core.apiServices.models.unsafeBehaviourModels.UnsafeBehaviourCreate
 import com.uoa.core.apiServices.services.aiModellInputApiService.AIModelInputApiRepository
 import com.uoa.core.apiServices.services.alcoholQuestionnaireService.QuestionnaireApiRepository
-import com.uoa.core.apiServices.services.driverProfileApiService.DriverProfileApiRepository
+import com.uoa.core.apiServices.services.auth.AuthRepository
+import com.uoa.core.apiServices.services.driverSyncApiService.DriverSyncApiRepository
 import com.uoa.core.apiServices.services.drivingTipApiService.DrivingTipApiRepository
 import com.uoa.core.apiServices.services.locationApiService.LocationApiRepository
 import com.uoa.core.apiServices.services.nlgReportApiService.NLGReportApiRepository
@@ -24,7 +27,6 @@ import com.uoa.core.apiServices.services.reportStatisticsApiService.ReportStatis
 import com.uoa.core.apiServices.services.roadApiService.RoadApiRepository
 import com.uoa.core.apiServices.services.tripApiService.TripApiRepository
 import com.uoa.core.apiServices.services.unsafeBehaviourApiService.UnsafeBehaviourApiRepository
-import com.uoa.core.database.entities.DriverProfileEntity
 import com.uoa.core.database.entities.RoadEntity
 import com.uoa.core.database.entities.UnsafeBehaviourEntity
 import com.uoa.core.database.repository.AIModelInputRepository
@@ -37,14 +39,23 @@ import com.uoa.core.database.repository.ReportStatisticsRepository
 import com.uoa.core.database.repository.RoadRepository
 import com.uoa.core.database.repository.TripDataRepository
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
+import com.uoa.core.database.repository.QuestionnaireRepository
 import com.uoa.core.model.Trip
 import com.uoa.core.model.UnsafeBehaviourModel
 import com.uoa.core.notifications.VehicleNotificationManager
+import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
+import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.core.utils.Constants.Companion.UPLOAD_AUTH_REMINDER_TIMESTAMP
 import com.uoa.core.utils.DateConversionUtils
 import com.uoa.core.utils.PreferenceUtils
 import com.uoa.core.utils.Resource
+import com.uoa.core.utils.Resource.Success
+import com.uoa.core.utils.SecureCredentialStorage
+import com.uoa.core.utils.SecureTokenStorage
 import com.uoa.core.utils.toDomainModel
+import com.uoa.core.utils.toDrivingTipCreate
 import com.uoa.core.utils.toEntity
+import com.uoa.core.utils.toNLGReportCreate
 import com.uoa.core.utils.toReportStatisticsCreate
 import com.uoa.core.utils.toTrip
 import com.uoa.core.network.NetworkMonitor
@@ -61,10 +72,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import com.uoa.core.database.repository.QuestionnaireRepository
-import com.uoa.core.utils.Resource.Success
-import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
-import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import java.util.UUID
 import kotlin.math.pow
 import kotlin.math.round
 
@@ -83,14 +91,21 @@ class UploadAllDataWorker @AssistedInject constructor(
     private val reportStatisticsLocalRepository: ReportStatisticsRepository,
     private val reportStatisticsApiRepository: ReportStatisticsApiRepository,
     private val driverProfileLocalRepository: DriverProfileRepository,
-    private val driverProfileApiRepository: DriverProfileApiRepository,
+    private val driverSyncApiRepository: DriverSyncApiRepository,
     private val tripLocalRepository: TripDataRepository,
     private val tripApiRepository: TripApiRepository,
     private val roadLocalRepository: RoadRepository,
     private val roadApiRepository: RoadApiRepository,
     private val questionnaireLocalRepository: QuestionnaireRepository,
     private val questionnaireApiRepository: QuestionnaireApiRepository,
+    private val drivingTipLocalRepository: DrivingTipRepository,
+    private val drivingTipApiRepository: DrivingTipApiRepository,
+    private val nlgReportLocalRepository: NLGReportRepository,
+    private val nlgReportApiRepository: NLGReportApiRepository,
     private val vehicleNotificationManager: VehicleNotificationManager,
+    private val secureTokenStorage: SecureTokenStorage,
+    private val secureCredentialStorage: SecureCredentialStorage,
+    private val authRepository: AuthRepository,
     private val networkMonitor: NetworkMonitor,
 ) : CoroutineWorker(appContext, workerParams) {
 
@@ -104,18 +119,49 @@ class UploadAllDataWorker @AssistedInject constructor(
 
     companion object {
         private const val BATCH_SIZE = 500 // Adjust as needed
+        private const val AUTH_REMINDER_INTERVAL_MS = 4 * 60 * 60 * 1000L // 4 hours
     }
 
     private val repositoryMutex = Mutex()
+    private data class UploadStage(
+        val label: String,
+        val action: suspend () -> Boolean
+    )
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO + SupervisorJob()) {
         try {
             repositoryMutex.withLock<Result> {
+                val token = secureTokenStorage.getToken()
+                val storedEmail = secureCredentialStorage.getEmail()
+                val storedPassword = secureCredentialStorage.getPassword()
+                if (token.isNullOrBlank() &&
+                    storedEmail.isNullOrBlank() &&
+                    storedPassword.isNullOrBlank()
+                ) {
+                    val prefs =
+                        applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    val now = System.currentTimeMillis()
+                    val lastShown = prefs.getLong(UPLOAD_AUTH_REMINDER_TIMESTAMP, 0L)
+
+                    if (now - lastShown >= AUTH_REMINDER_INTERVAL_MS) {
+                        vehicleNotificationManager.displayPermissionNotification(
+                            "Driver data uploads require authentication. Sign in to resume syncing."
+                        )
+                        prefs.edit()
+                            .putLong(UPLOAD_AUTH_REMINDER_TIMESTAMP, now)
+                            .apply()
+                    }
+
+                    Log.w(
+                        "UploadAllDataWorker",
+                        "Skipping upload; JWT token missing. Waiting until authentication completes."
+                    )
+                    return@withLock Result.retry()
+                }
                 // Check network connectivity
                 if (!networkMonitor.isOnline.first()) {
-                    vehicleNotificationManager.displayNotification(
-                        title = "Upload Failed",
-                        message = "No internet connectivity. Please check your network."
+                    vehicleNotificationManager.displayUploadFailure(
+                        "No internet connectivity. Retrying..."
                     )
                     Log.w("UploadAllDataWorker", "No internet connectivity. Retrying...")
                     return@withLock Result.retry()
@@ -123,105 +169,137 @@ class UploadAllDataWorker @AssistedInject constructor(
 
                 // Define upload order based on dependencies
                 val uploadSequence = listOf(
-                    ::uploadDriverProfile,
-                    ::uploadTrips,
-                    ::uploadLocations,
-                    ::uploadDrivingTips,
-                    ::uploadUnsafeBehaviours,
-                    ::uploadRawSensorData,
-                    ::uploadAIModelInputs,
-//                    ::uploadReportStatistics,
-                    ::uploadQuestionnaires,
-                    ::uploadRoads,
+                    UploadStage("Driver profile", ::registerDriverProfileIfNeeded),
+                    UploadStage("Trips", ::uploadTrips),
+                    UploadStage("Locations", ::uploadLocations),
+                    UploadStage("Sensor data", ::uploadRawSensorData),
+                    UploadStage("Unsafe behaviours", ::uploadUnsafeBehaviours),
+                    UploadStage("Questionnaires", ::uploadQuestionnaires),
+                    UploadStage("Driving tips", ::uploadDrivingTips),
+                    UploadStage("NLG reports", ::uploadNLGReports),
+                    UploadStage("AI model inputs", ::uploadAIModelInputs),
+                    UploadStage("Report statistics", ::uploadReportStatistics),
+                    UploadStage("Roads", ::uploadRoads),
                 )
 
                 // Execute uploads in sequence
-                for (uploadAction in uploadSequence) {
-                    val success = uploadAction()
+                val totalStages = uploadSequence.size
+                vehicleNotificationManager.displayUploadStatus(
+                    title = "Uploading data",
+                    message = "Preparing uploads",
+                    progress = 0,
+                    max = totalStages,
+                    ongoing = true
+                )
+                for ((index, stage) in uploadSequence.withIndex()) {
+                    val stageNumber = index + 1
+                    vehicleNotificationManager.displayUploadStatus(
+                        title = "Uploading data",
+                        message = "Uploading ${stage.label} ($stageNumber/$totalStages)",
+                        progress = stageNumber,
+                        max = totalStages,
+                        ongoing = true
+                    )
+                    val success = stage.action()
                     if (!success) {
-                        Log.e("UploadAllDataWorker", "Failed to upload ${uploadAction.name}. Retrying...")
+                        Log.e(
+                            "UploadAllDataWorker",
+                            "Failed to upload ${stage.label}. Retrying..."
+                        )
+                        vehicleNotificationManager.displayUploadFailure(
+                            "Failed to upload ${stage.label}. Retrying..."
+                        )
                         return@withLock Result.retry()
                     }
+                    vehicleNotificationManager.displayUploadStatus(
+                        title = "Uploading data",
+                        message = "${stage.label} uploaded ($stageNumber/$totalStages)",
+                        progress = stageNumber,
+                        max = totalStages,
+                        ongoing = true
+                    )
                 }
 
                 // All uploads succeeded
                 Log.d("UploadAllDataWorker", "All data uploads succeeded.")
+                vehicleNotificationManager.displayUploadComplete("All data uploads completed.")
                 Result.success()
             }
         } catch (e: Exception) {
             Log.e("UploadAllDataWorker", "Unexpected error during upload", e)
+            vehicleNotificationManager.displayUploadFailure("Upload failed. Retrying...")
             Result.retry()
         }
     }
     /****
      * Upload Single Driver Profile
      ****/
-    private suspend fun uploadDriverProfile(): Boolean {
+    private suspend fun registerDriverProfileIfNeeded(): Boolean {
+        val existingToken = secureTokenStorage.getToken()
+        if (!existingToken.isNullOrBlank()) {
+            return true
+        }
+
         val unsyncedProfile =
             driverProfileLocalRepository.getDriverProfileBySyncStatus(false).firstOrNull()
         if (unsyncedProfile == null) {
             Log.d("UploadDriverProfile", "No unsynced DriverProfile found.")
-            return true // Nothing to upload
+            return true
         }
 
-        vehicleNotificationManager.displayNotification(
-            "Data Upload: Driver Profile",
-            "Uploading Driver Profile..."
-        )
-        Log.d("UploadDriverProfile", "Uploading DriverProfile ${unsyncedProfile.driverProfileId}.")
+        val email = secureCredentialStorage.getEmail()?.trim()
+        val password = secureCredentialStorage.getPassword()
+        if (email.isNullOrBlank() || password.isNullOrBlank()) {
+            Log.w("UploadDriverProfile", "Missing credentials; cannot register driver profile.")
+            return false
+        }
 
-        // Map local entity to DTO for the API request
-        val profileCreate = DriverProfileCreate(
-            driverProfileId = unsyncedProfile.driverProfileId,
-            email = unsyncedProfile.email,
+        Log.d("UploadDriverProfile", "Registering driver profile for $email.")
+
+        val registerRequest = RegisterRequest(
+            driverProfileId = unsyncedProfile.driverProfileId.toString(),
+            email = email,
+            password = password,
             sync = true
         )
 
-        // Attempt to upload
-        return when (val result = driverProfileApiRepository.createDriverProfile(profileCreate)) {
+        return when (val result = authRepository.registerDriver(registerRequest)) {
             is Success -> {
-                val returnedProfile = result.data
-                // Use the server's actual ID, etc.
-                val updatedEntity = DriverProfileEntity(
-                    driverProfileId = returnedProfile.driverProfileId,
-                    email = returnedProfile.email,
-                    sync = returnedProfile.sync
-                )
-                driverProfileLocalRepository.updateDriverProfileByEmail(driverProfileId = returnedProfile.driverProfileId,
-                    email = returnedProfile.email,
-                    sync = returnedProfile.sync)
+                secureTokenStorage.saveToken(result.data.accessToken)
+                val returnedProfileId = try {
+                    UUID.fromString(result.data.driverProfileId)
+                } catch (e: IllegalArgumentException) {
+                    Log.w("UploadDriverProfile", "Invalid driverProfileId from server: ${e.message}")
+                    return false
+                }
 
-                // ***** IMPORTANT: store the updated driverProfileId in SharedPreferences *****
-                val prefs = applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                driverProfileLocalRepository.updateDriverProfileByEmail(
+                    driverProfileId = returnedProfileId,
+                    sync = true,
+                    email = email
+                )
+
+                val prefs =
+                    applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 prefs.edit()
-                    .putString(DRIVER_PROFILE_ID, returnedProfile.driverProfileId.toString())
+                    .putString(DRIVER_PROFILE_ID, result.data.driverProfileId.toString())
                     .apply()
 
                 Log.d(
                     "UploadDriverProfile",
-                    "DriverProfile updated locally with server data. " +
-                            "ID: ${returnedProfile.driverProfileId}, email: ${returnedProfile.email}, sync=${returnedProfile.sync}"
+                    "Driver profile ${result.data.driverProfileId} registered successfully."
                 )
-
-                Log.d("UploadDriverProfile", "DriverProfile updated locally: $updatedEntity")
                 true
             }
 
             is Resource.Error -> {
-                vehicleNotificationManager.displayNotification(
-                    "Data Upload: Driver Profile",
-                    "Failed to upload Driver Profile. Retrying..."
-                )
-                Log.e(
-                    "UploadDriverProfile",
-                    "Error uploading ${unsyncedProfile.driverProfileId}: ${result.message}"
-                )
+                Log.e("UploadDriverProfile", "Failed to register profile: ${result.message}")
                 false
             }
 
             Resource.Loading -> {
-                Log.d("UploadDriverProfile", "DriverProfile upload is loading.")
-                true
+                Log.d("UploadDriverProfile", "Registration request is loading.")
+                false
             }
         }
     }
@@ -246,6 +324,7 @@ class UploadAllDataWorker @AssistedInject constructor(
             return true
         }
 
+        var uploadedAny = false
         val chunks = data.chunked(BATCH_SIZE)
         for ((index, chunk) in chunks.withIndex()) {
             val originalChunk = chunk
@@ -259,16 +338,13 @@ class UploadAllDataWorker @AssistedInject constructor(
                 }
             }
 
-            vehicleNotificationManager.displayNotification(
-                notificationTitle,
-                "Uploading batch ${index + 1} of ${chunks.size}..."
-            )
             Log.d("UploadInBatches", "Uploading batch ${index + 1} of ${chunks.size} for $notificationTitle.")
 
             when (val result = batchUploadAction(mappedChunk)) {
                 is Success -> {
                     // Mark the original data as synced
                     markAsSynced(originalChunk)
+                    uploadedAny = true
                     Log.d("UploadInBatches", "Batch ${index + 1} for $notificationTitle uploaded successfully.")
                 }
                 is Resource.Error -> {
@@ -280,23 +356,18 @@ class UploadAllDataWorker @AssistedInject constructor(
                         Log.e("UploadInBatches", "Integrity error in batch ${index + 1} for $notificationTitle: ${result.message}. Skipping problematic record.")
                         continue // Skip the problematic record
                     } else {
-                        vehicleNotificationManager.displayNotification(
-                            notificationTitle,
-                            "Failed to upload batch ${index + 1}. Retrying..."
-                        )
                         Log.e("UploadInBatches", "Error uploading batch ${index + 1} for $notificationTitle: ${result.message}")
                         return false // Retry the whole batch if it's not an integrity issue or null pointer error
                     }
                 }
                 Resource.Loading -> {
-                    vehicleNotificationManager.displayNotification(
-                        notificationTitle,
-                        "Uploading..."
-                    )
                     Log.d("UploadInBatches", "$notificationTitle: Uploading batch ${index + 1}.")
                     break
                 }
             }
+        }
+        if (uploadedAny) {
+            Log.d("UploadInBatches", "$notificationTitle: Upload complete.")
         }
         return true
     }
@@ -327,70 +398,25 @@ class UploadAllDataWorker @AssistedInject constructor(
      * Upload New Trips via Batch Create Endpoint
      */
     private suspend fun uploadNewTrips(trips: List<Trip>): Boolean {
-        vehicleNotificationManager.displayNotification(
-            "Data Upload: New Trips",
-            "Uploading ${trips.size} new trips..."
-        )
         Log.d("UploadTrips", "Uploading ${trips.size} new trips.")
 
-        val tripCreates = trips.map { trip ->
-            TripCreate(
-                id = trip.id,
-                driverProfileId = trip.driverPId,
-                startDate = trip.startDate?.let { DateConversionUtils.dateToString(it) },
-                endDate = trip.endDate?.let { DateConversionUtils.dateToString(it) },
-                startTime = trip.startTime,
-                endTime = trip.endTime,
-                sync = true,
-                influence = trip.influence!!
-            )
-        }
+        val fallbackDriverId = PreferenceUtils.getDriverProfileId(applicationContext)
+        var successCount = 0
+        var failedCount = 0
 
-        return when (val result = tripApiRepository.batchCreateTrips(tripCreates)) {
-            is Success -> {
-                var successCount = 0
-                var failedCount = 0
-
-                trips.forEach { originalTrip ->
-                    val matchingDTO = tripCreates.firstOrNull { it.id == originalTrip.id }
-                    if (matchingDTO != null) {
-                        try {
-                            val tripToUpdate = matchingDTO.toTrip()
-                            tripLocalRepository.updateTrip(tripToUpdate)
-                            successCount++
-                        } catch (e: Exception) {
-                            Log.e("UploadTrips", "Failed to update trip ${originalTrip.id}: ${e.message}")
-                            failedCount++
-                        }
-                    } else {
-                        Log.w("UploadTrips", "No matching DTO found for trip ${originalTrip.id}")
-                        failedCount++
-                    }
-                }
-
-                vehicleNotificationManager.displayNotification(
-                    "Data Upload: New Trips",
-                    "Uploading ${trips.size} trips. Successfully uploaded $successCount, failed $failedCount."
-                )
-
-                Log.d("UploadTrips", "$successCount trips marked as synced, $failedCount failed.")
-                true
-            }
-
-            is Resource.Error -> {
-                vehicleNotificationManager.displayNotification(
-                    "Data Upload: New Trips",
-                    "Failed to upload new trips: ${result.message}. Retrying..."
-                )
-                Log.e("UploadTrips", "Error uploading new trips: ${result.message}")
-                false
-            }
-
-            Resource.Loading -> {
-                Log.d("UploadTrips", "New trips upload is loading.")
-                true
+        for (trip in trips) {
+            val ensured = ensureTripExists(trip, fallbackDriverId)
+            if (ensured) {
+                successCount++
+            } else {
+                failedCount++
+                Log.e("UploadTrips", "Failed to ensure trip ${trip.id} exists on server.")
+                return false
             }
         }
+
+        Log.d("UploadTrips", "$successCount trips marked as synced, $failedCount failed.")
+        return true
     }
 
 //    private suspend fun uploadNewTrips(trips: List<Trip>): Boolean {
@@ -430,19 +456,9 @@ class UploadAllDataWorker @AssistedInject constructor(
      * Upload Updated Trips via Single Update Endpoint
      */
     private suspend fun uploadUpdatedTrips(trips: List<Trip>): Boolean {
-        vehicleNotificationManager.displayNotification(
-            "Data Upload: Updated Trips",
-            "Uploading ${trips.size} updated trips..."
-        )
         Log.d("UploadTrips", "Uploading ${trips.size} updated trips.")
 
         for (trip in trips) {
-            if (trip.sync == false) {
-                uploadNewTrips(trips)
-                Log.e("UploadTrips", "Skipping trip ${trip.id} because it was already uploaded.")
-                tripLocalRepository.updateUploadStatus(trip.id,true)
-                continue
-            }
             // Prepare date/time fields
             val sdf = SimpleDateFormat(
                 "yyyy-MM-dd'T'HH:mm:ss'Z'",
@@ -450,8 +466,8 @@ class UploadAllDataWorker @AssistedInject constructor(
             ).apply {
                 timeZone = TimeZone.getTimeZone("UTC+1")
             }
-            val isoStartDate = trip.startDate?.let { sdf.format(it) }
-            val isoEndDate = trip.endDate?.let { sdf.format(it) }
+            val isoStartDate = formatTripDate(trip.startDate, trip.startTime)
+            val isoEndDate = formatTripDate(trip.endDate, trip.endTime)
             // Map to DTO
             val tripUpdate = TripCreate(
                 id = trip.id,
@@ -460,28 +476,56 @@ class UploadAllDataWorker @AssistedInject constructor(
                 endDate = isoEndDate,
                 startTime = trip.startTime,
                 endTime = trip.endTime,
+                timeZoneId = timeZoneId(),
+                timeZoneOffsetMinutes = timeZoneOffsetMinutes(trip.startTime),
                 sync = true, // Indicate that after upload, sync should be true
-                influence = trip.influence!!
+                influence = trip.influence!!,
+                userAlcoholResponse = trip.userAlcoholResponse,
+                alcoholProbability = trip.alcoholProbability
             )
 
             // Attempt to upload via single update
             when (val result = tripApiRepository.updateTrip(tripUpdate.id, tripUpdate)) {
                 is Success -> {
                     // Mark trip as synced
-                    val tripcopy=tripUpdate.toTrip().copy(sync=true)
+                    val tripcopy = trip.copy(sync = true)
                     tripLocalRepository.updateTrip(tripcopy)
                     Log.d("UploadTrips", "Trip ${trip.id} marked as synced.")
                 }
                 is Resource.Error -> {
-                    vehicleNotificationManager.displayNotification(
-                        "Data Upload: Updated Trips",
-                        "Failed to upload trip ${trip.id}. Retrying..."
-                    )
-                    Log.e(
-                        "UploadTrips",
-                        "Error uploading trip ${trip.id}: ${result.message}"
-                    )
-                    return false // Stop and retry
+                    if (isNotFoundError(result.message)) {
+                        Log.w(
+                            "UploadTrips",
+                            "Trip ${trip.id} not found on server. Attempting create instead."
+                        )
+                        when (val createResult = tripApiRepository.createTrip(tripUpdate)) {
+                            is Success -> {
+                                val tripcopy = trip.copy(sync = true)
+                                tripLocalRepository.updateTrip(tripcopy)
+                                Log.d(
+                                    "UploadTrips",
+                                    "Trip ${trip.id} created and marked as synced."
+                                )
+                            }
+                            is Resource.Error -> {
+                                Log.e(
+                                    "UploadTrips",
+                                    "Error creating trip ${trip.id}: ${createResult.message}"
+                                )
+                                return false
+                            }
+                            Resource.Loading -> {
+                                Log.d("UploadTrips", "Trip ${trip.id} create is loading.")
+                                return false
+                            }
+                        }
+                    } else {
+                        Log.e(
+                            "UploadTrips",
+                            "Error uploading trip ${trip.id}: ${result.message}"
+                        )
+                        return false // Stop and retry
+                    }
                 }
                 Resource.Loading -> {
                     Log.d("UploadTrips", "Trip ${trip.id} upload is loading.")
@@ -490,6 +534,125 @@ class UploadAllDataWorker @AssistedInject constructor(
             }
         }
         return true
+    }
+
+    /**
+     * Upload Raw Sensor + Unsafe Behaviour data via driver sync endpoint.
+     */
+    private suspend fun uploadDriverSyncData(): Boolean {
+        val profileReference = resolveDriverProfileReference()
+        if (profileReference == null) {
+            Log.e("UploadDriverSync", "No driver profile available for sync.")
+            return false
+        }
+
+        val driverProfileId = profileReference.driverProfileId
+        if (driverProfileId == null) {
+            Log.e("UploadDriverSync", "Driver profile ID missing for sync.")
+            return false
+        }
+
+        val rawData = localRawDataRepository.getSensorDataBySyncStatus(false)
+        val filteredRaw = rawData.filter { it.tripId != null }
+        val dropped = rawData.size - filteredRaw.size
+        if (dropped > 0) {
+            Log.w("UploadDriverSync", "Skipping $dropped raw sensor records due to missing tripId.")
+        }
+
+        val rawSynced = uploadInBatches(
+            notificationTitle = "Data Upload: Sensor Data",
+            fetchData = { filteredRaw },
+            mapToCreate = { rs ->
+                val formattedDate = rs.date?.let { sdf.format(it) }
+                val tripId = rs.tripId ?: throw IllegalStateException("Missing tripId for RawSensorData ${rs.id}")
+
+                RawSensorDataCreate(
+                    id = rs.id,
+                    sensor_type = rs.sensorType,
+                    sensor_type_name = rs.sensorTypeName,
+                    values = rs.values,
+                    timestamp = rs.timestamp,
+                    date = formattedDate,
+                    accuracy = rs.accuracy,
+                    location_id = rs.locationId,
+                    trip_id = tripId,
+                    driverProfileId = driverProfileId,
+                    sync = true
+                )
+            },
+            batchUploadAction = { rawSensorData ->
+                when (val result = driverSyncApiRepository.syncDriverData(
+                    DriverSyncPayload(
+                        profile = profileReference,
+                        rawSensorData = rawSensorData
+                    )
+                )) {
+                    is Success -> Success(Unit)
+                    is Resource.Error -> Resource.Error(result.message ?: "Driver sync failed.")
+                    Resource.Loading -> Resource.Loading
+                }
+            },
+            markAsSynced = { batch ->
+                batch.forEach { rsCreate ->
+                    val originalData = localRawDataRepository.getRawSensorDataById(rsCreate.id)
+                    if (originalData != null) {
+                        val updatedData = originalData.copy(sync = true)
+                        localRawDataRepository.updateRawSensorData(updatedData)
+                        Log.d("UploadDriverSync", "RawSensorData ${updatedData.id} marked as synced.")
+                    } else {
+                        Log.w("UploadDriverSync", "RawSensorData with ID ${rsCreate.id} not found for syncing.")
+                    }
+                }
+            }
+        )
+
+        if (!rawSynced) return false
+
+        val unsafeSynced = uploadInBatches(
+            notificationTitle = "Data Upload: Unsafe Behaviours",
+            fetchData = { unsafeBehavioursLocalRepository.getUnsafeBehavioursBySyncStatus(false) },
+            mapToCreate = { ub ->
+                val formattedDate = ub.date?.let { sdf.format(it) }
+                UnsafeBehaviourCreate(
+                    id = ub.id,
+                    trip_id = ub.tripId,
+                    location_id = ub.locationId,
+                    driverProfileId = driverProfileId,
+                    behaviour_type = ub.behaviorType,
+                    severity = ub.severity.toDouble(),
+                    timestamp = ub.timestamp,
+                    date = formattedDate ?: "",
+                    sync = true
+                )
+            },
+            batchUploadAction = { unsafeBehaviours ->
+                when (val result = driverSyncApiRepository.syncDriverData(
+                    DriverSyncPayload(
+                        profile = profileReference,
+                        unsafeBehaviours = unsafeBehaviours
+                    )
+                )) {
+                    is Success -> Success(Unit)
+                    is Resource.Error -> Resource.Error(result.message ?: "Driver sync failed.")
+                    Resource.Loading -> Resource.Loading
+                }
+            },
+            markAsSynced = { batch ->
+                batch.forEach { ubCreate ->
+                    val originalBehaviour =
+                        unsafeBehavioursLocalRepository.getUnsafeBehaviourById(ubCreate.id)
+                    if (originalBehaviour != null) {
+                        val updatedBehaviour = originalBehaviour.copy(sync = true)
+                        unsafeBehavioursLocalRepository.updateUnsafeBehaviour(updatedBehaviour.toDomainModel())
+                        Log.d("UploadDriverSync", "UnsafeBehaviour ${updatedBehaviour.id} marked as synced.")
+                    } else {
+                        Log.w("UploadDriverSync", "UnsafeBehaviour with ID ${ubCreate.id} not found for syncing.")
+                    }
+                }
+            }
+        )
+
+        return unsafeSynced
     }
 
     /**
@@ -539,9 +702,46 @@ class UploadAllDataWorker @AssistedInject constructor(
      * Upload Driving Tips
      */
     private suspend fun uploadDrivingTips(): Boolean {
-        // TODO: Implement Driving Tips upload logic
-        Log.d("UploadDrivingTips", "Driving Tips upload not implemented.")
-        return true // Placeholder return until implementation
+        return uploadInBatches(
+            notificationTitle = "Data Upload: Driving Tips",
+            fetchData = { drivingTipLocalRepository.getDrivingTipsBySyncStatus(false) },
+            mapToCreate = { tipEntity ->
+                tipEntity.toDomainModel().toDrivingTipCreate()
+            },
+            batchUploadAction = { drivingTips ->
+                drivingTipApiRepository.batchCreateDrivingTips(drivingTips)
+            },
+            markAsSynced = { batch ->
+                batch.forEach { tipEntity ->
+                    val updated = tipEntity.copy(sync = true)
+                    drivingTipLocalRepository.updateDrivingTip(updated)
+                    Log.d("UploadDrivingTips", "DrivingTip ${updated.tipId} marked as synced.")
+                }
+            }
+        )
+    }
+
+    /**
+     * Upload NLG Reports
+     */
+    private suspend fun uploadNLGReports(): Boolean {
+        return uploadInBatches(
+            notificationTitle = "Data Upload: NLG Reports",
+            fetchData = { nlgReportLocalRepository.getNlgReportBySyncStatus(false) },
+            mapToCreate = { reportEntity ->
+                reportEntity.toDomainModel().toNLGReportCreate()
+            },
+            batchUploadAction = { reports ->
+                nlgReportApiRepository.batchCreateNLGReports(reports)
+            },
+            markAsSynced = { batch ->
+                batch.forEach { reportEntity ->
+                    val updated = reportEntity.copy(sync = true)
+                    nlgReportLocalRepository.updateReport(updated)
+                    Log.d("UploadNLGReports", "NLGReport ${updated.id} marked as synced.")
+                }
+            }
+        )
     }
 
     /**
@@ -557,7 +757,7 @@ class UploadAllDataWorker @AssistedInject constructor(
                 UnsafeBehaviourCreate(
                     id = ub.id,
                     trip_id = ub.tripId,
-                    location_id = ub.locationId!!,
+                    location_id = ub.locationId,
                     driverProfileId = ub.driverProfileId,
                     behaviour_type = ub.behaviorType,
                     severity = ub.severity.toDouble(),
@@ -596,13 +796,74 @@ class UploadAllDataWorker @AssistedInject constructor(
      */
     private suspend fun uploadRawSensorData(): Boolean {
         val driverProfileId = PreferenceUtils.getDriverProfileId(applicationContext) ?: return false
+        val rawData = localRawDataRepository.getSensorDataBySyncStatus(false)
+        if (rawData.isEmpty()) {
+            Log.d("UploadRawSensorData", "No raw sensor data to upload.")
+            return true
+        }
+
+        val tripIds = rawData.mapNotNull { it.tripId }.distinct()
+        val missingTripIdCount = rawData.count { it.tripId == null }
+        if (missingTripIdCount > 0) {
+            Log.w(
+                "UploadRawSensorData",
+                "Skipping $missingTripIdCount raw sensor records due to missing tripId."
+            )
+        }
+        if (tripIds.isEmpty()) {
+            Log.w("UploadRawSensorData", "Sensor data missing trip identifiers.")
+            return true
+        }
+
+        val tripsForRawData = tripLocalRepository.getTripByIds(tripIds)
+        val tripById = tripsForRawData.associateBy { it.id }
+        val missingTrips = tripIds.count { !tripById.containsKey(it) }
+        if (missingTrips > 0) {
+            Log.w(
+                "UploadRawSensorData",
+                "Missing $missingTrips local trips for raw sensor data; skipping those records."
+            )
+        }
+
+        val confirmedTripIds = mutableSetOf<UUID>()
+        for (trip in tripsForRawData) {
+            val ensured = ensureTripExists(trip, driverProfileId)
+            if (ensured) {
+                confirmedTripIds.add(trip.id)
+            } else {
+                Log.e(
+                    "UploadRawSensorData",
+                    "Failed to ensure trip ${trip.id} exists before sensor upload."
+                )
+                return false
+            }
+        }
+        if (confirmedTripIds.isEmpty()) {
+            Log.w("UploadRawSensorData", "Sensor data pending trip upload.")
+            return true
+        }
+
+        val syncedTripIds = confirmedTripIds
+        val filtered = rawData.filter { it.tripId != null && syncedTripIds.contains(it.tripId) }
+        val unsyncedTripCount = rawData.count { it.tripId != null && !syncedTripIds.contains(it.tripId) }
+        if (unsyncedTripCount > 0) {
+            Log.w(
+                "UploadRawSensorData",
+                "Skipping $unsyncedTripCount raw sensor records while trips are not synced yet."
+            )
+        }
+        if (filtered.isEmpty()) {
+            Log.w("UploadRawSensorData", "Sensor data pending trip upload.")
+            return true
+        }
 
         return uploadInBatches(
             notificationTitle = "Data Upload: Sensor Data",
-            fetchData = { localRawDataRepository.getSensorDataBySyncStatus(false) },
+            fetchData = { filtered },
             mapToCreate = { rs ->
 
                 val formattedDate = rs.date?.let { sdf.format(it) }
+                val tripId = rs.tripId ?: throw IllegalStateException("Missing tripId for RawSensorData ${rs.id}")
 
                 RawSensorDataCreate(
                     id = rs.id,
@@ -613,7 +874,7 @@ class UploadAllDataWorker @AssistedInject constructor(
                     date = formattedDate,
                     accuracy = rs.accuracy,
                     location_id = rs.locationId,
-                    trip_id = rs.tripId!!,
+                    trip_id = tripId,
                     driverProfileId = driverProfileId,
                     sync = true
                 )
@@ -669,10 +930,9 @@ class UploadAllDataWorker @AssistedInject constructor(
 
         val chunked = dedup.chunked(500)
         for ((i, chunk) in chunked.withIndex()) {
-
-            vehicleNotificationManager.displayNotification(
-                "Data Upload: Roads",
-                "Uploading batch ${i + 1}/${chunk.size} (${chunk.size} items)..."
+            Log.d(
+                "UploadRoads",
+                "Uploading batch ${i + 1}/${chunked.size} (${chunk.size} items)..."
             )
 
             val dtos = chunk.mapNotNull { r ->
@@ -711,11 +971,7 @@ class UploadAllDataWorker @AssistedInject constructor(
                 Resource.Loading -> { /* ignore */ }
             }
         }
-
-        vehicleNotificationManager.displayNotification(
-            "Data Upload: Roads",
-            "All road batches uploaded."
-        )
+        Log.d("UploadRoads", "All road batches uploaded.")
         return true
     }
 
@@ -977,6 +1233,21 @@ class UploadAllDataWorker @AssistedInject constructor(
         )
     }
 
+    private suspend fun resolveDriverProfileReference(): DriverProfileReference? {
+        val storedId = PreferenceUtils.getDriverProfileId(applicationContext)
+        val storedProfile = storedId?.let { driverProfileLocalRepository.getDriverProfileById(it) }
+        val fallbackProfile = driverProfileLocalRepository.getDriverProfileBySyncStatus(true).firstOrNull()
+            ?: driverProfileLocalRepository.getDriverProfileBySyncStatus(false).firstOrNull()
+            ?: driverProfileLocalRepository.getAllDriverProfiles().firstOrNull()
+
+        val profile = storedProfile ?: fallbackProfile ?: return null
+        return DriverProfileReference(
+            driverProfileId = profile.driverProfileId,
+            email = profile.email,
+            displayName = null
+        )
+    }
+
 
     private fun isDataIntegrityError(message: String): Boolean {
         return message.contains("Integrity", ignoreCase = true) ||
@@ -985,6 +1256,119 @@ class UploadAllDataWorker @AssistedInject constructor(
     // Function to check for specific errors like NullPointerException
     private fun isNullPointerError(message: String?): Boolean {
         return message?.contains("NullPointerException", ignoreCase = true) == true
+    }
+
+    private fun isNotFoundError(message: String?): Boolean {
+        return message?.contains("404", ignoreCase = true) == true ||
+                message?.contains("not found", ignoreCase = true) == true
+    }
+
+    private fun isBadRequestError(message: String?): Boolean {
+        return message?.contains("400", ignoreCase = true) == true
+    }
+
+    private fun isConflictError(message: String?): Boolean {
+        return message?.contains("409", ignoreCase = true) == true
+    }
+
+    private suspend fun ensureTripExists(trip: Trip, fallbackDriverId: UUID?): Boolean {
+        val currentTrip = tripLocalRepository.getTripById(trip.id) ?: trip
+        val resolvedDriverId = currentTrip.driverPId ?: fallbackDriverId
+        if (resolvedDriverId == null) {
+            Log.w("UploadTrips", "Missing driverProfileId for trip ${trip.id}; cannot upload.")
+            return false
+        }
+
+        val tripPayload = TripCreate(
+            id = currentTrip.id,
+            driverProfileId = resolvedDriverId,
+            startDate = formatTripDate(currentTrip.startDate, currentTrip.startTime),
+            endDate = formatTripDate(currentTrip.endDate, currentTrip.endTime),
+            startTime = currentTrip.startTime,
+            endTime = currentTrip.endTime,
+            timeZoneId = timeZoneId(),
+            timeZoneOffsetMinutes = timeZoneOffsetMinutes(currentTrip.startTime),
+            sync = true,
+            influence = currentTrip.influence ?: "",
+            userAlcoholResponse = currentTrip.userAlcoholResponse,
+            alcoholProbability = currentTrip.alcoholProbability
+        )
+
+        return when (val result = tripApiRepository.createTrip(tripPayload)) {
+            is Success -> {
+                tripLocalRepository.updateUploadStatus(currentTrip.id, true)
+                true
+            }
+            is Resource.Error -> {
+                if (isBadRequestError(result.message) || isConflictError(result.message)) {
+                    when (val updateResult = tripApiRepository.updateTrip(currentTrip.id, tripPayload)) {
+                        is Success -> {
+                            tripLocalRepository.updateUploadStatus(currentTrip.id, true)
+                            true
+                        }
+                        is Resource.Error -> {
+                            Log.e(
+                                "UploadTrips",
+                                "Failed to update trip ${currentTrip.id} after create failure: ${updateResult.message}"
+                            )
+                            false
+                        }
+                        Resource.Loading -> false
+                    }
+                } else {
+                    val exists = tripExistsOnServer(currentTrip.id)
+                    if (exists) {
+                        when (val updateResult = tripApiRepository.updateTrip(currentTrip.id, tripPayload)) {
+                            is Success -> {
+                                tripLocalRepository.updateUploadStatus(currentTrip.id, true)
+                                true
+                            }
+                            is Resource.Error -> {
+                                Log.e(
+                                    "UploadTrips",
+                                    "Failed to update existing trip ${currentTrip.id} after create error: ${updateResult.message}"
+                                )
+                                false
+                            }
+                            Resource.Loading -> false
+                        }
+                    } else {
+                        Log.e("UploadTrips", "Error creating trip ${trip.id}: ${result.message}")
+                        false
+                    }
+                }
+            }
+            Resource.Loading -> false
+        }
+    }
+
+    private fun formatTripDate(date: Date?, timestamp: Long?): String? {
+        return when {
+            date != null -> sdf.format(date)
+            timestamp != null -> sdf.format(Date(timestamp))
+            else -> null
+        }
+    }
+
+    private fun timeZoneId(): String = TimeZone.getDefault().id
+
+    private fun timeZoneOffsetMinutes(timestamp: Long?): Int? =
+        timestamp?.let { TimeZone.getDefault().getOffset(it) / 60000 }
+
+    private suspend fun tripExistsOnServer(tripId: UUID): Boolean {
+        return when (val result = tripApiRepository.getTrip(tripId.toString())) {
+            is Success -> true
+            is Resource.Error -> {
+                if (!isNotFoundError(result.message)) {
+                    Log.w(
+                        "UploadTrips",
+                        "Trip $tripId lookup failed after create error: ${result.message}"
+                    )
+                }
+                false
+            }
+            Resource.Loading -> false
+        }
     }
 
 }

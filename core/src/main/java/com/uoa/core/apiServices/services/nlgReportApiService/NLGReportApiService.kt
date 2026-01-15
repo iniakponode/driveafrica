@@ -33,5 +33,5 @@ interface NLGReportApiService {
     suspend fun batchCreateNLGReports(@Body nlgReports: List<NLGReportCreate>): Map<String, String>
 
     @HTTP(method = "DELETE", path = "/api/nlg_reports/batch_delete", hasBody = true)
-    suspend fun batchDeleteNLGReports(@Body ids: List<String>): Map<String, String>
+    suspend fun batchDeleteNLGReports(@Body ids: List<String>): Unit
 }

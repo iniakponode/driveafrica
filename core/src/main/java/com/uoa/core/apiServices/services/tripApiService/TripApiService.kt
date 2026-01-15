@@ -31,8 +31,8 @@ interface TripApiService {
 
     // Batch Operations
     @POST("/api/trips/batch_create")
-    suspend fun batchCreateTrips(@Body trips: List<TripCreate>): Map<String, String>
+    suspend fun batchCreateTrips(@Body trips: List<TripCreate>): List<TripResponse>
 
     @HTTP(method = "DELETE", path = "/api/trips/batch_delete", hasBody = true)
-    suspend fun batchDeleteTrips(@Body ids: List<String>): Map<String, String>
+    suspend fun batchDeleteTrips(@Body ids: List<String>): Unit
 }

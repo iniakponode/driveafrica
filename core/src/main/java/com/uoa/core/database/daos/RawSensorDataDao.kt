@@ -83,6 +83,15 @@ interface RawSensorDataDao {
     @Query("DELETE FROM raw_sensor_data WHERE id IN (:ids)")
     suspend fun deleteRawSensorDataByIds(ids: List<UUID>)
 
+    @Query("DELETE FROM raw_sensor_data WHERE tripId = :tripId")
+    suspend fun deleteRawSensorDataByTripId(tripId: UUID)
+
+    @Query("SELECT COUNT(*) FROM raw_sensor_data WHERE tripId = :tripId AND sync = 0")
+    suspend fun countUnsyncedRawSensorDataByTripId(tripId: UUID): Int
+
+    @Query("SELECT DISTINCT locationId FROM raw_sensor_data WHERE tripId = :tripId AND locationId IS NOT NULL")
+    suspend fun getLocationIdsByTripId(tripId: UUID): List<UUID>
+
     @Query("SELECT * FROM raw_sensor_data WHERE date BETWEEN :startDate AND :endDate")
     fun getSensorDataBetweenDates(startDate: LocalDate, endDate: LocalDate): Flow<List<RawSensorDataEntity>>
 

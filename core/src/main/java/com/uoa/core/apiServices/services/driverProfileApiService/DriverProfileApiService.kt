@@ -77,10 +77,10 @@ interface DriverProfileApiService {
      * Batch creates multiple DriverProfiles.
      *
      * @param driverProfiles A list of DriverProfile data to create.
-     * @return A map containing the status of each creation.
+     * @return A list of created DriverProfile responses.
      */
     @POST("/api/driver_profiles/batch_create")
-    suspend fun batchCreateDriverProfiles(@Body driverProfiles: List<DriverProfileCreate>): Map<String, String>
+    suspend fun batchCreateDriverProfiles(@Body driverProfiles: List<DriverProfileCreate>): List<DriverProfileResponse>
 
     /**
      * Batch deletes multiple DriverProfiles by their IDs.
@@ -89,6 +89,6 @@ interface DriverProfileApiService {
      * @return A map containing the status of each deletion.
      */
     @HTTP(method = "DELETE", path = "/api/driver_profiles/batch_delete", hasBody = true)
-    suspend fun batchDeleteDriverProfiles(@Body ids: List<UUID>): Map<UUID, UUID>
+    suspend fun batchDeleteDriverProfiles(@Body ids: List<UUID>): Unit
 }
 

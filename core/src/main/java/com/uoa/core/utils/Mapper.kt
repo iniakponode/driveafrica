@@ -13,6 +13,7 @@ import com.uoa.core.database.entities.RawSensorDataEntity
 import com.uoa.core.database.entities.ReportStatisticsEntity
 import com.uoa.core.database.entities.RoadEntity
 import com.uoa.core.database.entities.TripEntity
+import com.uoa.core.database.entities.TripSummaryEntity
 import com.uoa.core.database.entities.UnsafeBehaviourEntity
 import com.uoa.core.model.AIModelInputs
 import com.uoa.core.model.BehaviourOccurrence
@@ -26,6 +27,7 @@ import com.uoa.core.model.RawSensorData
 import com.uoa.core.model.ReportStatistics
 import com.uoa.core.model.Road
 import com.uoa.core.model.Trip
+import com.uoa.core.model.TripSummary
 import com.uoa.core.model.UnsafeBehaviourModel
 import java.time.LocalDate
 import java.time.ZoneId
@@ -151,7 +153,10 @@ fun Trip.toEntity(): TripEntity {
         startDate = this.startDate,
         endDate = this.endDate,
         influence = this.influence,
-        sync = this.sync
+        sync = this.sync,
+        alcoholProbability = this.alcoholProbability,
+        userAlcoholResponse = this.userAlcoholResponse,
+        syncState = this.syncState
     )
 }
 
@@ -164,7 +169,48 @@ fun TripEntity.toDomainModel(): Trip {
         startDate = this.startDate,
         endDate = this.endDate,
         influence=this.influence,
-        sync = this.sync
+        sync = this.sync,
+        alcoholProbability = this.alcoholProbability,
+        userAlcoholResponse = this.userAlcoholResponse,
+        syncState = this.syncState
+    )
+}
+
+fun TripSummaryEntity.toDomainModel(): TripSummary {
+    return TripSummary(
+        tripId = this.tripId,
+        driverId = this.driverId,
+        startTime = this.startTime,
+        endTime = this.endTime,
+        startDate = this.startDate,
+        endDate = this.endDate,
+        distanceMeters = this.distanceMeters,
+        durationSeconds = this.durationSeconds,
+        harshBrakingEvents = this.harshBrakingEvents,
+        harshAccelerationEvents = this.harshAccelerationEvents,
+        speedingEvents = this.speedingEvents,
+        swervingEvents = this.swervingEvents,
+        classificationLabel = this.classificationLabel,
+        alcoholProbability = this.alcoholProbability
+    )
+}
+
+fun TripSummary.toEntity(): TripSummaryEntity {
+    return TripSummaryEntity(
+        tripId = this.tripId,
+        driverId = this.driverId,
+        startTime = this.startTime,
+        endTime = this.endTime,
+        startDate = this.startDate,
+        endDate = this.endDate,
+        distanceMeters = this.distanceMeters,
+        durationSeconds = this.durationSeconds,
+        harshBrakingEvents = this.harshBrakingEvents,
+        harshAccelerationEvents = this.harshAccelerationEvents,
+        speedingEvents = this.speedingEvents,
+        swervingEvents = this.swervingEvents,
+        classificationLabel = this.classificationLabel,
+        alcoholProbability = this.alcoholProbability
     )
 }
 

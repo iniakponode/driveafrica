@@ -38,6 +38,8 @@ interface UnsafeBehaviourRepository {
 
     suspend fun deleteAllUnsafeBehaviours()
     suspend fun deleteUnsafeBehavioursByIds(ids: List<UUID>)
+    suspend fun deleteUnsafeBehavioursBefore(cutoffTimestamp: Long)
+    suspend fun getLocationIdsWithUnsafeBehavioursSince(cutoffTimestamp: Long): List<UUID>
 
     suspend fun getUnsafeBehaviourCountByTypeAndTime(
         behaviorType: String,

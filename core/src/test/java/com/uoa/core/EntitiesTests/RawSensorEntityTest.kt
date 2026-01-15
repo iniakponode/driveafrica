@@ -26,7 +26,18 @@ class RawSensorDataEntityTest {
         val accuracy = 3
 
         val drivingProfileId= UUID.randomUUID()
-        val entity = RawSensorDataEntity(id, sensorType, sensorTypeName, values, timestamp, date, accuracy, drivingProfileId, null, null)
+        val entity = RawSensorDataEntity(
+            id = id,
+            sensorType = sensorType,
+            sensorTypeName = sensorTypeName,
+            values = values,
+            timestamp = timestamp,
+            date = date,
+            accuracy = accuracy,
+            locationId = null,
+            tripId = null,
+            driverProfileId = drivingProfileId
+        )
 
         assertEquals(id, entity.id)
         assertEquals(sensorType, entity.sensorType)
@@ -37,5 +48,6 @@ class RawSensorDataEntityTest {
         assertEquals(accuracy, entity.accuracy)
         assertNull(entity.locationId)
         assertNull(entity.tripId)
+        assertEquals(drivingProfileId, entity.driverProfileId)
     }
 }

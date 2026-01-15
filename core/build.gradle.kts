@@ -32,9 +32,11 @@ android {
 
         val chatGptKey = (localProperties["CHAT_GPT_API_KEY"] ?: System.getenv("CHAT_GPT_API_KEY")) as String? ?: ""
         val geminiKey = (localProperties["GEMINI_API_KEY"] ?: System.getenv("GEMINI_API_KEY")) as String? ?: ""
+        val safeDriveApiKey = (localProperties["SAFE_DRIVE_API_KEY"] ?: System.getenv("SAFE_DRIVE_API_KEY")) as String? ?: ""
 
         buildConfigField("String", "CHAT_GPT_API_KEY", "\"$chatGptKey\"")
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
+        buildConfigField("String", "SAFE_DRIVE_API_KEY", "\"$safeDriveApiKey\"")
     }
 
     buildTypes {
@@ -118,13 +120,14 @@ dependencies {
     ksp(libs.room.compiler)
 
     implementation(libs.androidx.activity.compose)
-//    implementation(libs.androidx.compose.compiler)
+    //    implementation(libs.androidx.compose.compiler)
     implementation(libs.androidx.lifecycle.lifecycle.scope)
     implementation(libs.androidx.material3.android)
     implementation(libs.androidx.lifecycle.runtimeCompose)
     implementation(libs.androidx.lifecycle.viewModelCompose)
     implementation(libs.androidx.lifecycle.licycle.viewmodel.ktx)
     implementation(libs.androidx.work.ktx)
+    implementation(libs.androidx.security.crypto)
     implementation(libs.mokito.kotlin)
     implementation(libs.mokito.inline)
 
@@ -168,6 +171,9 @@ dependencies {
     testImplementation(libs.mockito.jupiter)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.architecture.testing)
+    testImplementation(libs.androidx.work.testing)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.robolectric)
    
     androidTestImplementation(libs.hilt.android.testing)
     androidTestImplementation(libs.androidx.junit)

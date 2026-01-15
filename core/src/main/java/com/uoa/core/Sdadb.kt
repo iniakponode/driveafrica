@@ -15,6 +15,7 @@ import com.uoa.core.database.daos.NLGReportDao
 import com.uoa.core.database.daos.AlcoholQuestionnaireResponseDao
 import com.uoa.core.database.daos.ReportStatisticsDao
 import com.uoa.core.database.daos.RoadDao
+import com.uoa.core.database.daos.TripSummaryDao
 import com.uoa.core.database.entities.NLGReportEntity
 import com.uoa.core.database.daos.SensorDataDao
 import com.uoa.core.database.entities.SensorEntity
@@ -33,7 +34,10 @@ import com.uoa.core.database.entities.QuestionnaireEntity
 import com.uoa.core.database.entities.RawSensorDataEntity
 import com.uoa.core.database.entities.ReportStatisticsEntity
 import com.uoa.core.database.entities.RoadEntity
+import com.uoa.core.database.entities.TripFeatureStateEntity
+import com.uoa.core.database.entities.TripSummaryEntity
 import com.uoa.core.database.entities.UnsafeBehaviourEntity
+import com.uoa.core.database.daos.TripFeatureStateDao
 
 //import com.uoa.core.database.converters.Converters
 
@@ -51,9 +55,11 @@ import com.uoa.core.database.entities.UnsafeBehaviourEntity
                         RoadEntity::class,
                         EmbeddingEntity::class,
                         ReportStatisticsEntity::class,
+                        TripSummaryEntity::class,
                         QuestionnaireEntity::class,
-                        FFTFeatureEntity::class],
-                        version = 40)
+                        FFTFeatureEntity::class,
+                        TripFeatureStateEntity::class],
+                        version = 46)
 @TypeConverters(Converters::class)
 abstract class Sdadb : RoomDatabase() {
     abstract fun sensorDataDao(): SensorDataDao
@@ -70,7 +76,9 @@ abstract class Sdadb : RoomDatabase() {
     abstract fun roadDao(): RoadDao
     abstract fun aiModelInputsDao(): AIModelInputDao
     abstract fun reportStatisticsDao(): ReportStatisticsDao
+    abstract fun tripSummaryDao(): TripSummaryDao
     abstract fun alcoholQuestionnaireDao(): AlcoholQuestionnaireResponseDao
     abstract fun fftfeaturesDao(): FFTFeatureDao
+    abstract fun tripFeatureStateDao(): TripFeatureStateDao
 //...
 }

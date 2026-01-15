@@ -28,7 +28,7 @@ class Tokenizer(private val vocab: Map<String, Int>) {
     }
 
     private fun tokenize(text: String): List<String> {
-        val lowerCasedText = text.toLowerCase(Locale.ROOT)
+        val lowerCasedText = text.lowercase(Locale.ROOT)
         val words = lowerCasedText.split(Regex("\\s+"))
 
         // Split the text into words and subwords using the vocabulary

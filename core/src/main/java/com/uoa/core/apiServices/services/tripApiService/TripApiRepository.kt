@@ -1,5 +1,9 @@
 package com.uoa.core.apiServices.services.tripApiService
 
+import android.util.Log
+import com.google.gson.GsonBuilder
+import com.uoa.core.BuildConfig
+import com.uoa.core.apiServices.UUIDTypeAdapter
 import com.uoa.core.apiServices.models.tripModels.TripCreate
 import com.uoa.core.apiServices.models.tripModels.TripResponse
 import com.uoa.core.utils.Resource
@@ -16,9 +20,25 @@ class TripApiRepository @Inject constructor(
     private val tripApiService: TripApiService
 ) {
 
+    private val payloadLogger = GsonBuilder()
+        .registerTypeAdapter(UUID::class.java, UUIDTypeAdapter())
+        .serializeNulls()
+        .create()
+
+    private fun logTripPayload(action: String, tripCreate: TripCreate) {
+        if (!BuildConfig.DEBUG) return
+        val json = runCatching { payloadLogger.toJson(tripCreate) }.getOrNull()
+        if (json != null) {
+            Log.d("TripApiRepository", "$action payload: $json")
+        } else {
+            Log.d("TripApiRepository", "$action payload (raw): $tripCreate")
+        }
+    }
+
     // Create a new trip
     suspend fun createTrip(tripCreate: TripCreate): Resource<TripResponse> = withContext(Dispatchers.IO) {
         try {
+            logTripPayload("createTrip", tripCreate)
             val tripResponse = tripApiService.createTrip(tripCreate)
             Resource.Success(tripResponse)
         } catch (e: IOException) {
@@ -64,6 +84,7 @@ class TripApiRepository @Inject constructor(
     // Update a trip
     suspend fun updateTrip(tripId: UUID, tripCreate: TripCreate): Resource<TripResponse> = withContext(Dispatchers.IO) {
         try {
+            logTripPayload("updateTrip:$tripId", tripCreate)
             val tripResponse = tripApiService.updateTrip(tripId, tripCreate)
             Resource.Success(tripResponse)
         } catch (e: IOException) {

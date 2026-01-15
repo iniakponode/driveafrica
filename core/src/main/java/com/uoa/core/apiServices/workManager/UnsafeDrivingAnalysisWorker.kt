@@ -74,12 +74,24 @@ class UnsafeDrivingAnalysisWorker @AssistedInject constructor(
 
                 // Use a transaction so if any step fails, we roll back the entire chunk
                 appDatabase.withTransaction {
-                    // a) Filter out any raw data whose locationId is null
-                    val validItems = chunk.filter { it.locationId != null }
-                    val invalidItems = chunk.size - validItems.size
-                    if (invalidItems > 0) {
-                        Log.w(TAG, "Skipping $invalidItems items in this chunk because locationId is null.")
+                    // a) Filter out any raw data whose locationId or tripId is null
+                    val invalidLocationItems = chunk.filter { it.locationId == null }
+                    if (invalidLocationItems.isNotEmpty()) {
+                        Log.w(TAG, "Skipping ${invalidLocationItems.size} items in this chunk because locationId is null.")
+                        invalidLocationItems.forEach { item ->
+                            rawSensorDataRepository.updateRawSensorData(item.copy(processed = true))
+                        }
                     }
+
+                    val invalidTripItems = chunk.filter { it.locationId != null && it.tripId == null }
+                    if (invalidTripItems.isNotEmpty()) {
+                        Log.w(TAG, "Skipping ${invalidTripItems.size} items in this chunk because tripId is null.")
+                        invalidTripItems.forEach { item ->
+                            rawSensorDataRepository.updateRawSensorData(item.copy(processed = true))
+                        }
+                    }
+
+                    val validItems = chunk.filter { it.locationId != null && it.tripId != null }
 
                     // b) Convert valid items to a Flow and analyze unsafe behaviors
                     val sensorDataFlow = validItems.asFlow().map { it }
@@ -96,6 +108,7 @@ class UnsafeDrivingAnalysisWorker @AssistedInject constructor(
                         // Location ID should not be null now, but we double-check
                         if (locationId == null) {
                             Log.w(TAG, "Skipping item index=$index; locationId is null.")
+                            rawSensorDataRepository.updateRawSensorData(rawSensorData.copy(processed = true))
                             return@forEachIndexed
                         }
 
@@ -103,16 +116,22 @@ class UnsafeDrivingAnalysisWorker @AssistedInject constructor(
                         val locationEntity = locationRepository.getLocationById(locationId)
                         if (locationEntity == null) {
                             Log.w(TAG, "Skipping rawSensorData ID=${rawSensorData.id}; location not found for ID=$locationId.")
+                            rawSensorDataRepository.updateRawSensorData(rawSensorData.copy(processed = true))
                             return@forEachIndexed
                         }
 
                         try {
+                            if (tripId == null) {
+                                Log.w(TAG, "Skipping rawSensorData ID=${rawSensorData.id}; tripId is null.")
+                                rawSensorDataRepository.updateRawSensorData(rawSensorData.copy(processed = true))
+                                return@forEachIndexed
+                            }
                             // Actually run the AI model input processing
                             Log.d(TAG, "Processing AIModelInput for rawSensorData ID=${rawSensorData.id}, location ID=$locationId.")
                             aiModelInputRepository.processDataForAIModelInputs(
                                 sensorData = rawSensorData.toDomainModel(),
                                 location = locationEntity.toDomainModel(),
-                                tripId = tripId!!
+                                tripId = tripId
                             )
 
                             // Mark both rawSensorData & location as processed

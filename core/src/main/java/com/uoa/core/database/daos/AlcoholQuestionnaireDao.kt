@@ -7,6 +7,7 @@ import androidx.room.Query
 import com.uoa.core.database.entities.AIModelInputsEntity
 import com.uoa.core.database.entities.QuestionnaireEntity
 import kotlinx.coroutines.flow.Flow
+import java.util.Date
 import java.util.UUID
 
 // DAO
@@ -33,4 +34,12 @@ interface AlcoholQuestionnaireResponseDao {
 
     @Query("Select * FROM questionnaire_responses WHERE sync= :status")
     suspend fun getQuestionnaireResponseSyncStatus(status: Boolean): List<QuestionnaireEntity>
+
+    @Query("""
+        SELECT * FROM questionnaire_responses
+        WHERE driverProfileId = :userId
+        AND date = :date
+        LIMIT 1
+    """)
+    suspend fun getQuestionnaireResponseForDate(userId: UUID, date: Date): QuestionnaireEntity?
 }

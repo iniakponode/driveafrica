@@ -132,6 +132,12 @@ interface UnsafeBehaviourDao {
     @Query("DELETE FROM unsafe_behaviour WHERE id IN (:ids)")
     suspend fun deleteUnsafeBehavioursByIds(ids: List<UUID>)
 
+    @Query("DELETE FROM unsafe_behaviour WHERE timestamp < :cutoffTimestamp")
+    suspend fun deleteUnsafeBehavioursBefore(cutoffTimestamp: Long)
+
+    @Query("SELECT DISTINCT locationId FROM unsafe_behaviour WHERE locationId IS NOT NULL AND timestamp >= :cutoffTimestamp")
+    suspend fun getLocationIdsWithUnsafeBehavioursSince(cutoffTimestamp: Long): List<UUID>
+
     @Query("SELECT COUNT(*) FROM unsafe_behaviour WHERE behaviorType = :behaviorType AND timestamp BETWEEN :startTime AND :endTime")
     suspend fun getUnsafeBehaviourCountByTypeAndTime(behaviorType: String, startTime: Long, endTime: Long): Int
 

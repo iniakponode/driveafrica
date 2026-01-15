@@ -13,8 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +48,7 @@ fun DAAppTopNavBar(
             ) {
                 IconButton(onClick = navigateBack) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = Color.White
                     )
@@ -62,10 +61,12 @@ fun DAAppTopNavBar(
                         .padding(start = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.sda_2),
-                        contentDescription = "App Logo"
-                    )
+                    if (System.getProperty("DISABLE_LARGE_IMAGES") != "true") {
+                        Image(
+                            painter = painterResource(id = R.drawable.sda_2),
+                            contentDescription = "App Logo"
+                        )
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Safe Drive Africa",
@@ -74,13 +75,6 @@ fun DAAppTopNavBar(
                     )
                 }
 
-                IconButton(onClick = { /*TODO: Handle user icon click*/ }) {
-                    Icon(
-                        imageVector = Icons.Filled.Person,
-                        contentDescription = "User",
-                        tint = Color.White
-                    )
-                }
             }
         }
     }

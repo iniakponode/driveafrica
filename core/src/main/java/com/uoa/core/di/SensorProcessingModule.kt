@@ -5,6 +5,7 @@ import com.uoa.core.Sdadb
 import com.uoa.core.behaviouranalysis.NewUnsafeDrivingBehaviourAnalyser
 import com.uoa.core.database.daos.LocationDao
 import com.uoa.core.database.daos.RawSensorDataDao
+import com.uoa.core.database.daos.TripFeatureStateDao
 import com.uoa.core.database.daos.UnsafeBehaviourDao
 import com.uoa.core.database.repository.AIModelInputRepository
 import com.uoa.core.database.repository.ProcessAndStoreSensorData
@@ -28,7 +29,8 @@ object SensorProcessingModule {
         unsafeDrivingAnalyser: NewUnsafeDrivingBehaviourAnalyser,
         aiModelInputRepository: AIModelInputRepository,
         locationDao: LocationDao,
-        unsafeBehaviourDao: UnsafeBehaviourDao
+        unsafeBehaviourDao: UnsafeBehaviourDao,
+        tripFeatureStateDao: TripFeatureStateDao
     ): ProcessAndStoreSensorData {
         return ProcessAndStoreSensorData(
             rawSensorDataDao = rawSensorDataDao,
@@ -37,7 +39,8 @@ object SensorProcessingModule {
             unsafeDrivingAnalyser = unsafeDrivingAnalyser,
             aiModelInputRepository = aiModelInputRepository,
             locationDao = locationDao,
-            unsafeBehaviourDao = unsafeBehaviourDao
+            unsafeBehaviourDao = unsafeBehaviourDao,
+            tripFeatureStateDao = tripFeatureStateDao
         )
     }
 }

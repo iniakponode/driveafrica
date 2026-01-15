@@ -20,6 +20,7 @@ interface AIModelInputRepository {
         suspend fun updateAiModelInput(aiModelInput: AIModelInputsEntity)
         suspend fun deleteAiModelInputById(id: UUID)
         suspend fun deleteAIModelInputsByIds(ids: List<UUID>)
+        suspend fun deleteAiModelInputsByTripId(tripId: UUID)
         suspend fun processDataForAIModelInputs(sensorData: RawSensorData, location: LocationData, tripId:UUID)
 
 }

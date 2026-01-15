@@ -33,5 +33,5 @@ interface DrivingTipApiService {
     suspend fun batchCreateDrivingTips(@Body drivingTips: List<DrivingTipCreate>): Map<String, String>
 
     @HTTP(method = "DELETE", path = "/api/driving_tips/batch_delete", hasBody = true)
-    suspend fun batchDeleteDrivingTips(@Body ids: List<String>): Map<String, String>
+    suspend fun batchDeleteDrivingTips(@Body ids: List<String>): Unit
 }

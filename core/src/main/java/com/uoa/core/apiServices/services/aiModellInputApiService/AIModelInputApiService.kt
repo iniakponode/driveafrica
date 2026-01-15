@@ -39,5 +39,5 @@ interface AIModelInputApiService {
     suspend fun batchCreateAiModelInputs(@Body aiModelInputs: List<AIModelInputCreate>): Map<String, String>
 
     @HTTP(method = "DELETE", path = "/api/ai_model_inputs/batch_delete", hasBody = true)
-    suspend fun batchDeleteAiModelInputs(@Body ids: List<String>): Map<String, String>
+    suspend fun batchDeleteAiModelInputs(@Body ids: List<String>): Unit
 }

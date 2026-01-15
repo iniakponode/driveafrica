@@ -33,5 +33,5 @@ interface LocationApiService {
     suspend fun batchCreateLocations(@Body locations: List<LocationCreate>): Map<String, String>
 
     @HTTP(method = "DELETE", path = "/api/locations/batch_delete", hasBody = true)
-    suspend fun batchDeleteLocations(@Body ids: List<String>): Map<String, String>
+    suspend fun batchDeleteLocations(@Body ids: List<String>): Unit
 }

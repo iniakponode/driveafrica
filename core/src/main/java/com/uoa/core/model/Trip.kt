@@ -11,5 +11,8 @@ data class Trip(
     val startDate: Date?,
     var endDate: Date?,
     var influence: String?,
-    var sync: Boolean=false
+    var sync: Boolean=false,
+    val alcoholProbability: Float? = null,
+    val userAlcoholResponse: String? = null,
+    val syncState: SyncState? = null
 )

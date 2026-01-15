@@ -3,6 +3,7 @@ package com.uoa.core.di
 import android.content.Context
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.gson.GsonBuilder
+import android.util.Log
 import com.uoa.core.network.NetworkMonitorImpl
 import com.uoa.core.network.NetworkMonitor
 import com.uoa.core.network.apiservices.OSMRoadApiService
@@ -102,15 +103,11 @@ object NetworkModule {
     fun provideChatGPTApiService(@ApplicationContext context: Context): ChatGPTApiService {
         val apiKey = BuildConfig.CHAT_GPT_API_KEY
         if (apiKey.isEmpty()) {
-            throw IllegalStateException(
-                "ChatGPT API key not found. " +
-                        "Please set the API key in local.properties."
-            )
+            Log.w("NetworkModule", "ChatGPT API key not found; ChatGPT features will be disabled.")
         }
-
         return getRetrofitInstance(
             baseUrl = CHATGPT_BASE_URL,
-            headers = mapOf("Authorization" to "Bearer $apiKey")
+            headers = if (apiKey.isEmpty()) null else mapOf("Authorization" to "Bearer $apiKey")
         ).create(ChatGPTApiService::class.java)
     }
 
@@ -120,15 +117,11 @@ object NetworkModule {
     fun provideGeminiApiService(@ApplicationContext context: Context): GeminiApiService {
         val apiKey = BuildConfig.GEMINI_API_KEY
         if (apiKey.isEmpty()) {
-            throw IllegalStateException(
-                "Gemini API key not found. " +
-                        "Please set the API key in local.properties."
-            )
+            Log.w("NetworkModule", "Gemini API key not found; Gemini features will be disabled.")
         }
-
         return getRetrofitInstance(
             baseUrl = GEMINI_BASE_URL,
-            headers = mapOf("Authorization" to "Bearer $apiKey")
+            headers = if (apiKey.isEmpty()) null else mapOf("Authorization" to "Bearer $apiKey")
         ).create(GeminiApiService::class.java)
     }
 

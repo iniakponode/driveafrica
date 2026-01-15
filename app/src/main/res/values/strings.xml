@@ -1,47 +1,56 @@
 <resources>
     <string name="app_name">Safe Drive Africa</string>
-    <!-- Strings used for fragments for navigation -->
-    <string name="first_fragment_label">First Fragment</string>
-    <string name="second_fragment_label">Second Fragment</string>
-    <string name="next">Next</string>
-    <string name="previous">Previous</string>
-
-    <string name="lorem_ipsum">
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam in scelerisque sem. Mauris
-        volutpat, dolor id interdum ullamcorper, risus dolor egestas lectus, sit amet mattis purus
-        dui nec risus. Maecenas non sodales nisi, vel dictum dolor. Class aptent taciti sociosqu ad
-        litora torquent per conubia nostra, per inceptos himenaeos. Suspendisse blandit eleifend
-        diam, vel rutrum tellus vulputate quis. Aliquam eget libero aliquet, imperdiet nisl a,
-        ornare ex. Sed rhoncus est ut libero porta lobortis. Fusce in dictum tellus.\n\n
-        Suspendisse interdum ornare ante. Aliquam nec cursus lorem. Morbi id magna felis. Vivamus
-        egestas, est a condimentum egestas, turpis nisl iaculis ipsum, in dictum tellus dolor sed
-        neque. Morbi tellus erat, dapibus ut sem a, iaculis tincidunt dui. Interdum et malesuada
-        fames ac ante ipsum primis in faucibus. Curabitur et eros porttitor, ultricies urna vitae,
-        molestie nibh. Phasellus at commodo eros, non aliquet metus. Sed maximus nisl nec dolor
-        bibendum, vel congue leo egestas.\n\n
-        Sed interdum tortor nibh, in sagittis risus mollis quis. Curabitur mi odio, condimentum sit
-        amet auctor at, mollis non turpis. Nullam pretium libero vestibulum, finibus orci vel,
-        molestie quam. Fusce blandit tincidunt nulla, quis sollicitudin libero facilisis et. Integer
-        interdum nunc ligula, et fermentum metus hendrerit id. Vestibulum lectus felis, dictum at
-        lacinia sit amet, tristique id quam. Cras eu consequat dui. Suspendisse sodales nunc ligula,
-        in lobortis sem porta sed. Integer id ultrices magna, in luctus elit. Sed a pellentesque
-        est.\n\n
-        Aenean nunc velit, lacinia sed dolor sed, ultrices viverra nulla. Etiam a venenatis nibh.
-        Morbi laoreet, tortor sed facilisis varius, nibh orci rhoncus nulla, id elementum leo dui
-        non lorem. Nam mollis ipsum quis auctor varius. Quisque elementum eu libero sed commodo. In
-        eros nisl, imperdiet vel imperdiet et, scelerisque a mauris. Pellentesque varius ex nunc,
-        quis imperdiet eros placerat ac. Duis finibus orci et est auctor tincidunt. Sed non viverra
-        ipsum. Nunc quis augue egestas, cursus lorem at, molestie sem. Morbi a consectetur ipsum, a
-        placerat diam. Etiam vulputate dignissim convallis. Integer faucibus mauris sit amet finibus
-        convallis.\n\n
-        Phasellus in aliquet mi. Pellentesque habitant morbi tristique senectus et netus et
-        malesuada fames ac turpis egestas. In volutpat arcu ut felis sagittis, in finibus massa
-        gravida. Pellentesque id tellus orci. Integer dictum, lorem sed efficitur ullamcorper,
-        libero justo consectetur ipsum, in mollis nisl ex sed nisl. Donec maximus ullamcorper
-        sodales. Praesent bibendum rhoncus tellus nec feugiat. In a ornare nulla. Donec rhoncus
-        libero vel nunc consequat, quis tincidunt nisl eleifend. Cras bibendum enim a justo luctus
-        vestibulum. Fusce dictum libero quis erat maximus, vitae volutpat diam dignissim.
-    </string>
+    <string name="splash_tagline">Insight that keeps every fleet safer.</string>
+    <string name="splash_subtitle">Connecting your phone to the Safe Drive Africa backend for fleet assignments, analytics, and real-time alerts.</string>
+    <string name="splash_status_connect">Securing connection to the backend.</string>
+    <string name="splash_status_assignment">Syncing your assignment &amp; compliance profile.</string>
+    <string name="splash_status_ready">Preparing guided onboarding.</string>
+    <string name="splash_backend_note">Securely connecting to Safe Drive Africa’s backend before we continue.</string>
+    <string name="welcome_title">Drive safer with confidence</string>
+    <string name="welcome_subtitle">Trips, compliance, and reinforcement data stay synced across your fleet, insurance partner, and the Safe Drive Africa backend.</string>
+    <string name="continue_button">Agree &amp; continue</string>
+    <string name="welcome_backend_title">Backend-synced intelligence</string>
+    <string name="welcome_backend_body">Driver IDs, assignments, and reports stay aligned with Safe Drive Africa’s backend so the tips on this screen mirror your fleet dashboard.</string>
+    <string name="welcome_sync_button">Sync now</string>
+    <string name="welcome_policy_reassurance">We collect only the data you explicitly grant, and our privacy policy is linked on every screen so we stay within Google Play’s user data policies.</string>
+    <string name="feature_dashboard_title">Fleet insight dashboards</string>
+    <string name="feature_dashboard_body">UBPK trends, bad-days, and leaderboards mirror the analytics endpoints used by the platform.</string>
+    <string name="feature_assignment_title">Assignment &amp; compliance</string>
+    <string name="feature_assignment_body">Backend assignments, compliance notes, and questionnaires keep your driver profile aligned with fleet reviews.</string>
+    <string name="feature_trip_title">Trip detection &amp; tips</string>
+    <string name="feature_trip_body">Trip events, NLG reports, and daily tips trigger automatically as soon as you are driving.</string>
+    <string name="policy_compliance_highlight">Sensor and trip data stay tied to driver assignments plus compliance questionnaires, matching Google Play’s user data expectations.</string>
+    <string name="welcome_note">You can adjust permissions or revisit this guidance from settings anytime.</string>
+    <string name="welcome_banner_status">Live connection</string>
+    <string name="disclaimer_title">Data handling promise</string>
+    <string name="disclaimer_bullet_1">We only collect sensor, attitude, and location data to recognise driving events.</string>
+    <string name="disclaimer_bullet_2">Your profile ID tracks assignments, compliance, and alcohol questionnaires for fleet reviews.</string>
+    <string name="disclaimer_bullet_3">Uploads happen on Wi-Fi or mobile data, guarded by the background WorkManager monitor.</string>
+    <string name="disclaimer_footer">Review how we use data in the privacy policy below.</string>
+    <string name="agree_continue">Agree &amp; continue</string>
+    <string name="privacy_policy">Privacy policy</string>
+    <string name="onboarding_title">Register with Safe Drive Africa</string>
+    <string name="onboarding_body">We mint a secure profile ID that links your phone to backend assignments, safety notes, and the daily questionnaires.</string>
+    <string name="onboarding_detail_assignment">Assignment history matches the fleet/vehicle group and compliance notes stored on Safe Drive Africa.</string>
+    <string name="onboarding_detail_questionnaire">Latest alcohol questionnaires are queued so reminders stay in sync.</string>
+    <string name="onboarding_detail_trip">Trips, NLG reports, and tips stream to your dashboard once the profile exists.</string>
+    <string name="onboarding_step_profile">Profile</string>
+    <string name="onboarding_step_profile_body">Email-based identity links your device to the backend.</string>
+    <string name="onboarding_step_assignment">Assignment</string>
+    <string name="onboarding_step_assignment_body">Fleet assignments, questionnaires, and tips stay paired with driver metadata.</string>
+    <string name="onboarding_step_questionnaire">Questionnaire</string>
+    <string name="onboarding_step_questionnaire_body">Daily alcohol checks queue automatically for compliance reviews.</string>
+    <string name="onboarding_policy_note">We only store the metadata required for driver onboarding, assignments, and the questionnaires you agreed to share.</string>
+    <string name="onboarding_sensor_permission_note">Location, activity, notification, and foreground service permissions keep the sensor module running so trips can be recorded, unsafe driving detected, and fleet reports stay in sync with the backend you registered for.</string>
+    <string name="onboarding_email_label">Email tied to your backend profile</string>
+    <string name="onboarding_email_helper">Use the email your fleet or assignment owner provided so we can fetch your data from the backend.</string>
+    <string name="onboarding_error_empty">Please add an email.</string>
+    <string name="onboarding_password_label">Password</string>
+    <string name="onboarding_password_helper">Choose a password with at least 6 characters.</string>
+    <string name="onboarding_password_error">Please enter a password that has at least 6 characters.</string>
+    <string name="onboarding_button">Create profile</string>
+    <string name="onboarding_backend_summary">A secure profile ID is minted locally, sent to the backend, and reused across trips, questionnaires, and NLG reports.</string>
+    <string name="profile_sync_note">Profile IDs stay local and upload once you are online.</string>
     <string name="home">Home</string>
     <string name="reports">Reports</string>
     <string name="driving_tips">Safety Tips</string>
@@ -50,4 +59,9 @@
     <string name="record_trip">Record Trip Data</string>
     <string name="no_internet_connection">No Internet Connection on your phone</string>
     <string name="onboarding">Driver Onboarding</string>
+    <string name="first_fragment_label">First Fragment</string>
+    <string name="second_fragment_label">Second Fragment</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+    <string name="lorem_ipsum">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</string>
 </resources>

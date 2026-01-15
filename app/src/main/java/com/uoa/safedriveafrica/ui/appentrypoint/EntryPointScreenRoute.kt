@@ -10,7 +10,7 @@ import com.uoa.core.utils.Constants.Companion.LAST_QUESTIONNAIRE_DAY
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.ENTRYPOINT_ROUTE
 import com.uoa.driverprofile.presentation.ui.navigation.navigateToHomeScreen
-import com.uoa.driverprofile.presentation.ui.navigation.navigateToOnboardingScreen
+import com.uoa.driverprofile.presentation.ui.navigation.navigateToOnboardingInfoScreen
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
@@ -31,7 +31,7 @@ fun EntryPointScreenRoute(
     LaunchedEffect(savedProfileId) {
         if (savedProfileId == null) {
             // No profile found, navigate to onboarding screen.
-            navController.navigateToOnboardingScreen {
+            navController.navigateToOnboardingInfoScreen {
                 popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
             }
         } else {
@@ -45,7 +45,7 @@ fun EntryPointScreenRoute(
                     popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
                 }
             } else {
-                navController.navigateToOnboardingScreen {
+                navController.navigateToOnboardingInfoScreen {
                     popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
                 }
             }

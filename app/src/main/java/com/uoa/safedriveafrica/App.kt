@@ -11,15 +11,8 @@ import androidx.work.WorkManager
 import com.uoa.core.apiServices.workManager.DeleteLocalDataWorker
 import com.uoa.core.apiServices.workManager.UnsafeDrivingAnalysisWorker
 import com.uoa.core.apiServices.workManager.scheduleDataUploadWork
-//import com.uoa.core.apiServices.workManager.UploadRawSensorDataWorker
-//import com.uoa.core.utils.scheduleNextUploadWork
-//import androidx.work.Constraints
-//import androidx.work.ExistingPeriodicWorkPolicy
-//import androidx.work.NetworkType
-//import androidx.work.PeriodicWorkRequestBuilder
-//import androidx.work.WorkManager
-//import com.uoa.core.apiServices.workManager.DeleteLocalDataWorker
-//import com.uoa.core.apiServices.workManager.UnsafeDrivingAnalysisWorker
+import com.uoa.driverprofile.worker.DailyDrivingTipWorker
+import com.uoa.core.utils.SecureTokenStorage
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -28,6 +21,7 @@ import javax.inject.Inject
 class App : Application(), Configuration.Provider {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
+    @Inject lateinit var secureTokenStorage: SecureTokenStorage
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -35,33 +29,14 @@ class App : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-
-//        WorkManager.initialize(this, Configuration.Builder()
-//            .setMinimumLoggingLevel(android.util.Log.DEBUG)
-//            .build())
-        // Workers Scheduled here:
-//        scheduleDataUploadWork(this)
-//        val constraints = Constraints.Builder()
-//            .setRequiredNetworkType(NetworkType.CONNECTED)
-//            .build()
-//
-//        val uploadWorkRequest = PeriodicWorkRequestBuilder<UploadRawSensorDataWorker>(5, TimeUnit.MINUTES)
-//            .setConstraints(constraints)
-//            .build()
-//
-//        WorkManager.getInstance(this)
-//            .enqueueUniquePeriodicWork(
-//                "UploadRawData",
-//                ExistingPeriodicWorkPolicy.KEEP,
-//                uploadWorkRequest
-//            )
-        scheduleDataUploadWork(this)
-//        scheduleNextUploadWork(this)
+        secureTokenStorage.getToken()?.takeIf { it.isNotBlank() }?.let {
+            scheduleDataUploadWork(this)
+        }
 
         val deleteWorkRequest = PeriodicWorkRequestBuilder<DeleteLocalDataWorker>(5, TimeUnit.MINUTES)
             .setConstraints(
                 Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
                     .build()
             )
             .build()
@@ -84,6 +59,18 @@ class App : Application(), Configuration.Provider {
                 "UnsafeDrivingAnalysisWork",
                 ExistingPeriodicWorkPolicy.KEEP, // or REPLACE, depending on your needs
                 analysisWorkRequest
+            )
+
+        val dailyTipsWorkRequest = PeriodicWorkRequestBuilder<DailyDrivingTipWorker>(
+            1,
+            TimeUnit.DAYS
+        ).build()
+
+        WorkManager.getInstance(this)
+            .enqueueUniquePeriodicWork(
+                "DailyDrivingTips",
+                ExistingPeriodicWorkPolicy.KEEP,
+                dailyTipsWorkRequest
             )
 
 

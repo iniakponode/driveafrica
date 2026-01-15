@@ -61,13 +61,12 @@ android {
 
     buildTypes {
         release {
-            // Temporarily disable minification to bypass R8 ConcurrentModificationException
-            // Re-enable after verifying build works: isMinifyEnabled = true
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // Enable minification and shrinking using the non-optimized ProGuard config
+            isMinifyEnabled = true
+            isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
+                getDefaultProguardFile("proguard-android.txt"),
                 "proguard-rules.pro"
             )
         }
@@ -111,6 +110,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(project(":dbda"))
     implementation(project(":driverprofile"))
+    implementation(project(":ml"))
     implementation(project(":nlgengine"))
     implementation(project(":alcoholquestionnaire"))
     ksp(libs.hilt.compiler)
@@ -125,6 +125,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtimeCompose)
     implementation(libs.androidx.lifecycle.viewModelCompose)
     implementation(libs.androidx.lifecycle.licycle.viewmodel.ktx)
+    implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.navigation.ui.ktx)
     implementation(project(":core"))
     implementation(project(":sensor"))
@@ -141,8 +142,12 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     testImplementation(libs.junit)
+    androidTestImplementation(project(":core"))
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.compose.ui.test)
     debugImplementation(libs.androidx.compose.ui.testManifest)
+    androidTestImplementation(libs.hilt.android.testing)
+    kspAndroidTest(libs.hilt.compiler)
+    kspAndroidTest(libs.hilt.ext.compiler)
 //    androidTestImplementation(libs.androidx.test.espresso.core)
 }

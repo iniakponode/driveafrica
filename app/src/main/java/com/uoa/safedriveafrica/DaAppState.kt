@@ -13,6 +13,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navOptions
 import com.uoa.core.ui.TrackDisposableJank
+import com.uoa.core.utils.Constants.Companion.DRIVER_EMAIL_ID
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.network.NetworkMonitor
@@ -132,9 +133,16 @@ class DAAppState(
         navController.navigate(resolvedRoute, topLevelNavOptions)
     }
 
+
+    fun clearStoredDriverProfile() {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .remove(DRIVER_PROFILE_ID)
+            .remove(DRIVER_EMAIL_ID)
+            .apply()
+    }
+
     fun canNavigateBack(): Boolean = navController.previousBackStackEntry != null
-
-
 }
     /**
      * Stores information about navigation events to be used with JankStats

@@ -14,7 +14,7 @@ import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.LAST_QUESTIONNAIRE_DAY
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.ENTRYPOINT_ROUTE
-import com.uoa.driverprofile.presentation.ui.navigation.navigateToOnboardingScreen
+import com.uoa.driverprofile.presentation.ui.navigation.navigateToOnboardingInfoScreen
 import com.uoa.driverprofile.presentation.ui.navigation.navigateToHomeScreen
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -35,7 +35,7 @@ fun NavGraphBuilder.entryPointScreen(
         LaunchedEffect(Unit) {
             if (savedProfileId == null) {
                 // No profile => go to onboarding
-                navController.navigateToOnboardingScreen {
+                navController.navigateToOnboardingInfoScreen {
                     popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
                 }
             } else {
@@ -49,7 +49,7 @@ fun NavGraphBuilder.entryPointScreen(
                         popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
                     }
                 } else {
-                    navController.navigateToOnboardingScreen {
+                    navController.navigateToOnboardingInfoScreen {
                         popUpTo(ENTRYPOINT_ROUTE) { inclusive = true }
                     }
                 }

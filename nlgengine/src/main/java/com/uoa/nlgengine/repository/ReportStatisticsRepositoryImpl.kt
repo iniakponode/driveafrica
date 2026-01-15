@@ -19,10 +19,11 @@ class ReportStatisticsRepositoryImpl(
 ) : ReportStatisticsRepository {
 
     override suspend fun getReportsBetweenDates(
+        driverProfileId: UUID,
         startDate: LocalDate,
         endDate: LocalDate
     ): ReportStatistics? = withContext(Dispatchers.IO) {
-        dao.getReportsBetweenDates(startDate, endDate)?.toDomainModel()
+        dao.getReportsBetweenDates(driverProfileId, startDate, endDate)?.toDomainModel()
     }
 
     override fun getAllReports(): Flow<List<ReportStatistics>> {
@@ -35,7 +36,7 @@ class ReportStatisticsRepositoryImpl(
         return dao.getReportById(id).toDomainModel()
     }
 
-    override suspend fun getReportByTripId(tripId: UUID): ReportStatisticsEntity {
+    override suspend fun getReportByTripId(tripId: UUID): ReportStatisticsEntity? {
         return dao.getReportByTripId(tripId)
     }
 
@@ -64,5 +65,13 @@ class ReportStatisticsRepositoryImpl(
 
     override suspend fun deleteReportStatisticsByIds(ids: List<UUID>) {
         return dao.deleteReportStatisticsByIds(ids)
+    }
+
+    override suspend fun deleteReportStatisticsByDriverAndDateRange(
+        driverProfileId: UUID,
+        startDate: LocalDate,
+        endDate: LocalDate
+    ) {
+        dao.deleteReportStatisticsByDriverAndDateRange(driverProfileId, startDate, endDate)
     }
 }

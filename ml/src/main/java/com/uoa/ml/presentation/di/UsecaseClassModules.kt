@@ -1,28 +1,23 @@
 package com.uoa.ml.presentation.di
 
-import com.uoa.core.apiServices.services.aiModellInputApiService.AIModelInputApiRepository
 import com.uoa.core.database.repository.AIModelInputRepository
+import com.uoa.core.database.daos.TripFeatureStateDao
 import com.uoa.core.database.repository.CauseRepository
 import com.uoa.core.database.repository.LocationRepository
 import com.uoa.core.database.repository.RawSensorDataRepository
+import com.uoa.core.database.repository.TripDataRepository
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
-import com.uoa.core.mlclassifier.MinMaxValuesLoader
 import com.uoa.core.mlclassifier.OnnxModelRunner
-//import com.uoa.ml.Utils
-import com.uoa.ml.UtilsNew
 import com.uoa.ml.domain.BatchInsertCauseUseCase
 import com.uoa.ml.domain.BatchUpDateUnsafeBehaviourCauseUseCase
 import com.uoa.ml.domain.RunClassificationUseCase
 import com.uoa.ml.domain.UpDateUnsafeBehaviourCauseUseCase
-import com.uoa.ml.utils.IncrementalAccelerationYMean
-import com.uoa.ml.utils.IncrementalCourseStd
-import com.uoa.ml.utils.IncrementalDayOfWeekMean
-import com.uoa.ml.utils.IncrementalHourOfDayMean
-import com.uoa.ml.utils.IncrementalSpeedStd
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import java.util.TimeZone
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
@@ -33,11 +28,21 @@ object UsecaseClassModules {
     @Singleton
     fun provideRunClassificationUseCase(
         onnxModelRunner: OnnxModelRunner,
-        aiModelInputRepository: AIModelInputRepository
+        aiModelInputRepository: AIModelInputRepository,
+        tripRepository: TripDataRepository,
+        locationRepository: LocationRepository,
+        rawSensorDataRepository: RawSensorDataRepository,
+        tripFeatureStateDao: TripFeatureStateDao,
+        @Named("TrainingTimeZone") trainingTimeZone: TimeZone
     ): RunClassificationUseCase {
         return RunClassificationUseCase(
             onnxModelRunner,
-            aiModelInputRepository
+            aiModelInputRepository,
+            tripRepository,
+            locationRepository,
+            rawSensorDataRepository,
+            tripFeatureStateDao,
+            trainingTimeZone
 
             )
     }

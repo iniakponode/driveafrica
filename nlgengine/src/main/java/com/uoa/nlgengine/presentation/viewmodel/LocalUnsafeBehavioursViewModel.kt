@@ -98,8 +98,15 @@ class LocalUnsafeBehavioursViewModel @Inject constructor(
 
                 try {
                     val lastInsertedUnsafeBehavioursTripId = getLastInsertedUnsafeBehaviourUseCase.execute()?.tripId
+                    if (lastInsertedUnsafeBehavioursTripId == null) {
+                        Log.i("UnsafeBehavioursViewModel", "No unsafe behaviours found for the last trip.")
+                        _unsafeBehaviours.value = emptyList()
+                        _isLoading.value = false
+                        return@launch
+                    }
 
-                    val lastInsertedUnsafeBehaviours=unsafeBehaviourByTripId.execute(lastInsertedUnsafeBehavioursTripId!!)
+                    val lastInsertedUnsafeBehaviours =
+                        unsafeBehaviourByTripId.execute(lastInsertedUnsafeBehavioursTripId)
                     _unsafeBehaviours.value = lastInsertedUnsafeBehaviours
                     _isLoading.value = false
                 } catch (e: Exception) {

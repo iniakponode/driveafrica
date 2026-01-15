@@ -4,7 +4,7 @@ import com.uoa.core.database.daos.NLGReportDao
 import com.uoa.core.database.entities.NLGReportEntity
 import com.uoa.core.database.entities.TripEntity
 import com.uoa.core.database.repository.NLGReportRepository
-import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.UUID
 
 class NLGReportRepositoryImpl(private val dao: NLGReportDao) : NLGReportRepository {
@@ -25,10 +25,11 @@ class NLGReportRepositoryImpl(private val dao: NLGReportDao) : NLGReportReposito
     }
 
     override suspend fun getReportsBetweenDates(
-        startDate: LocalDate,
-        endDate: LocalDate
-    ): NLGReportEntity {
-        return dao.getReportsBetweenDates(startDate, endDate)
+        userId: UUID,
+        startDate: LocalDateTime,
+        endDate: LocalDateTime
+    ): NLGReportEntity? {
+        return dao.getReportsBetweenDates(userId, startDate, endDate)
     }
 
     override suspend fun updateUploadStatus(id: Int, synced: Boolean) {
@@ -39,7 +40,7 @@ class NLGReportRepositoryImpl(private val dao: NLGReportDao) : NLGReportReposito
         return dao.getReportsByUserId(userId)
     }
 
-    override suspend fun getNlgReportsByTripId(tripId: UUID): NLGReportEntity {
+    override suspend fun getNlgReportsByTripId(tripId: UUID): NLGReportEntity? {
         return dao.getReportsByTripId(tripId)
     }
 

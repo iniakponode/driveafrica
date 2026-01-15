@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.CalendarViewWeek
@@ -23,7 +24,6 @@ import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,7 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.uoa.core.ui.DAAppTopNavBar
+import com.uoa.core.utils.ApiKeyUtils
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.PeriodType
@@ -53,6 +53,7 @@ fun FilterScreen(
     navController: NavController,
     onGenerateReport: (Long?, Long?, PeriodType) -> Unit
 ) {
+    val reportsEnabled = ApiKeyUtils.hasChatGptKey()
     var displayStartDate by remember { mutableStateOf("") }
     var displayEndDate by remember { mutableStateOf("") }
     var startDate by remember { mutableStateOf<Long?>(null) }
@@ -83,20 +84,20 @@ fun FilterScreen(
     val id = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         .getString(DRIVER_PROFILE_ID, null)
 
-    Scaffold(
-        topBar = {
-            DAAppTopNavBar(
-                navigateBack = { navController.navigateUp() },
-                navigateHome = { navController.navigate("homeScreen") }
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
-        ) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+            if (!reportsEnabled) {
+                Text(
+                    text = "Reports are disabled until CHAT_GPT_API_KEY is set in local.properties.",
+                    color = Color.Red,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
             Text(
                 text = "Period",
                 fontSize = 24.sp,
@@ -210,7 +211,7 @@ fun FilterScreen(
                 }
 
 //                To be activate in second phase
-                ActionButton("Generate Report", Icons.Filled.Assessment) {
+                ActionButton("Generate Report", Icons.Filled.Assessment, enabled = reportsEnabled) {
                     val selectedStartDate = startDate
                     val selectedEndDate = endDate
 
@@ -223,7 +224,6 @@ fun FilterScreen(
             }
         }
     }
-}
 
 
 @Composable
@@ -253,9 +253,10 @@ fun setPeriod(start: Date, end: Date, setDisplayStartDate: (String) -> Unit, set
 
 
 @Composable
-fun ActionButton(text: String, icon: ImageVector, onClick: () -> Unit) {
+fun ActionButton(text: String, icon: ImageVector, enabled: Boolean = true, onClick: () -> Unit) {
     Button(
         onClick = onClick,
+        enabled = enabled,
         colors = ButtonDefaults.buttonColors(containerColor = Color.Blue)
     ) {
         Icon(icon, contentDescription = null, tint = Color.White)

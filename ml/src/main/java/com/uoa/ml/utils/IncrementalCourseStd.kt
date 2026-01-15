@@ -2,210 +2,101 @@ package com.uoa.ml.utils
 
 // IncrementalCourseStd.kt
 
-import android.hardware.GeomagneticField
-import android.hardware.Sensor
-import android.hardware.SensorManager
-import android.util.Log
-import com.uoa.core.database.entities.LocationEntity
-import com.uoa.core.database.entities.RawSensorDataEntity
-import com.uoa.core.database.repository.LocationRepository
-import com.uoa.core.mlclassifier.MinMaxValuesLoader
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.util.*
+import com.uoa.core.model.LocationData
+import java.util.UUID
 import javax.inject.Inject
-import kotlin.math.*
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
-class IncrementalCourseStd @Inject constructor(
-    private val minMaxValuesLoader: MinMaxValuesLoader,
-    private val locationRepo: LocationRepository
-) {
-    private var sumSin = 0.0
-    private var sumCos = 0.0
+class IncrementalCourseStd @Inject constructor() {
     private var count = 0
+    private var mean = 0.0
+    private var m2 = 0.0
 
-    // Variables to keep track of previous heading and timestamp
-    private var previousHeading: Float? = null
+    private var previousLat: Double? = null
+    private var previousLon: Double? = null
     private var previousTimestamp: Long? = null
+    private var previousLocationId: UUID? = null
 
-    // Cache for location data to avoid redundant database calls
-    private val locationCache = mutableMapOf<UUID, LocationEntity?>()
-
-    /**
-     * Adds a sensor data point to the incremental calculation of the course standard deviation.
-     * This function is suspend because it may perform database operations to retrieve location data.
-     *
-     * @param sensorData The RawSensorDataEntity containing sensor data.
-     */
-    suspend fun addSensorData(sensorData: RawSensorDataEntity) {
-        val locationId = sensorData.locationId ?: run {
-            Log.w("IncrementalCourseStd", "Sensor data has null locationId.")
+    fun addLocation(location: LocationData) {
+        if (!location.latitude.isFinite() || !location.longitude.isFinite()) {
             return
         }
 
-        val locationData = getLocationData(locationId) ?: run {
-            Log.w("IncrementalCourseStd", "No location data found for locationId: $locationId")
+        val prevLat = previousLat
+        val prevLon = previousLon
+        val prevTimestamp = previousTimestamp
+        val prevLocationId = previousLocationId
+
+        if (prevLat == null || prevLon == null) {
+            previousLat = location.latitude
+            previousLon = location.longitude
+            previousTimestamp = location.timestamp
+            previousLocationId = location.id
+            return
+        }
+        if (location.id == prevLocationId) {
+            return
+        }
+        if (prevTimestamp != null && location.timestamp <= prevTimestamp) {
             return
         }
 
-        val (latitude, longitude, altitude) = locationData
-
-        val (course, timestamp) = computeCourse(
-            sensorData,
-            previousHeading,
-            previousTimestamp,
-            latitude,
-            longitude,
-            altitude
-        )
-
-        if (!course.isNaN()) {
-            val angleRadians = Math.toRadians(course.toDouble())
-            sumSin += sin(angleRadians)
-            sumCos += cos(angleRadians)
-            count++
-            previousHeading = course
-            previousTimestamp = timestamp
-//            Log.d("IncrementalCourseStd", "Computed Course: $course at Timestamp: $timestamp")
-        } else {
-//            Log.w("IncrementalCourseStd", "Computed NaN course for sensorData: $sensorData")
+        val course = calculateBearing(prevLat, prevLon, location.latitude, location.longitude)
+        if (!course.isFinite()) {
+            return
         }
+
+        count++
+        val delta = course - mean
+        mean += delta / count
+        val delta2 = course - mean
+        m2 += delta * delta2
+
+        previousLat = location.latitude
+        previousLon = location.longitude
+        previousTimestamp = location.timestamp
+        previousLocationId = location.id
     }
 
-    /**
-     * Computes the normalized standard deviation of the courses added so far.
-     *
-     * @return The normalized course standard deviation as a Float between 0.0 and 1.0.
-     */
-    fun getNormalizedStd(): Float {
-        if (count == 0) {
-//            Log.w("IncrementalCourseStd", "No course data provided for standard deviation computation.")
+    fun getStd(): Float {
+        if (count < 2) {
             return 0.0f
         }
-
-        val r = sqrt(sumSin * sumSin + sumCos * sumCos) / count
-        // Ensure r is within valid range for ln
-        val adjustedR = r.coerceIn(0.0001, 1.0)
-        val circularStdDev = sqrt(-2 * ln(adjustedR)).toFloat()
-
-//        Log.d("IncrementalCourseStd", "Circular Standard Deviation: $circularStdDev")
-
-        val minValue = minMaxValuesLoader.getMin("course_std") ?: 0f
-        val maxValue = minMaxValuesLoader.getMax("course_std") ?: PI.toFloat()
-        val range = maxValue - minValue
-
-        val normalizedCourseStd = if (range != 0f) {
-            (circularStdDev - minValue) / range
-        } else {
-//            Log.w("IncrementalCourseStd", "Range for course_std is zero. Defaulting normalized value to 0.0f")
-            0.0f
-        }
-
-//        Log.d("IncrementalCourseStd", "Normalized Course Standard Deviation: $normalizedCourseStd")
-        return normalizedCourseStd.coerceIn(0.0f, 1.0f)
+        val variance = m2 / (count - 1)
+        return sqrt(variance).toFloat()
     }
 
     fun reset() {
-        sumSin = 0.0
-        sumCos = 0.0
         count = 0
-        previousHeading = null
+        mean = 0.0
+        m2 = 0.0
+        previousLat = null
+        previousLon = null
         previousTimestamp = null
+        previousLocationId = null
     }
 
-    // Helper function to compute the course for a single sensor data item
-    private fun computeCourse(
-        sensorData: RawSensorDataEntity,
-        previousHeading: Float?,
-        previousTimestamp: Long?,
-        latitude: Double,
-        longitude: Double,
-        altitude: Double
-    ): Pair<Float, Long> {
-        val rotationMatrix = FloatArray(9)
-        val orientationValues = FloatArray(3)
+    private fun calculateBearing(
+        prevLat: Double,
+        prevLon: Double,
+        currLat: Double,
+        currLon: Double
+    ): Double {
+        val lat1 = Math.toRadians(prevLat)
+        val lon1 = Math.toRadians(prevLon)
+        val lat2 = Math.toRadians(currLat)
+        val lon2 = Math.toRadians(currLon)
 
-        return when {
-            sensorData.sensorType == Sensor.TYPE_ROTATION_VECTOR && sensorData.values.size >= 4 -> {
-                // Use the rotation vector to get the rotation matrix
-                SensorManager.getRotationMatrixFromVector(
-                    rotationMatrix,
-                    sensorData.values.take(4).toFloatArray()
-                )
+        val dLon = lon2 - lon1
+        val x = sin(dLon) * cos(lat2)
+        val y = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
 
-                // Get the azimuth (rotation around the Z axis)
-                SensorManager.getOrientation(rotationMatrix, orientationValues)
-                var azimuth = Math.toDegrees(orientationValues[0].toDouble()).toFloat()
-
-                // Adjust azimuth to be between 0 and 360
-                if (azimuth < 0) {
-                    azimuth += 360.0f
-                }
-
-                // Compensate for magnetic declination
-                val declination = getMagneticDeclination(latitude, longitude, altitude)
-                val currentHeading = (azimuth + declination) % 360.0f
-
-                Pair(currentHeading, sensorData.timestamp)
-            }
-            sensorData.sensorType == Sensor.TYPE_GYROSCOPE && sensorData.values.size >= 3 &&
-                    previousHeading != null && previousTimestamp != null -> {
-                // Calculate time difference in seconds
-                val deltaTime = (sensorData.timestamp - previousTimestamp) / 1_000_000_000.0f
-
-                // Gyroscope values represent angular velocity in radians per second
-                val angularSpeedZ = sensorData.values[2] // rotation around Z-axis
-
-                // Update heading based on angular speed
-                val deltaAngle = Math.toDegrees(angularSpeedZ * deltaTime.toDouble()).toFloat()
-                var currentHeading = (previousHeading + deltaAngle) % 360.0f
-
-                if (currentHeading < 0) {
-                    currentHeading += 360.0f
-                }
-
-                Pair(currentHeading, sensorData.timestamp)
-            }
-            else -> {
-                // If data is not available, return NaN and the current timestamp
-                Pair(Float.NaN, sensorData.timestamp)
-            }
-        }
-    }
-
-    private fun getMagneticDeclination(
-        latitude: Double,
-        longitude: Double,
-        altitude: Double
-    ): Float {
-        val calendar = Calendar.getInstance()
-        val geomagneticField = GeomagneticField(
-            latitude.toFloat(),
-            longitude.toFloat(),
-            altitude.toFloat(),
-            calendar.timeInMillis
-        )
-        return geomagneticField.declination
-    }
-
-    private suspend fun getLocationData(
-        locationId: UUID
-    ): Triple<Double, Double, Double>? {
-        // Check if the location data is already cached
-        locationCache[locationId]?.let { locationEntity ->
-            return Triple(locationEntity.latitude, locationEntity.longitude, locationEntity.altitude)
-        }
-
-        // Fetch location data from the repository
-        val locationEntity = withContext(Dispatchers.IO) {
-            locationRepo.getLocationById(locationId)
-        }
-
-        // Cache the result (even if null to prevent repeated lookups)
-        locationCache[locationId] = locationEntity
-
-        return locationEntity?.let {
-            Triple(it.latitude, it.longitude, it.altitude)
-        }
+        var bearing = atan2(x, y)
+        bearing = Math.toDegrees(bearing)
+        bearing = (bearing + 360) % 360
+        return bearing
     }
 }

@@ -1,5 +1,6 @@
 package com.uoa.nlgengine.presentation.viewmodel.chatgpt
 
+import android.app.Application
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -12,11 +13,9 @@ import com.uoa.core.database.repository.TripDataRepository
 import com.uoa.core.network.model.chatGPT.Message
 import com.uoa.core.network.model.chatGPT.RequestBody
 import com.uoa.core.nlg.repository.NLGEngineRepository
-import com.uoa.core.utils.DateConversionUtils.stringToDate
+import com.uoa.core.notifications.VehicleNotificationManager
 import com.uoa.core.utils.PeriodType
-import com.uoa.core.utils.PeriodUtils
-import com.uoa.core.utils.dateToLocalDate
-import com.uoa.core.utils.formatDateToUTCPlusOne
+import com.uoa.core.utils.Resource
 import com.uoa.core.utils.toDomainModel
 import com.uoa.core.utils.toNLGReportCreate
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,8 +24,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
 
@@ -35,8 +36,10 @@ class ChatGPTViewModel @Inject constructor(
     private val nlgEngineRepository: NLGEngineRepository,
     private val nlgReportRepository: NLGReportRepository,
     private val nlgReportApiRepository: NLGReportApiRepository,
-    private val tripDataRepository: TripDataRepository
+    private val tripDataRepository: TripDataRepository,
+    application: Application
 ) : ViewModel() {
+    private val notificationManager = VehicleNotificationManager(application.applicationContext)
 
     private val _response = MutableLiveData<String>("")
     val response: LiveData<String> get() = _response
@@ -48,7 +51,12 @@ class ChatGPTViewModel @Inject constructor(
      * Retrieves a cached NLG report for the given period.
      * Returns the reportText if available; otherwise, returns null.
      */
-    suspend fun getCachedReport(periodType: PeriodType): String? {
+    suspend fun getCachedReport(
+        periodType: PeriodType,
+        driverProfileId: UUID,
+        startDate: LocalDate,
+        endDate: LocalDate
+    ): String? {
         return if (periodType == PeriodType.LAST_TRIP) {
             val tripId = tripDataRepository.getLastInsertedTrip()?.id
             if (tripId != null) {
@@ -58,13 +66,14 @@ class ChatGPTViewModel @Inject constructor(
                 null
             }
         } else {
-            val periodOfReport = PeriodUtils.getReportingPeriod(periodType)
-            if (periodOfReport != null) {
-                nlgReportRepository.getReportsBetweenDates(periodOfReport.first, periodOfReport.second)?.reportText
-            } else {
-                null
-            }
+            val startDateTime = startDate.atStartOfDay()
+            val endDateTime = endDate.atStartOfDay()
+            nlgReportRepository.getReportsBetweenDates(driverProfileId, startDateTime, endDateTime)?.reportText
         }
+    }
+
+    fun clearResponse() {
+        _response.value = ""
     }
 
 //    /**
@@ -215,14 +224,20 @@ class ChatGPTViewModel @Inject constructor(
 //            }
 //        }
 //    }
-fun promptChatGPTForResponse(prompt: String, periodType: PeriodType, driverProfileId: UUID) {
-    viewModelScope.launch {
-        _isLoading.value = true
-        try {
-            val cachedReport = withContext(Dispatchers.IO) {
-                getCachedReport(periodType)
-            }
-            if (cachedReport == null) {
+ fun promptChatGPTForResponse(
+     prompt: String,
+     periodType: PeriodType,
+     driverProfileId: UUID,
+     startDate: LocalDate,
+     endDate: LocalDate
+ ) {
+     viewModelScope.launch {
+         _isLoading.value = true
+         try {
+             val cachedReport = withContext(Dispatchers.IO) {
+                getCachedReport(periodType, driverProfileId, startDate, endDate)
+             }
+             if (cachedReport == null) {
                 val systemMessageContent = "You are an assistant generating driving behavior reports based on provided data. Ensure strict adherence to given information."
 
                 val messages = mutableListOf(
@@ -261,35 +276,73 @@ fun promptChatGPTForResponse(prompt: String, periodType: PeriodType, driverProfi
 
                 _response.value = finalReply
 
-                val lastTrip = tripDataRepository.getLastInsertedTrip() ?: return@launch
+                val lastTrip = tripDataRepository.getLastInsertedTrip()
+                if (lastTrip == null) {
+                    Log.e("ChatGPTViewModel", "No last trip found; skipping report persistence.")
+                    return@launch
+                }
                 val lastTripId = lastTrip.id
                 val createdDateTime: LocalDateTime = LocalDateTime.now()
-                val periodOfReport = PeriodUtils.getReportingPeriod(periodType)
-                nlgReportRepository.insertReport(
-                    NLGReportEntity(
-                        id = UUID.randomUUID(),
-                        userId = driverProfileId,
-                        startDate =periodOfReport?.first?.atStartOfDay() ,
-                        endDate =periodOfReport?.second?.atStartOfDay() ,
-                        tripId = lastTripId,
-                        reportText = finalReply,
-                        createdDate = createdDateTime,
-                        sync = false
-                    )
+                val zoneId = ZoneId.systemDefault()
+                val periodStartDateTime: LocalDateTime
+                val periodEndDateTime: LocalDateTime
+                if (periodType == PeriodType.LAST_TRIP) {
+                    val startDateTime = lastTrip.startDate?.toInstant()
+                        ?.atZone(zoneId)
+                        ?.toLocalDateTime()
+                        ?: Instant.ofEpochMilli(lastTrip.startTime)
+                            .atZone(zoneId)
+                            .toLocalDateTime()
+                    val endDateTime = lastTrip.endDate?.toInstant()
+                        ?.atZone(zoneId)
+                        ?.toLocalDateTime()
+                        ?: lastTrip.endTime?.let {
+                            Instant.ofEpochMilli(it).atZone(zoneId).toLocalDateTime()
+                        }
+                        ?: startDateTime
+                    periodStartDateTime = startDateTime
+                    periodEndDateTime = endDateTime
+                } else {
+                    periodStartDateTime = startDate.atStartOfDay()
+                    periodEndDateTime = endDate.atStartOfDay()
+                }
+
+                val reportEntity = NLGReportEntity(
+                    id = UUID.randomUUID(),
+                    userId = driverProfileId,
+                    startDate = periodStartDateTime,
+                    endDate = periodEndDateTime,
+                    tripId = lastTripId,
+                    reportText = finalReply,
+                    createdDate = createdDateTime,
+                    sync = false
                 )
 
-                nlgReportApiRepository.createNLGReport(
-                    NLGReportEntity(
-                        id = UUID.randomUUID(),
-                        userId = driverProfileId,
-                        tripId = lastTripId,
-                        reportText = finalReply,
-                        startDate =periodOfReport?.first?.atStartOfDay() ,
-                        endDate =periodOfReport?.second?.atStartOfDay() ,
-                        createdDate = createdDateTime,
-                        sync = true
-                    ).toDomainModel().toNLGReportCreate()
-                )
+                runCatching { nlgReportRepository.insertReport(reportEntity) }
+                    .onFailure { error ->
+                        Log.e("ChatGPTViewModel", "Failed to persist report locally", error)
+                    }
+
+                when (val uploadResult = nlgReportApiRepository.createNLGReport(
+                    reportEntity.toDomainModel().toNLGReportCreate()
+                )) {
+                    is Resource.Success -> {
+                        nlgReportRepository.updateReport(reportEntity.copy(sync = true))
+                    }
+                    is Resource.Error -> {
+                        Log.e(
+                            "ChatGPTViewModel",
+                            "Failed to upload report; keeping local copy: ${uploadResult.message}"
+                        )
+                        notificationManager.displayNotification(
+                            "NLG Report Upload",
+                            "Upload failed: ${uploadResult.message ?: "Unknown error"}. Will retry."
+                        )
+                    }
+                    Resource.Loading -> {
+                        Log.d("ChatGPTViewModel", "Report upload in progress for ${reportEntity.id}")
+                    }
+                }
             } else {
                 _response.value = cachedReport ?: "No cached report available."
             }

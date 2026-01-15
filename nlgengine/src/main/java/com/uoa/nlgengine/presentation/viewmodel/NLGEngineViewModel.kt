@@ -8,6 +8,7 @@ import com.uoa.core.database.repository.LocationRepository
 import com.uoa.core.database.repository.ReportStatisticsRepository
 import com.uoa.core.database.repository.RoadRepository
 import com.uoa.core.database.repository.TripDataRepository
+import com.uoa.core.database.repository.TripSummaryRepository
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
 import com.uoa.core.model.LocationData
 import com.uoa.core.model.UnsafeBehaviourModel
@@ -20,7 +21,6 @@ import com.uoa.core.network.apiservices.OSMSpeedLimitApiService
 import com.uoa.nlgengine.data.model.UnsafeBehaviorChartEntry
 import com.uoa.core.utils.GetLastInsertedUnsafeBehaviourUseCase
 import com.uoa.core.utils.PeriodType
-import com.uoa.core.utils.PeriodUtils
 import com.uoa.core.utils.toEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -32,9 +32,11 @@ import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Date
 import java.util.UUID
 import com.uoa.core.utils.computeReportStatistics
 import javax.inject.Inject
+import kotlin.math.roundToInt
 
 @HiltViewModel
 class NLGEngineViewModel @Inject constructor(
@@ -46,6 +48,7 @@ class NLGEngineViewModel @Inject constructor(
     private val unsafeBehaviourRepository: UnsafeBehaviourRepository,
     private val osmSpeedLimitApiService: OSMSpeedLimitApiService,
     private val roadRepository: RoadRepository,
+    private val tripSummaryRepository: TripSummaryRepository,
 ) : ViewModel() {
 
     private val _isLoading = MutableStateFlow(false)
@@ -57,11 +60,20 @@ class NLGEngineViewModel @Inject constructor(
     private val _summaryDataByDateHour = MutableStateFlow<Map<DateHourKey, HourlySummary>>(emptyMap())
     val summaryDataByDateHour: StateFlow<Map<DateHourKey, HourlySummary>> get() = _summaryDataByDateHour
 
+    fun clearPrompt() {
+        _generatedPrompt.value = ""
+    }
+
     /**
      * Returns cached report statistics. For LAST_TRIP, it checks whether the last inserted trip exists;
      * if so, it fetches the corresponding report and converts it to the domain model only if non-null.
      */
-    suspend fun getCachedReportStats(periodType: PeriodType): ReportStatistics? {
+    suspend fun getCachedReportStats(
+        periodType: PeriodType,
+        driverProfileId: UUID,
+        startDate: java.time.LocalDate,
+        endDate: java.time.LocalDate
+    ): ReportStatistics? {
         return if (periodType == PeriodType.LAST_TRIP) {
             val tripId = tripRepository.getLastInsertedTrip()?.id
             if (tripId != null) {
@@ -77,13 +89,7 @@ class NLGEngineViewModel @Inject constructor(
                 null
             }
         } else {
-            val periodOfReport = PeriodUtils.getReportingPeriod(periodType)
-            if (periodOfReport != null) {
-                reportStatisticsRepository.getReportsBetweenDates(periodOfReport.first, periodOfReport.second)
-            } else {
-                Log.w("NLGEngineViewModel", "No reporting period found for periodType: $periodType")
-                null
-            }
+            reportStatisticsRepository.getReportsBetweenDates(driverProfileId, startDate, endDate)
         }
     }
 
@@ -97,16 +103,32 @@ class NLGEngineViewModel @Inject constructor(
         periodType: PeriodType,
         startDate: java.time.LocalDate,
         endDate: java.time.LocalDate,
+        driverProfileId: UUID
     ): String {
         _isLoading.value = true
         return withContext(Dispatchers.IO) {
             try {
-//                val cachedReportStats = getCachedReportStats(periodType)
-                val cachedReportStats = withContext(Dispatchers.IO) {
-                    getCachedReportStats(periodType)
-                }
-                val prompt = if (cachedReportStats == null) {
-                    val reportStatistics = computeReportStatistics(
+                val cachedReportStats = getCachedReportStats(periodType, driverProfileId, startDate, endDate)
+                val shouldRefresh = shouldRefreshCachedReportStats(
+                    periodType,
+                    unsafeBehaviours,
+                    startDate,
+                    endDate,
+                    driverProfileId,
+                    cachedReportStats
+                )
+
+                val reportStatistics = if (!shouldRefresh && cachedReportStats != null) {
+                    cachedReportStats
+                } else {
+                    if (periodType != PeriodType.LAST_TRIP) {
+                        reportStatisticsRepository.deleteReportStatisticsByDriverAndDateRange(
+                            driverProfileId,
+                            startDate,
+                            endDate
+                        )
+                    }
+                    computeReportStatistics(
                         context,
                         osmRoadApiService,
                         osmSpeedLimitApiService,
@@ -117,19 +139,33 @@ class NLGEngineViewModel @Inject constructor(
                         unsafeBehaviours,
                         tripRepository,
                         locationRepository,
-                        lastInsertedUnsafeBehaviourUseCase
+                        lastInsertedUnsafeBehaviourUseCase,
+                        tripSummaryRepository
                     )
-                    if (reportStatistics == null) {
-                        Log.e("NLGEngineViewModel", "Report statistics computation returned null")
-                        return@withContext "Unable to generate prompt due to missing report statistics."
-                    }
-                    // Cache the processed report statistics
-                    val reportStat = reportStatistics.copy(processed = true)
-                    reportStatisticsRepository.insertReportStatistics(reportStat)
-                    buildPrompt(context, unsafeBehaviours, periodType, reportStatistics)
-                } else {
-                    buildPrompt(context, unsafeBehaviours, periodType, cachedReportStats)
                 }
+
+                if (reportStatistics == null) {
+                    Log.e("NLGEngineViewModel", "Report statistics computation returned null")
+                    return@withContext "Unable to generate prompt due to missing report statistics."
+                }
+
+                val alcoholProbability = if (periodType == PeriodType.LAST_TRIP) {
+                    getTripAlcoholProbability(reportStatistics.tripId)
+                } else {
+                    null
+                }
+
+                val prompt = buildPrompt(
+                    context,
+                    unsafeBehaviours,
+                    periodType,
+                    reportStatistics,
+                    alcoholProbability
+                )
+
+                val reportStat = reportStatistics.copy(processed = true)
+                reportStatisticsRepository.insertReportStatistics(reportStat)
+
                 prompt
             } catch (e: Exception) {
                 Log.e("NLGEngineViewModel", "Error generating prompt", e)
@@ -138,6 +174,51 @@ class NLGEngineViewModel @Inject constructor(
                 _isLoading.value = false
             }
         }
+    }
+
+    private suspend fun shouldRefreshCachedReportStats(
+        periodType: PeriodType,
+        unsafeBehaviours: List<UnsafeBehaviourModel>,
+        startDate: java.time.LocalDate,
+        endDate: java.time.LocalDate,
+        driverProfileId: UUID,
+        cachedReportStats: ReportStatistics?
+    ): Boolean {
+        if (periodType == PeriodType.LAST_TRIP) {
+            val lastTripId = tripRepository.getLastInsertedTrip()?.id
+            if (lastTripId != null && cachedReportStats?.tripId != lastTripId) {
+                return true
+            }
+        }
+
+        if (unsafeBehaviours.any { !it.processed }) {
+            return true
+        }
+
+        if (periodType != PeriodType.LAST_TRIP && cachedReportStats != null) {
+            val (rangeStart, rangeEnd) = buildTripSummaryDateRange(startDate, endDate)
+            val summaryCount = tripSummaryRepository.countTripSummariesByDriverAndDateRange(
+                driverProfileId,
+                rangeStart,
+                rangeEnd
+            )
+            if (summaryCount != cachedReportStats.numberOfTrips) {
+                return true
+            }
+            return false
+        }
+
+        return cachedReportStats == null
+    }
+
+    private fun buildTripSummaryDateRange(
+        startDate: java.time.LocalDate,
+        endDate: java.time.LocalDate
+    ): Pair<Date, Date> {
+        val zoneId = ZoneId.systemDefault()
+        val startInstant = startDate.atStartOfDay(zoneId).toInstant()
+        val endInstant = endDate.plusDays(1).atStartOfDay(zoneId).toInstant().minusMillis(1)
+        return Pair(Date.from(startInstant), Date.from(endInstant))
     }
 
 
@@ -313,7 +394,8 @@ class NLGEngineViewModel @Inject constructor(
         context: Context,
         unsafeBehaviours: List<UnsafeBehaviourModel>,
         periodType: PeriodType,
-        reportStatistics: ReportStatistics
+        reportStatistics: ReportStatistics,
+        alcoholProbability: Float?
     ): String {
         val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
         val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
@@ -340,6 +422,7 @@ class NLGEngineViewModel @Inject constructor(
 
         return buildString {
             append("$periodText\n\n")
+            append("Note: If alcohol probability is provided in the statistics, cite the percentage.\n")
             append(
                 "You are a friendly one-to-one driving safety coach for West Africa. " +
                         "Write a complete 150–180 word report addressed to this specific driver. " +
@@ -375,6 +458,10 @@ class NLGEngineViewModel @Inject constructor(
                     append("Avg Speed: ${"%.2f".format(reportStatistics.lastTripAverageSpeed)} km/h\n")
                     append("Start: ${reportStatistics.lastTripStartLocation}, End: ${reportStatistics.lastTripEndLocation}\n")
                     append("Alcohol Influence: ${reportStatistics.lastTripInfluence}\n")
+                    alcoholProbability?.let { probability ->
+                        val percent = (probability * 100).roundToInt()
+                        append("Alcohol Influence Probability: $percent%\n")
+                    }
                 }
                 else -> {
                     append("Trips: ${reportStatistics.numberOfTrips}, ")
@@ -394,6 +481,12 @@ class NLGEngineViewModel @Inject constructor(
         }
     }
 
+    private suspend fun getTripAlcoholProbability(tripId: UUID?): Float? {
+        if (tripId == null) {
+            return null
+        }
+        return tripRepository.getTripById(tripId)?.alcoholProbability
+    }
 
 
     /**
@@ -417,12 +510,20 @@ class NLGEngineViewModel @Inject constructor(
         unsafeBehaviours: List<UnsafeBehaviourModel>,
         periodType: PeriodType,
         startDate: java.time.LocalDate,
-        endDate: java.time.LocalDate
+        endDate: java.time.LocalDate,
+        driverProfileId: UUID
     ) {
         _isLoading.value = true
         viewModelScope.launch {
             try {
-                val prompt = generatePrompt(context, unsafeBehaviours, periodType, startDate, endDate)
+                val prompt = generatePrompt(
+                    context,
+                    unsafeBehaviours,
+                    periodType,
+                    startDate,
+                    endDate,
+                    driverProfileId
+                )
                 _generatedPrompt.value = prompt
 
                 val unsafeBehavioursCopyList = unsafeBehaviours.map { it.copy(processed = true).toEntity() }

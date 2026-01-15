@@ -4,10 +4,12 @@ import android.util.Log
 import com.uoa.core.database.entities.CauseEntity
 import com.uoa.core.database.entities.UnsafeBehaviourEntity
 import com.uoa.core.database.repository.AIModelInputRepository
-import com.uoa.core.database.repository.CauseRepository
+import com.uoa.core.database.daos.TripFeatureStateDao
+import com.uoa.core.database.repository.LocationRepository
 import com.uoa.core.database.repository.RawSensorDataRepository
+import com.uoa.core.database.repository.TripDataRepository
+import com.uoa.core.database.repository.CauseRepository
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
-import com.uoa.core.mlclassifier.MinMaxValuesLoader
 import com.uoa.core.mlclassifier.OnnxModelRunner
 import com.uoa.core.utils.toEntity
 import com.uoa.core.mlclassifier.data.InferenceResult
@@ -19,100 +21,281 @@ import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.first
+import android.hardware.Sensor
+import com.uoa.core.database.entities.AIModelInputsEntity
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
+import java.util.Calendar
+import java.util.TimeZone
+import javax.inject.Named
 
 // RunClassificationUseCase.kt
 import kotlinx.coroutines.Dispatchers
 
 class RunClassificationUseCase @Inject constructor(
     private val onnxModelRunner: OnnxModelRunner,
-    private val aiModelInputRepository: AIModelInputRepository
+    private val aiModelInputRepository: AIModelInputRepository,
+    private val tripRepository: TripDataRepository,
+    private val locationRepository: LocationRepository,
+    private val rawSensorDataRepository: RawSensorDataRepository,
+    private val tripFeatureStateDao: TripFeatureStateDao,
+    @Named("TrainingTimeZone") private val trainingTimeZone: TimeZone
 ) {
 
     suspend fun invoke(tripId: UUID): InferenceResult {
         Log.i("Trip", "Classifier invoked for tripId: $tripId")
 
         return withContext(Dispatchers.IO) {
-            val intermediateStats = aiModelInputRepository.getAiModelInputInputByTripId(tripId)
+            val trip = tripRepository.getTripById(tripId)
+                ?: return@withContext InferenceResult.NotEnoughData
+            val locations = locationRepository.getLocationDataByTripId(tripId)
+                .sortedBy { it.timestamp }
+            val rawSensorsWithLocation = rawSensorDataRepository
+                .getRawSensorDataByTripId(tripId)
+                .first()
+            val rawSensorsAll = rawSensorDataRepository
+                .getSensorDataByTripId(tripId)
+                .first()
+            val featureState = tripFeatureStateDao.getByTripId(tripId)
 
-            // Mark them as processed
-            val intermediateStatsCopy = intermediateStats.map { aiModelInput ->
-                aiModelInput.copy(processed = true)
-            }
-            intermediateStatsCopy.forEach {
-                aiModelInputRepository.updateAiModelInput(it.toEntity())
+            Log.d(
+                "Trip",
+                "Classification data for tripId=$tripId: locations=${locations.size}, " +
+                    "rawSensorsWithLocation=${rawSensorsWithLocation.size}, " +
+                    "rawSensorsAll=${rawSensorsAll.size}"
+            )
+
+            val accelYValues = rawSensorsAll
+                .filter {
+                    it.sensorType == Sensor.TYPE_ACCELEROMETER ||
+                        it.sensorTypeName.contains("accel", ignoreCase = true)
+                }
+                .mapNotNull { sensor ->
+                    sensor.values.getOrNull(1)?.takeIf { it.isFinite() }
+                }
+
+            val speedValues = locations.mapNotNull { location ->
+                location.speed?.takeIf { it.isFinite() && it >= 0.0 }
             }
 
-            // If there's no data, bail out
-            if (intermediateStats.isEmpty()) {
+            val courseValues = buildCourseValues(locations)
+            val stateSummary = featureState?.let {
+                "state(accel=${it.accelCount}, speed=${it.speedCount}, course=${it.courseCount})"
+            } ?: "state=none"
+
+            Log.d(
+                "Trip",
+                "Feature inputs: accelY=${accelYValues.size}, speed=${speedValues.size}, " +
+                    "course=${courseValues.size}, $stateSummary"
+            )
+
+            val hasStateData = featureState?.let {
+                it.accelCount > 0 || it.speedCount > 1 || it.courseCount > 1
+            } ?: false
+            if (accelYValues.isEmpty() && locations.isEmpty() && !hasStateData) {
+                Log.w("Trip", "Not enough data: no accel Y and no locations for tripId=$tripId")
                 return@withContext InferenceResult.NotEnoughData
             }
 
-            val totalDuration = intermediateStats.sumOf { it.endTimestamp - it.startTimestamp }
-            if (totalDuration <= 0) {
-                // If durations are zero or negative, also bail out
-                return@withContext InferenceResult.NotEnoughData
+            val (dayOfWeekMean, hourOfDayMean) = extractTimeFeatures(trip.startTime)
+            val accelMean = if (accelYValues.isNotEmpty()) {
+                calculateMean(accelYValues)
+            } else {
+                if (featureState != null && featureState.accelCount > 0) {
+                    Log.d("Trip", "Using trip_feature_state accel mean for tripId=$tripId")
+                }
+                featureState?.accelMean?.toFloat() ?: 0.0f
             }
-
-            // Weighted calculations
-            val weightedHourOfDayMean =
-                intermediateStats.sumOf {
-                    it.hourOfDayMean * (it.endTimestamp - it.startTimestamp)
-                } / totalDuration
-
-            val weightedDayOfWeekMean =
-                intermediateStats.sumOf {
-                    // Force a Double so sumOf { Double } is used
-                    (it.dayOfWeekMean.toDouble() * (it.endTimestamp - it.startTimestamp))
-                } / totalDuration.toDouble()
-
-            val weightedSpeedStd =
-                intermediateStats.sumOf {
-                    (it.speedStd.toDouble() * (it.endTimestamp - it.startTimestamp))
-                } / totalDuration.toDouble()
-
-            val weightedAccelerationYMean =
-                intermediateStats.sumOf {
-                    (it.accelerationYOriginalMean.toDouble() * (it.endTimestamp - it.startTimestamp))
-                } / totalDuration.toDouble()
-            val weightedCourseStd =
-                intermediateStats.sumOf {
-                    it.courseStd.toDouble() * (it.endTimestamp - it.startTimestamp)
-                } / totalDuration.toDouble()
-
-            // Build the TripFeatures
+            val speedStd = if (speedValues.isNotEmpty()) {
+                calculateSampleStd(speedValues)
+            } else {
+                if (featureState != null && featureState.speedCount > 1) {
+                    Log.d("Trip", "Using trip_feature_state speed std for tripId=$tripId")
+                }
+                featureState?.let { calculateSampleStd(it.speedCount, it.speedM2) } ?: 0.0f
+            }
+            val courseStd = if (courseValues.isNotEmpty()) {
+                calculateSampleStd(courseValues)
+            } else {
+                if (featureState != null && featureState.courseCount > 1) {
+                    Log.d("Trip", "Using trip_feature_state course std for tripId=$tripId")
+                }
+                featureState?.let { calculateSampleStd(it.courseCount, it.courseM2) } ?: 0.0f
+            }
             val tripFeatures = TripFeatures(
-                hourOfDayMean = weightedHourOfDayMean.toFloat(),
-                dayOfWeekMean = weightedDayOfWeekMean.toFloat(),
-                speedStd = weightedSpeedStd.toFloat(),
-                courseStd = weightedCourseStd.toFloat(),
-                accelerationYOriginalMean = weightedAccelerationYMean.toFloat()
+                hourOfDayMean = hourOfDayMean,
+                dayOfWeekMean = dayOfWeekMean,
+                speedStd = speedStd,
+                courseStd = courseStd,
+                accelerationYOriginalMean = accelMean
             )
 
             Log.d("Trip", "Extracted Features: $tripFeatures")
 
-            // If any feature is NaN, we consider it "not enough data" scenario
-            if (
-                tripFeatures.hourOfDayMean.isNaN() ||
-                tripFeatures.dayOfWeekMean.isNaN() ||
-                tripFeatures.speedStd.isNaN()      ||
-                tripFeatures.courseStd.isNaN()     ||
-                tripFeatures.accelerationYOriginalMean.isNaN()
+            if (!tripFeatures.hourOfDayMean.isFinite() ||
+                !tripFeatures.dayOfWeekMean.isFinite() ||
+                !tripFeatures.speedStd.isFinite() ||
+                !tripFeatures.courseStd.isFinite() ||
+                !tripFeatures.accelerationYOriginalMean.isFinite()
             ) {
+                Log.w("Trip", "Not enough data: non-finite features for tripId=$tripId -> $tripFeatures")
                 return@withContext InferenceResult.NotEnoughData
             }
 
-            // Attempt model inference
-            try {
-                val isAlcoholInfluenced = onnxModelRunner.runInference(tripFeatures)
-                Log.i("Trip", "Inference result (boolean): $isAlcoholInfluenced")
+            aiModelInputRepository.deleteAiModelInputsByTripId(tripId)
 
-                // If model returns `true` => alcohol, else => no alcohol
-                InferenceResult.Success(isAlcoholInfluenced)
+            val driverProfileId = trip.driverPId
+            val endTimestamp = resolveTripEndTimestamp(trip, locations, rawSensorsAll)
+            val aiModelInputId = if (driverProfileId != null) {
+                val input = AIModelInputsEntity(
+                    id = UUID.randomUUID(),
+                    tripId = tripId,
+                    driverProfileId = driverProfileId,
+                    timestamp = endTimestamp,
+                    startTimestamp = trip.startTime,
+                    endTimestamp = endTimestamp,
+                    date = Date(trip.startTime),
+                    hourOfDayMean = tripFeatures.hourOfDayMean.toDouble(),
+                    dayOfWeekMean = tripFeatures.dayOfWeekMean,
+                    speedStd = tripFeatures.speedStd,
+                    courseStd = tripFeatures.courseStd,
+                    accelerationYOriginalMean = tripFeatures.accelerationYOriginalMean,
+                    processed = false,
+                    sync = false
+                )
+                aiModelInputRepository.insertAiModelInput(input)
+                input.id
+            } else {
+                Log.w("Trip", "Skipping AI model input store; missing driver id for $tripId")
+                null
+            }
+
+            try {
+                val inference = onnxModelRunner.runInference(tripFeatures)
+                Log.i(
+                    "Trip",
+                    "Inference result: influenced=${inference.isAlcoholInfluenced}, " +
+                        "probability=${inference.probability}"
+                )
+
+                if (aiModelInputId != null && driverProfileId != null) {
+                    val updatedInput = AIModelInputsEntity(
+                        id = aiModelInputId,
+                        tripId = tripId,
+                        driverProfileId = driverProfileId,
+                        timestamp = endTimestamp,
+                        startTimestamp = trip.startTime,
+                        endTimestamp = endTimestamp,
+                        date = Date(trip.startTime),
+                        hourOfDayMean = tripFeatures.hourOfDayMean.toDouble(),
+                        dayOfWeekMean = tripFeatures.dayOfWeekMean,
+                        speedStd = tripFeatures.speedStd,
+                        courseStd = tripFeatures.courseStd,
+                        accelerationYOriginalMean = tripFeatures.accelerationYOriginalMean,
+                        processed = true,
+                        sync = false
+                    )
+                    aiModelInputRepository.updateAiModelInput(updatedInput)
+                }
+
+                InferenceResult.Success(
+                    inference.isAlcoholInfluenced,
+                    inference.probability
+                )
             } catch (e: Exception) {
                 Log.e("Trip", "Error during model inference: ${e.message}", e)
                 InferenceResult.Failure(e)
             }
         }
+    }
+
+    private fun extractTimeFeatures(tripStartTimestamp: Long): Pair<Float, Float> {
+        val calendar = Calendar.getInstance(trainingTimeZone)
+        calendar.timeInMillis = tripStartTimestamp
+        val dayOfWeek = ((calendar.get(Calendar.DAY_OF_WEEK) + 5) % 7).toFloat()
+        val hourOfDay = calendar.get(Calendar.HOUR_OF_DAY).toFloat()
+        return dayOfWeek to hourOfDay
+    }
+
+    private fun buildCourseValues(locations: List<com.uoa.core.model.LocationData>): List<Double> {
+        if (locations.size < 2) {
+            return emptyList()
+        }
+        val values = ArrayList<Double>(locations.size - 1)
+        val sorted = locations.sortedBy { it.timestamp }
+        for (index in 1 until sorted.size) {
+            val prev = sorted[index - 1]
+            val curr = sorted[index]
+            if (!prev.latitude.isFinite() || !prev.longitude.isFinite()) {
+                continue
+            }
+            if (!curr.latitude.isFinite() || !curr.longitude.isFinite()) {
+                continue
+            }
+            val bearing = calculateBearing(prev.latitude, prev.longitude, curr.latitude, curr.longitude)
+            if (bearing.isFinite()) {
+                values.add(bearing)
+            }
+        }
+        return values
+    }
+
+    private fun calculateBearing(
+        prevLat: Double,
+        prevLon: Double,
+        currLat: Double,
+        currLon: Double
+    ): Double {
+        val lat1 = Math.toRadians(prevLat)
+        val lon1 = Math.toRadians(prevLon)
+        val lat2 = Math.toRadians(currLat)
+        val lon2 = Math.toRadians(currLon)
+
+        val dLon = lon2 - lon1
+        val x = sin(dLon) * cos(lat2)
+        val y = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
+
+        var bearing = atan2(x, y)
+        bearing = Math.toDegrees(bearing)
+        bearing = (bearing + 360) % 360
+        return bearing
+    }
+
+    private fun calculateSampleStd(values: List<Double>): Float {
+        if (values.size < 2) {
+            return 0.0f
+        }
+        val mean = values.average()
+        val variance = values.sumOf { (it - mean).pow(2) } / (values.size - 1)
+        return sqrt(variance).toFloat()
+    }
+
+    private fun calculateMean(values: List<Float>): Float {
+        if (values.isEmpty()) {
+            return 0.0f
+        }
+        return values.average().toFloat()
+    }
+
+    private fun calculateSampleStd(count: Int, m2: Double): Float {
+        if (count < 2) {
+            return 0.0f
+        }
+        return sqrt(m2 / (count - 1)).toFloat()
+    }
+
+    private fun resolveTripEndTimestamp(
+        trip: com.uoa.core.model.Trip,
+        locations: List<com.uoa.core.model.LocationData>,
+        rawSensors: List<com.uoa.core.database.entities.RawSensorDataEntity>
+    ): Long {
+        val locationEnd = locations.maxOfOrNull { it.timestamp }
+        val sensorEnd = rawSensors.maxOfOrNull { it.timestamp }
+        return listOfNotNull(trip.endTime, locationEnd, sensorEnd).maxOrNull() ?: trip.startTime
     }
 
 }

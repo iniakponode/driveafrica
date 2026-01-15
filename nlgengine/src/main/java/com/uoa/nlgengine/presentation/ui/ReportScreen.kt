@@ -17,7 +17,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,7 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.uoa.core.ui.DAAppTopNavBar
+import com.uoa.core.utils.ApiKeyUtils
 import com.uoa.core.utils.DateUtils
 import com.uoa.nlgengine.presentation.ui.theme.NLGEngineTheme
 import com.uoa.nlgengine.presentation.viewmodel.LocalUnsafeBehavioursViewModel
@@ -63,34 +62,25 @@ fun ReportScreen(
 
 
     NLGEngineTheme {
-        Scaffold(
-            topBar = {
-                DAAppTopNavBar(
-                    navigateBack = { navController.navigateUp() },
-                    navigateHome = { navController.navigate("homeScreen") }
-                )
-            }
-        ) { paddingValues ->
-            // Background image or gradient
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.surface
-                            )
+        // Background image or gradient
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.surface
                         )
                     )
-                    .padding(paddingValues)
+                )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
                     Spacer(modifier = Modifier.height(10.dp))
 
                     // Header with icon
@@ -201,11 +191,13 @@ fun ReportScreen(
 //                    )
 //
 //                    Spacer(modifier = Modifier.height(16.dp))
-                }
-            }
-        }
-    }
-}
+                } // Column inside Card
+            } // Card container
+        } // Column
+    } // Box
+//} // NLGEngineTheme
+
+//} // ReportScreen
 
 
 
@@ -226,6 +218,16 @@ fun ReportScreenRoute(
 
    val sDate= DateUtils.convertToLocalDate(startDate)
     val eDate = DateUtils.convertToLocalDate(endDate)
+
+    if (!ApiKeyUtils.hasChatGptKey()) {
+        ReportScreen(
+            navController = navController,
+            reportContent = "Reports are disabled until CHAT_GPT_API_KEY is set in local.properties.",
+            reportPeriod = Pair(sDate, eDate),
+            periodType = periodType
+        )
+        return
+    }
 
     // Observe the unsafe behaviours and other data from the view model
     val unsafeBehaviours by unsafeBehavioursViewModel.unsafeBehaviours.collectAsState()
@@ -249,6 +251,8 @@ fun ReportScreenRoute(
 
     // Fetch the unsafe behaviours when the screen loads
     LaunchedEffect(periodType, startDate, endDate) {
+        chatGPTViewModel.clearResponse()
+        nlgEngineViewModel.clearPrompt()
         unsafeBehavioursViewModel.fetchLastInsertedUnsafeBehaviour()
         when (periodType) {
             PeriodType.TODAY, PeriodType.THIS_WEEK, PeriodType.LAST_WEEK, PeriodType.CUSTOM_PERIOD -> {
@@ -269,19 +273,25 @@ fun ReportScreenRoute(
     }
 
     // React to changes in unsafeBehaviours
-    LaunchedEffect(unsafeBehaviours) {
-        if (unsafeBehaviours.isNotEmpty()) {
-//            Log.d("ReportScreen", "Unsafe behaviours retrieved: ${unsafeBehaviours.size} records")
+    val driverProfileId = remember {
+        PreferenceUtils.getDriverProfileId(appContext)
+    }
 
-            // Call the ViewModel function to generate the prompt
-
-            // Convert to kotlinx.datetime.LocalDate
-
-
-
-            nlgEngineViewModel.generatePromptForBehaviours(appContext,unsafeBehaviours, periodType, sDate,eDate)
-        } else {
-            Log.i("ReportScreen", "No unsafe behaviours found for the given criteria.")
+    LaunchedEffect(isLoadingBehaviours) {
+        if (!isLoadingBehaviours) {
+            if (unsafeBehaviours.isEmpty()) {
+                Log.i("ReportScreen", "No unsafe behaviours found for the given criteria.")
+            }
+            driverProfileId?.let { profileId ->
+                nlgEngineViewModel.generatePromptForBehaviours(
+                    appContext,
+                    unsafeBehaviours,
+                    periodType,
+                    sDate,
+                    eDate,
+                    profileId
+                )
+            }
         }
     }
 
@@ -290,8 +300,14 @@ fun ReportScreenRoute(
     LaunchedEffect(generatedPrompt) {
         if (generatedPrompt.isNotEmpty()) {
 //            Log.d("ReportScreen", "Generated Prompt: $generatedPrompt")
-            PreferenceUtils.getDriverProfileId(appContext)?.let { profileId ->
-                chatGPTViewModel.promptChatGPTForResponse(generatedPrompt, periodType, profileId)
+            driverProfileId?.let { profileId ->
+                chatGPTViewModel.promptChatGPTForResponse(
+                    generatedPrompt,
+                    periodType,
+                    profileId,
+                    sDate,
+                    eDate
+                )
             }
         }
     }
@@ -301,19 +317,13 @@ fun ReportScreenRoute(
 //    val databaseCheckedDataLoadedReportGenerated=!isGeneratingSummary && !isLoadingBehaviours && !isGeneratingPrompt && unsafeBehaviours.isNotEmpty() && generatedPrompt.isNotEmpty() && reportContent.isNotEmpty()
 //    val databaseCheckedNoDataNoReport=!isLoadingBehaviours && unsafeBehaviours.isEmpty() && !isGeneratingPrompt && generatedPrompt.isEmpty() && reportContent.isEmpty()
 
-    val isDataLoadedAndReportGenerated by remember(isGeneratingSummary, isLoadingBehaviours, isGeneratingPrompt, unsafeBehaviours, generatedPrompt, reportContent) {
-        mutableStateOf(
-            !isGeneratingSummary && !isLoadingBehaviours && !isGeneratingPrompt &&
-                    unsafeBehaviours.isNotEmpty() && generatedPrompt.isNotEmpty() && reportContent.isNotEmpty()
-        )
-    }
+    val isDataLoadedAndReportGenerated =
+        !isGeneratingSummary && !isLoadingBehaviours && !isGeneratingPrompt &&
+            generatedPrompt.isNotEmpty() && reportContent.isNotEmpty()
 
-    val isNoDataAndNoReport by remember(isLoadingBehaviours, unsafeBehaviours, isGeneratingPrompt, generatedPrompt, reportContent) {
-        mutableStateOf(
-            !isLoadingBehaviours && unsafeBehaviours.isEmpty() &&
-                    !isGeneratingPrompt && generatedPrompt.isEmpty() && reportContent.isEmpty()
-        )
-    }
+    val isNoDataAndNoReport =
+        !isLoadingBehaviours && !isGeneratingPrompt &&
+            generatedPrompt.isEmpty() && reportContent.isEmpty()
     if (isDataLoadedAndReportGenerated) {
         ReportScreen(
             navController = navController,

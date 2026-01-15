@@ -1,43 +1,17 @@
 package com.uoa.ml.data.repository
 
-import android.app.Application
-import android.content.Context
-import android.hardware.Sensor
-import android.util.Log
-import android.util.TimeUtils
 import com.uoa.core.database.daos.AIModelInputDao
 import com.uoa.core.database.entities.AIModelInputsEntity
 import com.uoa.core.database.repository.AIModelInputRepository
-import com.uoa.core.mlclassifier.OnnxModelRunner
-import com.uoa.core.mlclassifier.MinMaxValuesLoader
-import com.uoa.core.mlclassifier.data.TripFeatures
 import com.uoa.core.model.AIModelInputs
 import com.uoa.core.model.LocationData
 import com.uoa.core.model.RawSensorData
-import com.uoa.core.utils.PreferenceUtils
-import com.uoa.core.utils.toEntity
-import com.uoa.ml.utils.IncrementalAccelerationYMean
-import com.uoa.ml.utils.IncrementalCourseStd
-import com.uoa.ml.utils.IncrementalDayOfWeekMean
-import com.uoa.ml.utils.IncrementalHourOfDayMean
-import com.uoa.ml.utils.IncrementalSpeedStd
-import java.time.Instant
-import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
 
 class AIModelInputRepositoryImpl @Inject constructor(
-    private val aiModelInputDao: AIModelInputDao,
-    private val incrementalHourOfDayMeanProvider: IncrementalHourOfDayMean,
-    private val incrementalDayOfWeekMeanProvider: IncrementalDayOfWeekMean,
-    private val incrementalSpeedStdProvider: IncrementalSpeedStd,
-    private val incrementalAccelerationYMeanProvider: IncrementalAccelerationYMean,
-    private val incrementalCourseStdProvider: IncrementalCourseStd,
-    private val minMaxValuesLoader: MinMaxValuesLoader,
-    private val context: Context
+    private val aiModelInputDao: AIModelInputDao
 ) : AIModelInputRepository {
-
-    var windowStartTime=System.currentTimeMillis()
 
     override suspend fun insertAiModelInput(aiModelInput: AIModelInputsEntity) {
         aiModelInputDao.insertAiModelInput(aiModelInput)
@@ -67,6 +41,10 @@ class AIModelInputRepositoryImpl @Inject constructor(
         aiModelInputDao.deleteAIModelInputsByIds(ids)
     }
 
+    override suspend fun deleteAiModelInputsByTripId(tripId: UUID) {
+        aiModelInputDao.deleteAiModelInputsByTripId(tripId)
+    }
+
     override suspend fun getAiModelInputInputByTripId(tripId: UUID): List<AIModelInputs> {
         return aiModelInputDao.getAiModelInputsByTripId(tripId)
     }
@@ -84,97 +62,6 @@ class AIModelInputRepositoryImpl @Inject constructor(
 
 
     override suspend fun processDataForAIModelInputs(sensorData: RawSensorData, location: LocationData, tripId:UUID) {
-        if (sensorData.locationId != null) {
-            // Update incremental calculators
-            incrementalHourOfDayMeanProvider.addTimestamp(sensorData.timestamp)
-            incrementalDayOfWeekMeanProvider.addTimestamp(sensorData.timestamp)
-            location.speed?.toFloat()?.let { speed ->
-                incrementalSpeedStdProvider.addSpeed(speed)
-            }
-
-            if (sensorData.sensorType == Sensor.TYPE_ACCELEROMETER) {
-                val accelerationY = sensorData.values.getOrNull(1) ?: return
-                incrementalAccelerationYMeanProvider.addAccelerationY(accelerationY)
-            }
-
-            incrementalCourseStdProvider.addSensorData(sensorData.toEntity())
-
-            // Check for window boundary (adjust window size as needed)
-            val currentTime = System.currentTimeMillis()
-            if (currentTime - windowStartTime >= 5 * 60 * 1000) {
-                // Calculate and store trip features
-                val tripFeatures = calculateTripFeatures(
-                    incrementalHourOfDayMeanProvider,
-                    incrementalDayOfWeekMeanProvider,
-                    incrementalSpeedStdProvider,
-                    incrementalCourseStdProvider,
-                    incrementalAccelerationYMeanProvider,
-                    minMaxValuesLoader
-                )
-
-                // Store trip features in the database
-                val timestamp = Instant.now().toEpochMilli()
-                val driverId = PreferenceUtils.getDriverProfileId(context) ?: return
-                val aiModelInputs= AIModelInputsEntity(
-                    id= UUID.randomUUID(),
-                    tripId= tripId,
-                    driverProfileId = driverId,
-                    timestamp=System.currentTimeMillis().toLong(),
-                    startTimestamp=System.currentTimeMillis().toLong(),
-                    endTimestamp=System.currentTimeMillis().toLong(),
-                    date = Date(timestamp),
-                    hourOfDayMean=tripFeatures.hourOfDayMean.toDouble(),
-                    dayOfWeekMean=tripFeatures.dayOfWeekMean,
-                    speedStd = tripFeatures.speedStd,
-                    courseStd=tripFeatures.courseStd,
-                    accelerationYOriginalMean=tripFeatures.accelerationYOriginalMean
-                )
-                aiModelInputDao.insertAiModelInput(aiModelInputs)
-
-//                // Run inference and handle result
-//                val inferenceResult = try {
-//                    onnxModelRunner.runInference(tripFeatures)
-//                } catch (e: Exception) {
-//                    Log.e("Trip", "Error during model inference: ${e.message}", e)
-//                    // Handle error, e.g., log, retry, notify user
-//                }
-
-                Log.d("Trip", "Extracted Features--:\n" +
-                        "SpeedStd: ${tripFeatures.speedStd},\n" +
-                        "CourseStd: ${tripFeatures.courseStd}\n" +
-                        "accelerationYOriginalMean: ${tripFeatures.accelerationYOriginalMean}\n" +
-                        "Hours of Day: ${tripFeatures.hourOfDayMean}\n" +
-                        "Day of Week: ${tripFeatures.dayOfWeekMean}")
-//                Log.i("Trip", "Inference result: $inferenceResult")
-
-                // Reset incremental calculators for the next window
-                incrementalHourOfDayMeanProvider.reset()
-                incrementalDayOfWeekMeanProvider.reset()
-                incrementalSpeedStdProvider.reset()
-                incrementalAccelerationYMeanProvider.reset()
-                incrementalCourseStdProvider.reset()
-
-                windowStartTime = currentTime
-            }
-        }
+        // Trip-level aggregation happens at trip end; per-sample processing is intentionally skipped.
     }
-
-    private fun calculateTripFeatures(
-        hourOfDayMeanCalc: IncrementalHourOfDayMean,
-        dayOfWeekMeanCalc: IncrementalDayOfWeekMean,
-        speedStdCalc: IncrementalSpeedStd,
-        courseStdCalc: IncrementalCourseStd,
-        accelerationYMeanCalc: IncrementalAccelerationYMean,
-        minMaxValuesLoader: MinMaxValuesLoader
-    ): TripFeatures {
-
-        return TripFeatures(
-            hourOfDayMean = hourOfDayMeanCalc.getNormalizedMean(minMaxValuesLoader),
-            dayOfWeekMean = dayOfWeekMeanCalc.getNormalizedMean(minMaxValuesLoader),
-            speedStd = speedStdCalc.getNormalizedStd(),
-            courseStd = courseStdCalc.getNormalizedStd(),
-            accelerationYOriginalMean = accelerationYMeanCalc.getNormalizedMean()
-        )
-    }
-
 }

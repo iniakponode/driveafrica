@@ -1,7 +1,5 @@
 package com.uoa.ml.presentation.di
 
-import com.uoa.core.database.repository.LocationRepository
-import com.uoa.core.mlclassifier.MinMaxValuesLoader
 import com.uoa.ml.utils.IncrementalAccelerationYMean
 import com.uoa.ml.utils.IncrementalCourseStd
 import com.uoa.ml.utils.IncrementalDayOfWeekMean
@@ -26,40 +24,34 @@ object CalculatorModule {
 
     @Provides
     fun provideIncrementalCourseStd(
-        minMaxValuesLoader: MinMaxValuesLoader,
-        locationRepo: LocationRepository
     ): IncrementalCourseStd {
-        return IncrementalCourseStd(minMaxValuesLoader, locationRepo)
+        return IncrementalCourseStd()
     }
 
     @Provides
     fun provideIncrementalSpeedStd(
-        minMaxValuesLoader: MinMaxValuesLoader
     ): IncrementalSpeedStd {
-        return IncrementalSpeedStd(minMaxValuesLoader)
+        return IncrementalSpeedStd()
     }
 
     @Provides
     fun provideIncrementalAccelerationYMean(
-        minMaxValuesLoader: MinMaxValuesLoader
     ): IncrementalAccelerationYMean {
-        return IncrementalAccelerationYMean(minMaxValuesLoader)
+        return IncrementalAccelerationYMean()
     }
 
     @Provides
     fun provideIncrementalHourOfDayMean(
-        @Named("TrainingTimeZone") trainingTimeZone: TimeZone,
-        minMaxValuesLoader: MinMaxValuesLoader
+        @Named("TrainingTimeZone") trainingTimeZone: TimeZone
     ): IncrementalHourOfDayMean {
-        return IncrementalHourOfDayMean(trainingTimeZone, minMaxValuesLoader)
+        return IncrementalHourOfDayMean(trainingTimeZone)
     }
 
     @Provides
     fun provideIncrementalDayOfWeekMean(
-        @Named("TrainingTimeZone") trainingTimeZone: TimeZone,
-        minMaxValuesLoader: MinMaxValuesLoader
+        @Named("TrainingTimeZone") trainingTimeZone: TimeZone
     ): IncrementalDayOfWeekMean {
-        return IncrementalDayOfWeekMean(trainingTimeZone, minMaxValuesLoader)
+        return IncrementalDayOfWeekMean(trainingTimeZone)
     }
 
 

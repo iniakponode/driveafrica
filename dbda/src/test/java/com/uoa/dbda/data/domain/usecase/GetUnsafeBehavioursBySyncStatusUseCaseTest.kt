@@ -33,6 +33,7 @@ class GetUnsafeBehavioursBySyncStatusUseCaseTest {
     @Test
     fun testExecute() = runTest {
         val synced = false
+        val updatedAt = Date(0)
         val expected = listOf(
             UnsafeBehaviourModel(
                 id = UUID.randomUUID(),
@@ -43,7 +44,7 @@ class GetUnsafeBehavioursBySyncStatusUseCaseTest {
                 severity = 5.0f,
                 timestamp = System.currentTimeMillis(),
                 date = Date(),
-                updatedAt = null,
+                updatedAt = updatedAt,
                 updated = false,
                 sync = false,
 

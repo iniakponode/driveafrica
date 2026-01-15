@@ -3,19 +3,17 @@ package com.uoa.driverprofile.presentation.viewmodel
 import android.app.Application
 import android.content.Context
 import android.util.Log
+import android.util.Patterns
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.uoa.core.apiServices.models.driverProfile.DriverProfileCreate
-import com.uoa.core.apiServices.services.driverProfileApiService.DriverProfileApiRepository
+import com.uoa.core.apiServices.models.driverProfile.DriverProfileResponse
+import com.uoa.core.apiServices.workManager.scheduleDataUploadWork
 import com.uoa.core.database.entities.DriverProfileEntity
+import com.uoa.core.utils.Constants.Companion.DRIVER_EMAIL_ID
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
-import com.uoa.core.utils.Resource
-//import com.uoa.core.database.entities.EmbeddingEntity
-//import com.uoa.core.nlg.repository.EmbeddingUtilsRepository
-//import com.uoa.core.nlg.RAGEngine
-//import com.uoa.core.utils.EmbeddingUtils.serializeEmbedding
+import com.uoa.core.utils.SecureCredentialStorage
 import com.uoa.driverprofile.R
 import com.uoa.driverprofile.domain.usecase.DeleteDriverProfileByEmailUseCase
 import com.uoa.driverprofile.domain.usecase.GetDriverProfileByEmailUseCase
@@ -35,11 +33,7 @@ class DriverProfileViewModel @Inject constructor(
     private val insertDriverProfileUseCase: InsertDriverProfileUseCase,
     private val getDriverProfileByEmailUseCase: GetDriverProfileByEmailUseCase,
     private val deleteDriverProfileByEmailUseCase: DeleteDriverProfileByEmailUseCase,
-//    private val driverProfileApiRepository: DriverProfileApiRepository,
-
-//    private val embeddingUtilsRepository: EmbeddingUtilsRepository,
-
-//    private val ragEngine: RAGEngine,
+    private val secureCredentialStorage: SecureCredentialStorage,
     private val application: Application,
 ) : ViewModel() {
 
@@ -52,131 +46,98 @@ class DriverProfileViewModel @Inject constructor(
     private val _driverProfileUploadSuccess = MutableStateFlow(false)
     val driverProfileUploadSuccess: StateFlow<Boolean> get() = _driverProfileUploadSuccess.asStateFlow()
 
-//    init {
-//        Log.d("DriverProfileViewModel", "Initializing DriverProfileViewModel")
-//        // Run the embedding generation task during initialization
-//        viewModelScope.launch {
-//            val all_embeddings = embeddingUtilsRepository.getAllEmbeddings()
-//            if (all_embeddings.isEmpty()) {
-//                generateAndStorePdfEmbeddings()
-//            }
-//            else {
-//                Log.d("DriverProfileViewModel", "Embeddings already exist in the database")
-//            }
-//        }
-//    }
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> get() = _isLoading.asStateFlow()
 
-    // Function to generate and store embeddings in the database
-//    private suspend fun generateAndStorePdfEmbeddings() {
-//        withContext(Dispatchers.IO) {
-//            Log.d("DriverProfileViewModel", "Starting generateAndStorePdfEmbeddings")
-//            val context = application.applicationContext
-//
-//            // Initialize RAGEngine session and tokenizer
-//            ragEngine.initialize(context)
-//
-//            try {
-//                // Extract text from PDFs
-//                val lawText = ragEngine.extractTextFromPdf(context, R.raw.nat_dr_reg_law)
-//                Log.d("DriverProfileViewModel", "Extracted lawText length: ${lawText.length}")
-//                val codeText = ragEngine.extractTextFromPdf(context, R.raw.ng_high_way_code)
-//                Log.d("DriverProfileViewModel", "Extracted codeText length: ${codeText.length}")
-//
-//                // Process chunks and store embeddings
-//                processAndStoreChunks(lawText, "nat_dr_reg_law")
-//                processAndStoreChunks(codeText, "ng_high_way_code")
-//                Log.d("DriverProfileViewModel", "Finished generateAndStorePdfEmbeddings")
-//            } catch (e: Exception) {
-//                Log.e("DriverProfileViewModel", "Error during embedding generation", e)
-//            } finally {
-//                // Close RAGEngine session
-//                ragEngine.close()
-//            }
-//        }
-//    }
-//
-//    private suspend fun processAndStoreChunks(text: String, sourceType: String) {
-//        Log.d("DriverProfileViewModel", "Starting processAndStoreChunks for sourceType: $sourceType")
-//        val chunks = ragEngine.chunkText(text)
-//        Log.d("DriverProfileViewModel", "Number of chunks to process: ${chunks.size}")
-//        chunks.forEachIndexed { index, chunk ->
-//            Log.d("DriverProfileViewModel", "Processing chunk $index for sourceType: $sourceType")
-//            val embedding = ragEngine.generateEmbeddingFromChunk(chunk)
-//            if (embedding.isNotEmpty()) {
-//                val embeddingEntity = EmbeddingEntity(
-//                    chunkId = UUID.randomUUID(),
-//                    chunkText = chunk,
-//                    embedding = serializeEmbedding(embedding),
-//                    sourceType = sourceType,
-//                    sourcePage = index,
-//                    createdAt = System.currentTimeMillis()
-//                )
-//                embeddingUtilsRepository.saveEmbedding(embeddingEntity)
-//                Log.d("DriverProfileViewModel", "Saved embedding for chunk $index")
-//            } else {
-//                Log.e("DriverProfileViewModel", "Failed to generate embedding for chunk $index")
-//            }
-//        }
-//        Log.d("DriverProfileViewModel", "Finished processAndStoreChunks for sourceType: $sourceType")
-//    }
+    private val _creationMessage = MutableStateFlow<String?>(null)
+    val creationMessage: StateFlow<String?> get() = _creationMessage.asStateFlow()
 
-    fun insertDriverProfile(profileId: UUID, email: String, callback: (Boolean) -> Unit) {
+    private val _currentDriverProfile = MutableStateFlow<DriverProfileResponse?>(null)
+    val currentDriverProfile: StateFlow<DriverProfileResponse?> get() = _currentDriverProfile.asStateFlow()
+
+    fun clearStatusMessage() {
+        _creationMessage.value = null
+    }
+
+    fun createDriverProfile(
+        email: String,
+        password: String,
+        shouldScheduleUpload: Boolean = true,
+        callback: (Boolean) -> Unit
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
-            // 1) Attempt local insertion first
-            val localResult = runCatching {
-                val entity = DriverProfileEntity(email = email, driverProfileId = profileId, sync = false)
-                insertDriverProfileUseCase.execute(entity)
-
-            }
-
-
-            // If local insertion fails, report failure immediately
-            if (localResult.isFailure) {
-//                Log.d("Driver","Error inserting driver profile")
+            _isLoading.value = true
+            val trimmedPassword = password.trim()
+            val passwordBytes = trimmedPassword.encodeToByteArray()
+            if (passwordBytes.size > MAX_PASSWORD_BYTES) {
+                Log.w("DriverProfileViewModel", "Password exceeds $MAX_PASSWORD_BYTES bytes.")
+                _driverProfileUploadSuccess.value = false
+                _creationMessage.value = application.getString(R.string.onboarding_password_too_long)
                 withContext(Dispatchers.Main) {
                     callback(false)
-                    _driverProfileUploadSuccess.value = false
                 }
+                _isLoading.value = false
                 return@launch
             }
-            else {
-                // If local insertion succeeds, update success state and invoke callback on the Main thread
-                // ***** IMPORTANT: store the updated driverProfileId in SharedPreferences *****
+            val trimmedEmail = email.trim()
+            if (trimmedEmail.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(trimmedEmail).matches()) {
+                _driverProfileUploadSuccess.value = false
+                _creationMessage.value = application.getString(
+                    if (trimmedEmail.isBlank()) {
+                        R.string.onboarding_error_empty
+                    } else {
+                        R.string.onboarding_error_invalid_email
+                    }
+                )
+                withContext(Dispatchers.Main) {
+                    callback(false)
+                }
+                _isLoading.value = false
+                return@launch
+            }
+            val profileId = UUID.randomUUID()
+            try {
+                val localResult = runCatching {
+                    val entity = DriverProfileEntity(email = trimmedEmail, driverProfileId = profileId, sync = false)
+                    insertDriverProfileUseCase.execute(entity)
+                }
+
+                if (localResult.isFailure) {
+                    Log.e("DriverProfileViewModel", "Failed to save driver profile locally.", localResult.exceptionOrNull())
+                    _driverProfileUploadSuccess.value = false
+                    withContext(Dispatchers.Main) {
+                        callback(false)
+                    }
+                    _creationMessage.value = "Unable to save profile locally."
+                    return@launch
+                }
+
                 val prefs = application.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 prefs.edit()
                     .putString(DRIVER_PROFILE_ID, profileId.toString())
+                    .putString(DRIVER_EMAIL_ID, trimmedEmail)
                     .apply()
+
                 _driverProfileUploadSuccess.value = true
-                Log.d("Driver", "Upload status: ${_driverProfileUploadSuccess.value}")
-
-                withContext(Dispatchers.Main) {
-                    callback(true)
+                secureCredentialStorage.saveCredentials(trimmedEmail, trimmedPassword)
+                if (shouldScheduleUpload) {
+                    scheduleDataUploadWork(application.applicationContext)
                 }
-            }
+                _creationMessage.value = "Profile saved locally and will sync when you're online."
+                _currentDriverProfile.value = DriverProfileResponse(profileId, trimmedEmail, false)
+                withContext(Dispatchers.Main) { callback(true) }
 
-//            // 2) Prepare the payload for remote creation
-//            val driverProfileCreate = DriverProfileCreate(
-//                driverProfileId = profileId,
-//                email = email,
-//                sync = true
-//            )
-//
-//            // 3) Attempt remote creation after local insertion
-//            val remoteResult = driverProfileApiRepository.createDriverProfile(driverProfileCreate)
-//
-//            // 4) Handle the remote result on the Main thread
-//            withContext(Dispatchers.Main) {
-//                if (remoteResult is Resource.Success) {
-//                    callback(true)
-//                    _driverProfileUploadSuccess.value = true
-//                } else {
-//                    callback(false)
-//                    _driverProfileUploadSuccess.value = false
-//                }
-//            }
+            } catch (exception: Exception) {
+                Log.e("DriverProfileViewModel", "Failed to create profile.", exception)
+                _creationMessage.value = "An unexpected error occurred while creating your profile."
+                withContext(Dispatchers.Main) {
+                    callback(false)
+                }
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
-
 
     fun getDriverProfileByEmail() {
         viewModelScope.launch {
@@ -193,6 +154,12 @@ class DriverProfileViewModel @Inject constructor(
             deleteDriverProfileByEmailUseCase.execute(emailValue)
         }
     }
+
+    fun triggerUploadWork() {
+        scheduleDataUploadWork(application.applicationContext)
+    }
+
+    companion object {
+        private const val MAX_PASSWORD_BYTES = 72
+    }
 }
-
-

@@ -52,6 +52,7 @@ composeCompiler {
 dependencies {
 
     implementation(project(":core"))
+    implementation(project(":ml"))
     // Include alcohol questionnaire module for navigation utilities
     implementation(project(":alcoholquestionnaire"))
     // Material icons extended library for additional icon assets

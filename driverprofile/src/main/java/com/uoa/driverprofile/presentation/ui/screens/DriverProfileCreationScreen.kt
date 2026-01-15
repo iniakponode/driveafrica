@@ -1,93 +1,767 @@
 package com.uoa.driverprofile.presentation.ui.screens
 
+import android.Manifest
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.util.Log
+import android.util.Patterns
+import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.uoa.driverprofile.R
+import com.uoa.core.apiServices.models.driverProfile.DriverProfileResponse
 import com.uoa.core.utils.Constants.Companion.DRIVER_EMAIL_ID
-//import com.uoa.driverprofile.presentation.ui.CustomTextField
-import com.uoa.driverprofile.presentation.viewmodel.DriverProfileViewModel
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.driverprofile.presentation.ui.navigation.navigateToHomeScreen
-//import com.uoa.sensor.services.VehicleMovementServiceUpdate.Companion.TAG
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import com.uoa.driverprofile.presentation.viewmodel.DriverProfileViewModel
 import java.util.UUID
 
-// Composable to let drivers enter their email as well as create a profileId.
-// This is the first screen that drivers will see when they open the app.
-// The email is used to identify the driver and the profileId is used to store the driver's profile.
-// The ProfileId should also be stored in the shared preferences so that the driver can access their profile later.
+private const val MAX_PASSWORD_BYTES = 72
+
+private fun areNotificationsAllowed(context: Context): Boolean {
+    val notificationManager = NotificationManagerCompat.from(context)
+    val channelEnabled = notificationManager.areNotificationsEnabled()
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val permissionGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+        permissionGranted && channelEnabled
+    } else {
+        channelEnabled
+    }
+}
 
 @Composable
 fun DriverProfileCreationScreen(
     email: String,
     onEmailChange: (String) -> Unit,
-    onSubmit: () -> Unit,
+    password: String,
+    onPasswordChange: (String) -> Unit,
     isError: Boolean,
-    onShowSnackbar: suspend (String, String?) -> Boolean
+    @StringRes emailErrorMessageResId: Int?,
+    isPasswordError: Boolean,
+    isPasswordTooLong: Boolean,
+    onSubmit: () -> Unit,
+    isLoading: Boolean,
+    statusMessage: String?,
+    currentDriverProfile: DriverProfileResponse?,
+    notificationsEnabled: Boolean,
+    showRequestPermissionButton: Boolean,
+    showOpenSettingsButton: Boolean,
+    onRequestPermission: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
+            .imePadding()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        TextField(
-            value = email,
-            onValueChange = { newEmail ->
-                onEmailChange(newEmail)
-            },
-            label = { Text("Enter Profile ID given to you") },
-            isError = isError,
-            modifier = Modifier.fillMaxWidth()
+        NotificationPermissionCard(
+            notificationsEnabled = notificationsEnabled,
+            showRequestPermissionButton = showRequestPermissionButton,
+            showOpenSettingsButton = showOpenSettingsButton,
+            onRequestPermission = onRequestPermission,
+            onOpenSettings = onOpenSettings
         )
-        if (isError) {
-            LaunchedEffect(isError) {
-                onShowSnackbar("This field cannot be empty", null)
-            }
-            Text("This field cannot be empty", color = MaterialTheme.colorScheme.error)
-        }
-        Button(
-            onClick = {
-                if (email.isNotBlank()) {
-                    onSubmit()
-                }
-            },
-            modifier = Modifier.padding(top = 16.dp),
-            enabled = !isError
+
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            Icon(Icons.Filled.PersonAdd, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Create Profile")
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = onEmailChange,
+                    label = { Text(text = stringResource(R.string.onboarding_email_label)) },
+                    singleLine = true,
+                    isError = isError,
+                    supportingText = { Text(text = stringResource(R.string.onboarding_email_helper)) },
+                    trailingIcon = { Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Done,
+                        keyboardType = KeyboardType.Email
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = { if (!isLoading) onSubmit() }
+                    )
+                )
+
+                if (isError) {
+                    Text(
+                        text = stringResource(emailErrorMessageResId ?: R.string.onboarding_error_empty),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = onPasswordChange,
+                    label = { Text(text = stringResource(R.string.onboarding_password_label)) },
+                    singleLine = true,
+                    isError = isPasswordError,
+                    supportingText = { Text(text = stringResource(R.string.onboarding_password_helper)) },
+                    trailingIcon = {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = null
+                            )
+                        }
+                    },
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Done,
+                        keyboardType = KeyboardType.Password
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = { if (!isLoading) onSubmit() }
+                    )
+                )
+
+                if (isPasswordError) {
+                    Text(
+                        text = stringResource(R.string.onboarding_password_error),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+                if (isPasswordTooLong) {
+                    Text(
+                        text = stringResource(R.string.onboarding_password_too_long),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+
+                statusMessage?.let { message ->
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+
+                currentDriverProfile?.let { driver ->
+                    Text(
+                        text = stringResource(R.string.onboarding_signed_in, driver.email),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Button(
+                    onClick = onSubmit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    enabled = !isLoading,
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .height(24.dp)
+                                .width(24.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                    } else {
+                        Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Text(text = stringResource(R.string.onboarding_button))
+                }
+            }
         }
     }
+}
+
+
+@Composable
+private fun NotificationPermissionCard(
+    notificationsEnabled: Boolean,
+    showRequestPermissionButton: Boolean,
+    showOpenSettingsButton: Boolean,
+    onRequestPermission: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.Start
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.notification_permission_title),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = stringResource(R.string.notification_permission_body),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
+            Text(
+                text = if (notificationsEnabled) {
+                    stringResource(R.string.notification_permission_enabled)
+                } else {
+                    stringResource(R.string.notification_permission_disabled)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
+            )
+
+            Text(
+                text = stringResource(R.string.notification_permission_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
+            )
+
+            if (showRequestPermissionButton || showOpenSettingsButton) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (showRequestPermissionButton) {
+                        Button(
+                            onClick = onRequestPermission,
+                            modifier = Modifier.weight(1f),
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Text(text = stringResource(R.string.notification_permission_action))
+                        }
+                    }
+                    if (showOpenSettingsButton) {
+                        TextButton(
+                            onClick = onOpenSettings,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(text = stringResource(R.string.notification_permission_settings))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificationOnboardingCard(
+    notificationsEnabled: Boolean,
+    showRequestPermissionButton: Boolean,
+    showOpenSettingsButton: Boolean,
+    onRequestPermission: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.Start
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.notification_onboarding_title),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = stringResource(R.string.notification_onboarding_body),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
+            Text(
+                text = if (notificationsEnabled) {
+                    stringResource(R.string.notification_permission_enabled)
+                } else {
+                    stringResource(R.string.notification_permission_disabled)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
+            )
+
+            Text(
+                text = stringResource(R.string.notification_onboarding_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
+            )
+
+            if (showRequestPermissionButton || showOpenSettingsButton) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (showRequestPermissionButton) {
+                        Button(
+                            onClick = onRequestPermission,
+                            modifier = Modifier.weight(1f),
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Text(text = stringResource(R.string.notification_permission_action))
+                        }
+                    }
+                    if (showOpenSettingsButton) {
+                        TextButton(
+                            onClick = onOpenSettings,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(text = stringResource(R.string.notification_permission_settings))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun OnboardingInfoRoute(
+    onContinue: () -> Unit
+) {
+    val context = LocalContext.current
+    val activity = context as? Activity
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var notificationsEnabled by rememberSaveable { mutableStateOf(areNotificationsAllowed(context)) }
+    var hasRequestedNotificationPermission by rememberSaveable { mutableStateOf(false) }
+    val requestNotificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {
+        notificationsEnabled = areNotificationsAllowed(context)
+    }
+    val requestNotificationPermission: () -> Unit = {
+        hasRequestedNotificationPermission = true
+        requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                notificationsEnabled = areNotificationsAllowed(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val shouldShowRationale = activity?.let {
+        ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.POST_NOTIFICATIONS)
+    } ?: false
+    val canRequestNotifications = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+    val showRequestPermissionButton = canRequestNotifications &&
+        !notificationsEnabled &&
+        (!hasRequestedNotificationPermission || shouldShowRationale)
+    val showOpenSettingsButton = !notificationsEnabled &&
+        (!canRequestNotifications || (hasRequestedNotificationPermission && !shouldShowRationale))
+
+    LaunchedEffect(showRequestPermissionButton) {
+        if (showRequestPermissionButton && !hasRequestedNotificationPermission) {
+            requestNotificationPermission()
+        }
+    }
+
+    val onboardingHighlights = listOf(
+        stringResource(R.string.onboarding_detail_assignment),
+        stringResource(R.string.onboarding_detail_questionnaire),
+        stringResource(R.string.onboarding_detail_trip)
+    )
+    val dataHandlingBullets = listOf(
+        stringResource(R.string.onboarding_data_bullet_1),
+        stringResource(R.string.onboarding_data_bullet_2),
+        stringResource(R.string.onboarding_data_bullet_3)
+    )
+    val scrollState = rememberScrollState()
+    val shouldShowScrollHint by remember {
+        derivedStateOf { scrollState.maxValue > 0 }
+    }
+    val isAtBottom by remember {
+        derivedStateOf { scrollState.value >= scrollState.maxValue }
+    }
+    val canContinue = notificationsEnabled && (!shouldShowScrollHint || isAtBottom)
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.onboarding_title),
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = stringResource(R.string.onboarding_body),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.78f)
+            )
+            if (shouldShowScrollHint) {
+                Text(
+                    text = stringResource(R.string.onboarding_scroll_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                )
+            }
+        }
+
+        NotificationOnboardingCard(
+            notificationsEnabled = notificationsEnabled,
+            showRequestPermissionButton = showRequestPermissionButton,
+            showOpenSettingsButton = showOpenSettingsButton,
+            onRequestPermission = requestNotificationPermission,
+            onOpenSettings = { openNotificationSettings(context) }
+        )
+
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                onboardingHighlights.forEach { highlight ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = highlight,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
+
+        BackendSyncSummaryCard()
+
+        DataHandlingCard(
+            bullets = dataHandlingBullets,
+            onOpenPrivacyPolicy = { openPrivacyPolicy(context) }
+        )
+
+        SensorPermissionCard()
+
+        Button(
+            onClick = {
+                if (!notificationsEnabled) {
+                    requestNotificationPermission()
+                } else if (isAtBottom) {
+                    onContinue()
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = MaterialTheme.shapes.medium,
+            enabled = canContinue
+        ) {
+            Text(text = stringResource(R.string.onboarding_continue_button))
+        }
+
+        if (shouldShowScrollHint && !isAtBottom) {
+            Text(
+                text = stringResource(R.string.onboarding_scroll_required),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+
+        if (!notificationsEnabled) {
+            Text(
+                text = stringResource(R.string.notification_onboarding_continue_blocked),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+    }
+}
+
+@Composable
+private fun BackendSyncSummaryCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Shield,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = stringResource(R.string.onboarding_backend_summary),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+private fun DataHandlingCard(
+    bullets: List<String>,
+    onOpenPrivacyPolicy: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Shield,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = stringResource(R.string.onboarding_data_promise_title),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            bullets.forEach { bullet ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = bullet,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
+                    )
+                }
+            }
+            Text(
+                text = stringResource(R.string.onboarding_data_footer),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
+            )
+            Text(
+                text = stringResource(R.string.onboarding_privacy_policy),
+                style = MaterialTheme.typography.bodySmall.copy(textDecoration = TextDecoration.Underline),
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable { onOpenPrivacyPolicy() }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SensorPermissionCard() {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.onboarding_sensor_permission_note),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+private fun openNotificationSettings(context: Context) {
+    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    if (intent.resolveActivity(context.packageManager) == null) {
+        val fallback = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.fromParts("package", context.packageName, null)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(fallback)
+    } else {
+        context.startActivity(intent)
+    }
+}
+
+private fun openPrivacyPolicy(context: Context) {
+    val uri = Uri.parse("https://datahub.safedriveafrica.com/privacy")
+    val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    context.startActivity(intent)
 }
 
 @Composable
@@ -97,13 +771,55 @@ fun DriverProfileCreationRoute(
     onShowSnackbar: suspend (String, String?) -> Boolean
 ) {
     val context = LocalContext.current
+    val activity = context as? Activity
+    val lifecycleOwner = LocalLifecycleOwner.current
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     val savedProfileId = prefs.getString(DRIVER_PROFILE_ID, null)
     var emailState by rememberSaveable { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
+    var emailErrorMessageResId by remember { mutableStateOf<Int?>(null) }
+    val isLoading by driverProfileViewModel.isLoading.collectAsStateWithLifecycle()
+    val statusMessage by driverProfileViewModel.creationMessage.collectAsStateWithLifecycle()
+    val currentDriverProfile by driverProfileViewModel.currentDriverProfile.collectAsStateWithLifecycle()
+    var isPasswordTooLong by rememberSaveable { mutableStateOf(false) }
+    var pendingUploadWork by rememberSaveable { mutableStateOf(false) }
+    var pendingProfileId by rememberSaveable { mutableStateOf<UUID?>(null) }
+    var notificationsEnabled by rememberSaveable { mutableStateOf(areNotificationsAllowed(context)) }
+    var hasRequestedNotificationPermission by rememberSaveable { mutableStateOf(false) }
+    val requestNotificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {
+        notificationsEnabled = areNotificationsAllowed(context)
+    }
+    val requestNotificationPermission: () -> Unit = {
+        hasRequestedNotificationPermission = true
+        requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
 
-    // Check if the profile ID exists and navigate directly to the home screen
-    LaunchedEffect(Unit) {
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                notificationsEnabled = areNotificationsAllowed(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val shouldShowRationale = activity?.let {
+        ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.POST_NOTIFICATIONS)
+    } ?: false
+    val canRequestNotifications = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+    val showRequestPermissionButton = canRequestNotifications &&
+        !notificationsEnabled &&
+        (!hasRequestedNotificationPermission || shouldShowRationale)
+    val showOpenSettingsButton = !notificationsEnabled &&
+        (!canRequestNotifications || (hasRequestedNotificationPermission && !shouldShowRationale))
+    var showPermissionSnackbar by remember { mutableStateOf(false) }
+    val notificationPermissionMessage = stringResource(R.string.notification_permission_snackbar)
+    val notificationPermissionActionLabel = stringResource(R.string.notification_permission_action)
+
+    LaunchedEffect(savedProfileId) {
         if (savedProfileId != null) {
             val profileId = try {
                 UUID.fromString(savedProfileId)
@@ -111,60 +827,123 @@ fun DriverProfileCreationRoute(
                 null
             }
             if (profileId != null) {
-                Log.e("ProfileID"," $profileId")
                 navController.navigateToHomeScreen(profileId)
             } else {
-                // Handle invalid saved profile ID
                 prefs.edit().remove(DRIVER_PROFILE_ID).apply()
                 prefs.edit().remove(DRIVER_EMAIL_ID).apply()
             }
         }
     }
 
-    val uploadSuccess by driverProfileViewModel.driverProfileUploadSuccess.collectAsState()
-
-    LaunchedEffect(uploadSuccess) {
-        if (uploadSuccess) {
-            onShowSnackbar("Driver Profile successfully uploaded!", null)
+    LaunchedEffect(statusMessage) {
+        statusMessage?.let {
+            onShowSnackbar(it, null)
+            driverProfileViewModel.clearStatusMessage()
         }
     }
 
-    // Callback when the submit button is clicked
-    val onSubmit: () -> Unit = {
-        if (emailState.isBlank()) {
-            isError = true
-        } else {
-            val newProfileId = UUID.randomUUID()
-            driverProfileViewModel.insertDriverProfile(newProfileId, emailState) { success ->
-                if (success) {
-                    prefs.edit().putString(DRIVER_PROFILE_ID, newProfileId.toString()).apply()
-                    prefs.edit().putString(DRIVER_EMAIL_ID, emailState.toString()).apply()
-                    val profId=prefs.getString(DRIVER_PROFILE_ID, null)
-                    Log.e("ProfileID"," $profId")
-                    navController.navigateToHomeScreen(newProfileId)
-                } else {
-                    // Show error message on the main thread
-                    CoroutineScope(Dispatchers.Main).launch {
-                        onShowSnackbar("Failed to create profile", null)
+    LaunchedEffect(showPermissionSnackbar) {
+        if (showPermissionSnackbar && !notificationsEnabled) {
+            val actionPerformed = onShowSnackbar(notificationPermissionMessage, notificationPermissionActionLabel)
+            if (actionPerformed) {
+                requestNotificationPermission()
+            }
+        }
+        showPermissionSnackbar = false
+    }
+
+    LaunchedEffect(notificationsEnabled, pendingUploadWork) {
+        if (notificationsEnabled && pendingUploadWork) {
+            driverProfileViewModel.triggerUploadWork()
+            pendingUploadWork = false
+        }
+    }
+
+    LaunchedEffect(notificationsEnabled, pendingProfileId) {
+        val profileId = pendingProfileId
+        if (notificationsEnabled && profileId != null) {
+            navController.navigateToHomeScreen(profileId)
+            pendingProfileId = null
+        }
+    }
+
+    var passwordState by rememberSaveable { mutableStateOf("") }
+    var isPasswordError by remember { mutableStateOf(false) }
+    val onSubmit: () -> Unit = onSubmit@{
+        val trimmedEmail = emailState.trim()
+        val trimmedPassword = passwordState.trim()
+        val emailInvalid = trimmedEmail.isBlank()
+        val emailFormatInvalid = trimmedEmail.isNotEmpty() && !isValidEmail(trimmedEmail)
+        val passwordInvalid = trimmedPassword.length < 6
+
+        val passwordByteCount = trimmedPassword.encodeToByteArray().size
+        isPasswordTooLong = passwordByteCount > MAX_PASSWORD_BYTES
+
+        emailErrorMessageResId = when {
+            emailInvalid -> R.string.onboarding_error_empty
+            emailFormatInvalid -> R.string.onboarding_error_invalid_email
+            else -> null
+        }
+        isError = emailInvalid || emailFormatInvalid
+        isPasswordError = passwordInvalid
+
+        if (emailInvalid || emailFormatInvalid || passwordInvalid || isPasswordTooLong) return@onSubmit
+
+        driverProfileViewModel.createDriverProfile(trimmedEmail, trimmedPassword, notificationsEnabled) { success ->
+            if (success) {
+                val storedId = prefs.getString(DRIVER_PROFILE_ID, null)
+                storedId?.let {
+                    val profileUUID = UUID.fromString(it)
+                    if (notificationsEnabled) {
+                        navController.navigateToHomeScreen(profileUUID)
+                    } else {
+                        pendingUploadWork = true
+                        pendingProfileId = profileUUID
+                        showPermissionSnackbar = true
                     }
                 }
+            } else {
+                Log.e("DriverProfile", "Failed to create profile")
             }
         }
     }
 
-    // Callback when the email input changes
-    val onEmailChange: (String) -> Unit = { newEmail ->
-        emailState = newEmail
-        isError = newEmail.isBlank()
-    }
-
-    // Render the UI
     DriverProfileCreationScreen(
         email = emailState,
-        onEmailChange = onEmailChange,
-        onSubmit = onSubmit,
+        onEmailChange = { newEmail ->
+            emailState = newEmail
+            val trimmedEmail = newEmail.trim()
+            val isBlank = trimmedEmail.isBlank()
+            val isInvalidFormat = trimmedEmail.isNotEmpty() && !isValidEmail(trimmedEmail)
+            isError = isBlank || isInvalidFormat
+            emailErrorMessageResId = when {
+                isBlank -> R.string.onboarding_error_empty
+                isInvalidFormat -> R.string.onboarding_error_invalid_email
+                else -> null
+            }
+        },
+        password = passwordState,
+        onPasswordChange = { newPassword ->
+            passwordState = newPassword
+            isPasswordError = false
+            isPasswordTooLong = newPassword.encodeToByteArray().size > MAX_PASSWORD_BYTES
+        },
         isError = isError,
-        onShowSnackbar = onShowSnackbar
+        emailErrorMessageResId = emailErrorMessageResId,
+        isPasswordError = isPasswordError,
+        isPasswordTooLong = isPasswordTooLong,
+        onSubmit = onSubmit,
+        isLoading = isLoading,
+        statusMessage = statusMessage,
+        currentDriverProfile = currentDriverProfile,
+        notificationsEnabled = notificationsEnabled,
+        showRequestPermissionButton = showRequestPermissionButton,
+        showOpenSettingsButton = showOpenSettingsButton,
+        onRequestPermission = requestNotificationPermission,
+        onOpenSettings = { openNotificationSettings(context) }
     )
 }
 
+private fun isValidEmail(email: String): Boolean {
+    return Patterns.EMAIL_ADDRESS.matcher(email).matches()
+}

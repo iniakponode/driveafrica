@@ -26,4 +26,8 @@ class DrivingTipRepositoryImpl @Inject constructor(
     override suspend fun updateDrivingTip(drivingTipEntity: DrivingTipEntity) {
         tipsDAO.updateDrivingTip(drivingTipEntity)
     }
+
+    override suspend fun getDrivingTipsBySyncStatus(synced: Boolean): List<DrivingTipEntity> {
+        return tipsDAO.getDrivingTipBySyncStatus(synced)
+    }
 }

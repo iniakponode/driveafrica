@@ -99,6 +99,14 @@ class UnsafeBehaviourRepositoryImpl @Inject constructor(
     override suspend fun deleteUnsafeBehavioursByIds(ids: List<UUID>) {
         unsafeBehaviourDao.deleteUnsafeBehavioursByIds(ids)
     }
+
+    override suspend fun deleteUnsafeBehavioursBefore(cutoffTimestamp: Long) {
+        unsafeBehaviourDao.deleteUnsafeBehavioursBefore(cutoffTimestamp)
+    }
+
+    override suspend fun getLocationIdsWithUnsafeBehavioursSince(cutoffTimestamp: Long): List<UUID> {
+        return unsafeBehaviourDao.getLocationIdsWithUnsafeBehavioursSince(cutoffTimestamp)
+    }
     override suspend fun getUnsafeBehaviourCountByTypeAndTime(behaviorType: String, startTime: Long, endTime: Long): Int {
         return unsafeBehaviourDao.getUnsafeBehaviourCountByTypeAndTime(behaviorType, startTime, endTime)
     }

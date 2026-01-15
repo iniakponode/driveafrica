@@ -13,6 +13,7 @@ import com.uoa.core.apiServices.models.alcoholquestionnaireModels.AlcoholQuestio
 import com.uoa.core.apiServices.models.alcoholquestionnaireModels.AlcoholQuestionnaireResponse
 import com.uoa.core.apiServices.services.alcoholQuestionnaireService.QuestionnaireApiRepository
 import com.uoa.core.database.entities.QuestionnaireEntity
+import com.uoa.core.database.repository.TripDataRepository
 import com.uoa.core.database.repository.QuestionnaireRepository
 import com.uoa.core.model.Questionnaire
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
@@ -32,11 +33,14 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class QuestionnaireViewModel @javax.inject.Inject constructor(
     private val localRepository: QuestionnaireRepository,
     private val remoteRepository: QuestionnaireApiRepository,
+    private val tripRepository: TripDataRepository,
     application: Application,
     private val networkMonitor: NetworkMonitor,
 ) : ViewModel() {
@@ -150,6 +154,7 @@ class QuestionnaireViewModel @javax.inject.Inject constructor(
 
                 // Save locally
                 localRepository.saveResponseLocally(entity)
+                backfillTripsForDay(entity)
                 _uploadState.value = Resource.Success(Unit)
 
                 // Attempt upload if network is available
@@ -193,6 +198,21 @@ class QuestionnaireViewModel @javax.inject.Inject constructor(
             } catch (ex: Exception) {
                 Log.e("QuestionnaireViewModel", "Local save error: ${ex.message}", ex)
                 _uploadState.value = Resource.Error(ex.message ?: "Local save error.")
+            }
+        }
+    }
+
+    private suspend fun backfillTripsForDay(entity: QuestionnaireEntity) {
+        val response = if (entity.drankAlcohol) "1" else "0"
+        withContext(Dispatchers.IO) {
+            val trips = tripRepository.getTripsByDriverAndStartDate(entity.driverProfileId, entity.date)
+            trips.forEach { trip ->
+                if (trip.userAlcoholResponse == response) return@forEach
+                val updatedTrip = trip.copy(
+                    userAlcoholResponse = response,
+                    sync = false
+                )
+                tripRepository.updateTrip(updatedTrip)
             }
         }
     }

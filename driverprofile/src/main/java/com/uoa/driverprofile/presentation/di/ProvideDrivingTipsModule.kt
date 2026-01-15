@@ -1,5 +1,6 @@
 package com.uoa.driverprofile.presentation.di
 import com.uoa.core.database.repository.DrivingTipRepository
+import com.uoa.core.database.repository.TripSummaryRepository
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
 import com.uoa.driverprofile.domain.usecase.GetDrivingTipByIdUseCase
 import com.uoa.driverprofile.domain.usecase.GetDrivingTipByProfileIdUseCase
@@ -29,7 +30,13 @@ object ProvideDrivingTipsModule {
 
     @Provides
     @Singleton
-    fun provideGetUnsafeBehavioursForTipsUseCase(unsafeBehaviourRepository: UnsafeBehaviourRepository): GetUnsafeBehavioursForTipsUseCase {
-        return GetUnsafeBehavioursForTipsUseCase(unsafeBehaviourRepository)
+    fun provideGetUnsafeBehavioursForTipsUseCase(
+        unsafeBehaviourRepository: UnsafeBehaviourRepository,
+        tripSummaryRepository: TripSummaryRepository
+    ): GetUnsafeBehavioursForTipsUseCase {
+        return GetUnsafeBehavioursForTipsUseCase(
+            unsafeBehaviourRepository,
+            tripSummaryRepository
+        )
     }
 }

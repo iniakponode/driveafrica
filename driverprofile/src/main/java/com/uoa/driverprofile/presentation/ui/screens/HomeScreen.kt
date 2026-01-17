@@ -1,6 +1,8 @@
 package com.uoa.driverprofile.presentation.ui.screens
+
 import android.content.Context
 import android.util.Log
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +24,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,23 +38,30 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.uoa.alcoholquestionnaire.presentation.ui.questionnairenavigation.navigateToQuestionnaire
+import com.uoa.core.apiServices.models.auth.FleetStatusResponse
 import com.uoa.core.model.DrivingTip
 import com.uoa.core.utils.ApiKeyUtils
 import com.uoa.core.utils.Constants.Companion.DRIVER_EMAIL_ID
 import com.uoa.core.utils.Constants.Companion.LAST_QUESTIONNAIRE_DAY
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.core.utils.FILTER_SCREEN_ROUTE
+import com.uoa.core.utils.JOIN_FLEET_ROUTE
+import com.uoa.core.utils.SENSOR_CONTROL_SCREEN_ROUTE
+import com.uoa.driverprofile.R
 import com.uoa.driverprofile.presentation.ui.composables.TipList
 import com.uoa.driverprofile.presentation.ui.navigation.navigateToDrivingTipDetailsScreen
 import com.uoa.driverprofile.presentation.viewmodel.DrivingTipsViewModel
-import com.uoa.core.utils.SENSOR_CONTROL_SCREEN_ROUTE
-import com.uoa.core.utils.FILTER_SCREEN_ROUTE
-import java.util.UUID
+import com.uoa.driverprofile.presentation.viewmodel.FleetStatusViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Locale
+import java.util.UUID
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 
 @Composable
@@ -67,6 +77,11 @@ fun HomeScreen(
     tipsLoading: Boolean,
     showReminder: Boolean,
     onDismissReminder: () -> Unit
+    ,
+    fleetStatus: FleetStatusResponse?,
+    fleetStatusLoading: Boolean,
+    fleetStatusError: String?,
+    onJoinFleetClick: () -> Unit
 ) {
 
 
@@ -81,6 +96,14 @@ fun HomeScreen(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
+        FleetStatusBanner(
+            fleetStatus = fleetStatus,
+            isLoading = fleetStatusLoading,
+            errorMessage = fleetStatusError,
+            onJoinFleetClick = onJoinFleetClick
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
         if (!aiFeaturesEnabled || !reportsEnabled) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -195,6 +218,92 @@ fun HomeScreen(
     }
 }
 
+@Composable
+private fun FleetStatusBanner(
+    fleetStatus: FleetStatusResponse?,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onJoinFleetClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (isLoading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+            when (fleetStatus?.status?.lowercase(Locale.ROOT)) {
+                "assigned" -> {
+                    Text(
+                        text = "Fleet: ${fleetStatus.fleet?.name ?: "Unknown"}",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    fleetStatus.vehicle?.let { vehicle ->
+                        Text(
+                            text = "Vehicle: ${vehicle.licensePlate} ${vehicle.make ?: ""} ${vehicle.model ?: ""}".trim(),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+                "pending" -> {
+                    Text(
+                        text = "Join request pending",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    fleetStatus.pendingRequest?.let { request ->
+                        Text(
+                            text = "Fleet: ${request.fleetName ?: "Unknown"}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "Submitted: ${request.requestedAt ?: "Unknown"}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+                else -> {
+                    Text(
+                        text = "You're not part of a fleet yet",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    if (!isLoading) {
+                        Button(
+                            onClick = onJoinFleetClick,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                        ) {
+                            Text(text = stringResource(R.string.join_fleet_cta))
+                        }
+                    } else {
+                        Text(
+                            text = "Checking fleet status...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            errorMessage?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+}
+
 
 
 
@@ -203,6 +312,7 @@ fun HomeScreen(
 fun HomeScreenRoute(
     navController: NavController,
     drivingTipsViewModel: DrivingTipsViewModel = hiltViewModel(),
+    fleetStatusViewModel: FleetStatusViewModel = hiltViewModel(),
     profileId: UUID
 ) {
 
@@ -210,6 +320,7 @@ fun HomeScreenRoute(
     val gpt_drivingTips by drivingTipsViewModel.gptDrivingTips.observeAsState(emptyList())
     val gemini_tips by drivingTipsViewModel.geminiDrivingTips.observeAsState(emptyList())
     val tipsLoading by drivingTipsViewModel.tipsLoading.observeAsState(false)
+    val fleetState by fleetStatusViewModel.state.collectAsStateWithLifecycle()
     Log.d("HomeScreenRoute", "Observed GPT ${gpt_drivingTips.size} driving tips")
     Log.d("HomeScreenRoute", "Observed Gemini ${gemini_tips.size} driving tips")
 
@@ -225,6 +336,10 @@ fun HomeScreenRoute(
     var showReminder by remember { mutableStateOf(lastDay != today) }
     LaunchedEffect(profileId) {
         drivingTipsViewModel.refreshTips(profileId)
+        val token = com.uoa.core.utils.SecureTokenStorage(context).getToken()
+        if (!token.isNullOrBlank()) {
+            fleetStatusViewModel.refreshFleetStatus()
+        }
     }
 
     HomeScreen(
@@ -239,5 +354,10 @@ fun HomeScreenRoute(
         tipsLoading = tipsLoading,
         showReminder = showReminder,
         onDismissReminder = { showReminder = false }
+        ,
+        fleetStatus = fleetState.fleetStatus,
+        fleetStatusLoading = fleetState.isLoading,
+        fleetStatusError = fleetState.errorMessage,
+        onJoinFleetClick = { navController.navigate(JOIN_FLEET_ROUTE) }
     )
 }

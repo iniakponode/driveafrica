@@ -2,7 +2,6 @@ package com.uoa.alcoholquestionnaire.presentation.viewmodel
 
 import android.app.Application
 import android.content.Context
-import android.net.http.HttpException
 import android.os.Build
 import android.util.Log
 import androidx.lifecycle.LiveData
@@ -183,12 +182,11 @@ class QuestionnaireViewModel @javax.inject.Inject constructor(
                     } catch (e: IOException) {
                         Log.e("QuestionnaireViewModel", "Network error while uploading: ${e.message}")
                         _uploadState.value = Resource.Error("Network error: Please check your internet connection.")
-                    } catch (e: HttpException) {
-                        Log.e("QuestionnaireViewModel", "Server error: ${e.message}")
-                        _uploadState.value = Resource.Error("Server error: ${e.message}")
                     } catch (e: Exception) {
-                        Log.e("QuestionnaireViewModel", "Unexpected error: ${e.message}", e)
-                        _uploadState.value = Resource.Error("An unexpected error occurred: ${e.message}")
+                        val isHttpException = e.javaClass.name == "retrofit2.HttpException"
+                        val errorLabel = if (isHttpException) "Server error" else "Unexpected error"
+                        Log.e("QuestionnaireViewModel", "$errorLabel: ${e.message}", e)
+                        _uploadState.value = Resource.Error("$errorLabel: ${e.message}")
                     }
                 } else {
                     // No network => user sees immediate error, worker will pick it up

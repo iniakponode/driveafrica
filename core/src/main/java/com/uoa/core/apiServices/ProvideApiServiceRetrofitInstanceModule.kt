@@ -31,6 +31,8 @@ import com.uoa.core.apiServices.services.tripApiService.TripApiRepository
 import com.uoa.core.apiServices.services.tripApiService.TripApiService
 import com.uoa.core.apiServices.services.unsafeBehaviourApiService.UnsafeBehaviourApiRepository
 import com.uoa.core.apiServices.services.unsafeBehaviourApiService.UnsafeBehaviourApiService
+import com.uoa.core.apiServices.services.fleetApiService.DriverFleetApiRepository
+import com.uoa.core.apiServices.services.fleetApiService.DriverFleetApiService
 import com.uoa.core.apiServices.interceptor.AuthInterceptor
 import com.uoa.core.apiServices.interceptor.ErrorBodyLoggingInterceptor
 import com.uoa.core.apiServices.interceptor.TokenExpiredInterceptor
@@ -271,6 +273,21 @@ object ProvideApiServiceRetrofitInstanceModule {
         secureTokenStorage: SecureTokenStorage
     ): AuthRepository {
         return AuthRepository(authApiService, secureTokenStorage)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDriverFleetApiService(retrofit: Retrofit): DriverFleetApiService {
+        return retrofit.create(DriverFleetApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDriverFleetApiRepository(
+        driverFleetApiService: DriverFleetApiService,
+        gson: Gson
+    ): DriverFleetApiRepository {
+        return DriverFleetApiRepository(driverFleetApiService, gson)
     }
 
     @Provides

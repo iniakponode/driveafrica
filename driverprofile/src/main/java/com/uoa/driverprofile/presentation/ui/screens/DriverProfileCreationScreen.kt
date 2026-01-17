@@ -11,10 +11,12 @@ import android.provider.Settings
 import android.util.Log
 import android.util.Patterns
 import androidx.annotation.StringRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,6 +42,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
@@ -80,9 +84,16 @@ import com.uoa.core.apiServices.models.driverProfile.DriverProfileResponse
 import com.uoa.core.utils.Constants.Companion.DRIVER_EMAIL_ID
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.core.utils.Constants.Companion.REGISTRATION_INVITE_CODE
 import com.uoa.driverprofile.presentation.ui.navigation.navigateToHomeScreen
+import com.uoa.driverprofile.presentation.viewmodel.AuthEvent
+import com.uoa.driverprofile.presentation.viewmodel.AuthViewModel
 import com.uoa.driverprofile.presentation.viewmodel.DriverProfileViewModel
+import com.uoa.driverprofile.presentation.model.RegistrationMode
+import com.uoa.core.utils.JOIN_FLEET_ROUTE
+import com.uoa.core.utils.ONBOARDING_FORM_ROUTE
 import java.util.UUID
+import java.util.Locale
 
 private const val MAX_PASSWORD_BYTES = 72
 
@@ -104,6 +115,10 @@ private fun areNotificationsAllowed(context: Context): Boolean {
 fun DriverProfileCreationScreen(
     email: String,
     onEmailChange: (String) -> Unit,
+    inviteCode: String,
+    onInviteCodeChange: (String) -> Unit,
+    showInviteCodeField: Boolean,
+    isInviteCodeError: Boolean,
     password: String,
     onPasswordChange: (String) -> Unit,
     isError: Boolean,
@@ -118,7 +133,11 @@ fun DriverProfileCreationScreen(
     showRequestPermissionButton: Boolean,
     showOpenSettingsButton: Boolean,
     onRequestPermission: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    authMode: AuthMode,
+    onAuthModeChange: (AuthMode) -> Unit,
+    authStatusMessage: String?,
+    authStatusIsError: Boolean = false
 ) {
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
 
@@ -130,6 +149,32 @@ fun DriverProfileCreationScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            AuthModeToggleChip(
+                label = stringResource(R.string.auth_mode_register),
+                selected = authMode == AuthMode.Register,
+                onClick = { onAuthModeChange(AuthMode.Register) }
+            )
+            AuthModeToggleChip(
+                label = stringResource(R.string.auth_mode_login),
+                selected = authMode == AuthMode.Login,
+                onClick = { onAuthModeChange(AuthMode.Login) }
+            )
+        }
+        val statusColor = if (authStatusIsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+        authStatusMessage?.let { message ->
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = statusColor,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        }
+
         NotificationPermissionCard(
             notificationsEnabled = notificationsEnabled,
             showRequestPermissionButton = showRequestPermissionButton,
@@ -150,6 +195,27 @@ fun DriverProfileCreationScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                if (showInviteCodeField) {
+                    OutlinedTextField(
+                        value = inviteCode,
+                        onValueChange = onInviteCodeChange,
+                        label = { Text(text = stringResource(R.string.join_fleet_code_label)) },
+                        singleLine = true,
+                        isError = isInviteCodeError,
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(
+                            imeAction = ImeAction.Next,
+                            keyboardType = KeyboardType.Ascii
+                        )
+                    )
+                    if (isInviteCodeError) {
+                        Text(
+                            text = stringResource(R.string.onboarding_invite_code_error),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+
                 OutlinedTextField(
                     value = email,
                     onValueChange = onEmailChange,
@@ -765,10 +831,46 @@ private fun openPrivacyPolicy(context: Context) {
 }
 
 @Composable
+private fun AuthModeToggleChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val borderColor = if (selected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.outline
+    }
+    val containerColor = if (selected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+    val contentColor = if (selected) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    OutlinedButton(
+        onClick = onClick,
+        border = BorderStroke(1.dp, borderColor),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        ),
+        modifier = Modifier
+            .defaultMinSize(minWidth = 120.dp)
+    ) {
+        Text(text = label)
+    }
+}
+
+@Composable
 fun DriverProfileCreationRoute(
     navController: NavController,
     driverProfileViewModel: DriverProfileViewModel = hiltViewModel(),
-    onShowSnackbar: suspend (String, String?) -> Boolean
+    onShowSnackbar: suspend (String, String?) -> Boolean,
+    registrationMode: RegistrationMode
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
@@ -776,16 +878,23 @@ fun DriverProfileCreationRoute(
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     val savedProfileId = prefs.getString(DRIVER_PROFILE_ID, null)
     var emailState by rememberSaveable { mutableStateOf("") }
+    var inviteCodeState by rememberSaveable { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
     var emailErrorMessageResId by remember { mutableStateOf<Int?>(null) }
     val isLoading by driverProfileViewModel.isLoading.collectAsStateWithLifecycle()
+    val authViewModel: AuthViewModel = hiltViewModel()
+    val joinFleetViewModel: com.uoa.driverprofile.presentation.viewmodel.JoinFleetViewModel = hiltViewModel()
+    val authState by authViewModel.state.collectAsStateWithLifecycle()
     val statusMessage by driverProfileViewModel.creationMessage.collectAsStateWithLifecycle()
     val currentDriverProfile by driverProfileViewModel.currentDriverProfile.collectAsStateWithLifecycle()
     var isPasswordTooLong by rememberSaveable { mutableStateOf(false) }
+    var isInviteCodeError by rememberSaveable { mutableStateOf(false) }
     var pendingUploadWork by rememberSaveable { mutableStateOf(false) }
     var pendingProfileId by rememberSaveable { mutableStateOf<UUID?>(null) }
     var notificationsEnabled by rememberSaveable { mutableStateOf(areNotificationsAllowed(context)) }
     var hasRequestedNotificationPermission by rememberSaveable { mutableStateOf(false) }
+    var authMode by rememberSaveable { mutableStateOf(AuthMode.Register) }
+    var inviteJoinTriggered by rememberSaveable { mutableStateOf(false) }
     val requestNotificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) {
@@ -827,7 +936,11 @@ fun DriverProfileCreationRoute(
                 null
             }
             if (profileId != null) {
-                navController.navigateToHomeScreen(profileId)
+                // Only auto-navigate if we already have a token to avoid pre-auth API calls
+                val hasToken = com.uoa.core.utils.SecureTokenStorage(context).getToken()?.isNotBlank() == true
+                if (hasToken) {
+                    navController.navigateToHomeScreen(profileId)
+                }
             } else {
                 prefs.edit().remove(DRIVER_PROFILE_ID).apply()
                 prefs.edit().remove(DRIVER_EMAIL_ID).apply()
@@ -839,6 +952,51 @@ fun DriverProfileCreationRoute(
         statusMessage?.let {
             onShowSnackbar(it, null)
             driverProfileViewModel.clearStatusMessage()
+        }
+    }
+
+    LaunchedEffect(authState.errorMessage) {
+        authState.errorMessage?.let {
+            onShowSnackbar(it, null)
+            authViewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(authViewModel.events) {
+            authViewModel.events.collect { event ->
+                if (event is AuthEvent.Authenticated) {
+                    val currentAuthState = authViewModel.state.value
+                    val fleetStatus = currentAuthState.fleetStatus
+                    val fleetStatusValue = fleetStatus?.status?.lowercase(Locale.ROOT)
+                    val shouldAttemptInstantJoin = registrationMode == RegistrationMode.InviteCode &&
+                        inviteCodeState.isNotBlank() &&
+                        !inviteJoinTriggered &&
+                        fleetStatusValue != "assigned"
+                    if (shouldAttemptInstantJoin) {
+                        joinFleetViewModel.joinWithCode(inviteCodeState.trim().uppercase(Locale.ROOT))
+                        inviteJoinTriggered = true
+                    }
+                    val hasPendingInvite = prefs.getString(REGISTRATION_INVITE_CODE, null)?.isNotBlank() == true
+                    val shouldNavigateHome = currentAuthState.fleetAssignment != null ||
+                        fleetStatusValue == "assigned" ||
+                        fleetStatusValue == "pending" ||
+                        hasPendingInvite
+                if (shouldNavigateHome) {
+                    if (notificationsEnabled) {
+                        navController.navigateToHomeScreen(event.driverProfileId) {
+                            popUpTo(ONBOARDING_FORM_ROUTE) { inclusive = true }
+                        }
+                    } else {
+                        pendingUploadWork = true
+                        pendingProfileId = event.driverProfileId
+                        showPermissionSnackbar = true
+                    }
+                } else {
+                    navController.navigate(JOIN_FLEET_ROUTE) {
+                        popUpTo(ONBOARDING_FORM_ROUTE) { inclusive = true }
+                    }
+                }
+            }
         }
     }
 
@@ -869,9 +1027,14 @@ fun DriverProfileCreationRoute(
 
     var passwordState by rememberSaveable { mutableStateOf("") }
     var isPasswordError by remember { mutableStateOf(false) }
+    val showInviteCodeField = authMode == AuthMode.Register &&
+        registrationMode == RegistrationMode.InviteCode
     val onSubmit: () -> Unit = onSubmit@{
+        val trimmedInviteCode = inviteCodeState.trim().uppercase(Locale.ROOT)
         val trimmedEmail = emailState.trim()
         val trimmedPassword = passwordState.trim()
+        val inviteCodeInvalid = showInviteCodeField &&
+            (trimmedInviteCode.isBlank() || !isValidInviteCode(trimmedInviteCode))
         val emailInvalid = trimmedEmail.isBlank()
         val emailFormatInvalid = trimmedEmail.isNotEmpty() && !isValidEmail(trimmedEmail)
         val passwordInvalid = trimmedPassword.length < 6
@@ -879,6 +1042,7 @@ fun DriverProfileCreationRoute(
         val passwordByteCount = trimmedPassword.encodeToByteArray().size
         isPasswordTooLong = passwordByteCount > MAX_PASSWORD_BYTES
 
+        isInviteCodeError = inviteCodeInvalid
         emailErrorMessageResId = when {
             emailInvalid -> R.string.onboarding_error_empty
             emailFormatInvalid -> R.string.onboarding_error_invalid_email
@@ -887,24 +1051,25 @@ fun DriverProfileCreationRoute(
         isError = emailInvalid || emailFormatInvalid
         isPasswordError = passwordInvalid
 
-        if (emailInvalid || emailFormatInvalid || passwordInvalid || isPasswordTooLong) return@onSubmit
+        if (inviteCodeInvalid || emailInvalid || emailFormatInvalid || passwordInvalid || isPasswordTooLong) {
+            return@onSubmit
+        }
 
-        driverProfileViewModel.createDriverProfile(trimmedEmail, trimmedPassword, notificationsEnabled) { success ->
-            if (success) {
-                val storedId = prefs.getString(DRIVER_PROFILE_ID, null)
-                storedId?.let {
-                    val profileUUID = UUID.fromString(it)
-                    if (notificationsEnabled) {
-                        navController.navigateToHomeScreen(profileUUID)
-                    } else {
-                        pendingUploadWork = true
-                        pendingProfileId = profileUUID
-                        showPermissionSnackbar = true
-                    }
+        if (authMode == AuthMode.Register) {
+            driverProfileViewModel.createDriverProfile(
+                trimmedEmail,
+                trimmedPassword,
+                registrationMode,
+                trimmedInviteCode.takeIf { showInviteCodeField }
+            ) { success, profileId ->
+                if (success && profileId != null) {
+                    authViewModel.register(profileId, trimmedEmail, trimmedPassword)
+                } else {
+                    Log.e("DriverProfile", "Failed to create profile")
                 }
-            } else {
-                Log.e("DriverProfile", "Failed to create profile")
             }
+        } else {
+            authViewModel.login(trimmedEmail, trimmedPassword)
         }
     }
 
@@ -928,22 +1093,43 @@ fun DriverProfileCreationRoute(
             isPasswordError = false
             isPasswordTooLong = newPassword.encodeToByteArray().size > MAX_PASSWORD_BYTES
         },
+        inviteCode = inviteCodeState,
+        onInviteCodeChange = { newCode ->
+            inviteCodeState = newCode
+            isInviteCodeError = false
+        },
+        showInviteCodeField = showInviteCodeField,
+        isInviteCodeError = isInviteCodeError,
         isError = isError,
         emailErrorMessageResId = emailErrorMessageResId,
         isPasswordError = isPasswordError,
         isPasswordTooLong = isPasswordTooLong,
         onSubmit = onSubmit,
-        isLoading = isLoading,
+        isLoading = isLoading || authState.isLoading,
         statusMessage = statusMessage,
         currentDriverProfile = currentDriverProfile,
         notificationsEnabled = notificationsEnabled,
         showRequestPermissionButton = showRequestPermissionButton,
         showOpenSettingsButton = showOpenSettingsButton,
         onRequestPermission = requestNotificationPermission,
-        onOpenSettings = { openNotificationSettings(context) }
+        onOpenSettings = { openNotificationSettings(context) },
+        authMode = authMode,
+        onAuthModeChange = { authMode = it },
+        authStatusMessage = authState.errorMessage ?: authState.successMessage,
+        authStatusIsError = authState.errorMessage != null
     )
+}
+
+enum class AuthMode {
+    Register,
+    Login
 }
 
 private fun isValidEmail(email: String): Boolean {
     return Patterns.EMAIL_ADDRESS.matcher(email).matches()
+}
+
+private fun isValidInviteCode(code: String): Boolean {
+    val pattern = Regex("^[A-Z]{3,4}-[A-Z0-9]{5,8}$")
+    return pattern.matches(code)
 }

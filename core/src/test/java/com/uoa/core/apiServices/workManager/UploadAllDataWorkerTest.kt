@@ -11,13 +11,15 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
-import com.uoa.core.apiServices.models.auth.TokenResponse
+import com.uoa.core.apiServices.models.auth.AuthDriverProfile
+import com.uoa.core.apiServices.models.auth.AuthResponse
 import com.uoa.core.apiServices.services.aiModellInputApiService.AIModelInputApiRepository
 import com.uoa.core.apiServices.services.alcoholQuestionnaireService.QuestionnaireApiRepository
 import com.uoa.core.apiServices.services.auth.AuthRepository
 import com.uoa.core.apiServices.models.driverSyncModels.DriverSyncResponse
 import com.uoa.core.apiServices.services.driverSyncApiService.DriverSyncApiRepository
 import com.uoa.core.apiServices.services.drivingTipApiService.DrivingTipApiRepository
+import com.uoa.core.apiServices.services.fleetApiService.DriverFleetApiRepository
 import com.uoa.core.apiServices.services.locationApiService.LocationApiRepository
 import com.uoa.core.apiServices.services.nlgReportApiService.NLGReportApiRepository
 import com.uoa.core.apiServices.services.rawSensorApiService.RawSensorDataApiRepository
@@ -134,11 +136,11 @@ class UploadAllDataWorkerTest {
         whenever(secureCredentialStorage.getEmail()).thenReturn(profile.email)
         whenever(secureCredentialStorage.getPassword()).thenReturn("safe-password")
 
-        val tokenResponse = TokenResponse(
-            accessToken = "token-value",
+        val tokenResponse = AuthResponse(
+            token = "token-value",
             tokenType = "bearer",
             driverProfileId = profileId.toString(),
-            email = profile.email
+            driverProfile = AuthDriverProfile(id = profileId, email = profile.email, name = null)
         )
         whenever(authRepository.registerDriver(any()))
             .thenReturn(Resource.Success(tokenResponse))
@@ -182,7 +184,7 @@ class UploadAllDataWorkerTest {
         assertTrue(result is ListenableWorker.Result.Success)
         verify(authRepository).registerDriver(any())
         verify(driverProfileRepository).updateDriverProfileByEmail(profileId, true, profile.email)
-        verify(secureTokenStorage).saveToken(tokenResponse.accessToken)
+        verify(secureTokenStorage).saveToken(tokenResponse.token)
 
         val storedId = context
             .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -234,6 +236,7 @@ class UploadAllDataWorkerTest {
         reportStatisticsApiRepository: ReportStatisticsApiRepository = mock(),
         driverProfileRepository: DriverProfileRepository = mock(),
         driverSyncApiRepository: DriverSyncApiRepository = mock(),
+        driverFleetApiRepository: DriverFleetApiRepository = mock(),
         tripRepository: TripDataRepository = mock(),
         tripApiRepository: TripApiRepository = mock(),
         roadRepository: RoadRepository = mock(),
@@ -268,6 +271,7 @@ class UploadAllDataWorkerTest {
                     reportStatisticsApiRepository,
                     driverProfileRepository,
                     driverSyncApiRepository,
+                    driverFleetApiRepository,
                     tripRepository,
                     tripApiRepository,
                     roadRepository,

@@ -1,17 +1,21 @@
 package com.uoa.core.notifications
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
-import com.uoa.core.R
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import com.uoa.core.R
 import com.uoa.core.utils.Constants
 import com.uoa.core.utils.SENSOR_CONTROL_SCREEN_ROUTE
 
@@ -26,6 +30,7 @@ class VehicleNotificationManager(private val context: Context) {
 
     companion object {
         const val FOREGROUND_NOTIFICATION_ID = 2001
+        private const val TAG = "VehicleNotificationManager"
     }
 
 
@@ -36,7 +41,7 @@ class VehicleNotificationManager(private val context: Context) {
     // Display notification based on the message provided
     fun displayNotification(title: String, message: String) {
         val notification = buildNotification(title, message)
-        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+        notifyIfAllowed(NOTIFICATION_ID, notification)
     }
 
     fun displayUploadStatus(
@@ -55,7 +60,7 @@ class VehicleNotificationManager(private val context: Context) {
             progress = progress,
             max = max
         )
-        NotificationManagerCompat.from(context).notify(UPLOAD_NOTIFICATION_ID, notification)
+        notifyIfAllowed(UPLOAD_NOTIFICATION_ID, notification)
     }
 
     fun displayUploadFailure(message: String) {
@@ -68,7 +73,7 @@ class VehicleNotificationManager(private val context: Context) {
             progress = null,
             max = null
         )
-        NotificationManagerCompat.from(context).notify(UPLOAD_NOTIFICATION_ID, notification)
+        notifyIfAllowed(UPLOAD_NOTIFICATION_ID, notification)
     }
 
     fun displayUploadComplete(message: String) {
@@ -81,7 +86,7 @@ class VehicleNotificationManager(private val context: Context) {
             progress = null,
             max = null
         )
-        NotificationManagerCompat.from(context).notify(UPLOAD_NOTIFICATION_ID, notification)
+        notifyIfAllowed(UPLOAD_NOTIFICATION_ID, notification)
     }
 
     fun displayTripEvent(title: String, message: String) {
@@ -94,7 +99,7 @@ class VehicleNotificationManager(private val context: Context) {
             progress = null,
             max = null
         )
-        NotificationManagerCompat.from(context).notify(TRIP_EVENT_NOTIFICATION_ID, notification)
+        notifyIfAllowed(TRIP_EVENT_NOTIFICATION_ID, notification)
     }
 
     fun displayPermissionNotification(message: String) {
@@ -115,12 +120,33 @@ class VehicleNotificationManager(private val context: Context) {
         } else {
             buildNotification(title = "Action required", message = message, ongoing = false)
         }
-        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+        notifyIfAllowed(NOTIFICATION_ID, notification)
     }
 
     // Clear the notification
     fun clearNotification() {
         NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
+    }
+
+    private fun notifyIfAllowed(notificationId: Int, notification: Notification) {
+        if (!hasPostNotificationsPermission()) {
+            return
+        }
+        try {
+            NotificationManagerCompat.from(context).notify(notificationId, notification)
+        } catch (securityException: SecurityException) {
+            Log.w(TAG, "Unable to post notification.", securityException)
+        }
+    }
+
+    private fun hasPostNotificationsPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return true
+        }
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     // Build the notification with the given message (for general purposes)

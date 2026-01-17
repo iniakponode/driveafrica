@@ -8,16 +8,20 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uoa.core.apiServices.models.driverProfile.DriverProfileResponse
+import com.uoa.core.apiServices.workManager.enqueueImmediateUploadWork
 import com.uoa.core.apiServices.workManager.scheduleDataUploadWork
 import com.uoa.core.database.entities.DriverProfileEntity
 import com.uoa.core.utils.Constants.Companion.DRIVER_EMAIL_ID
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.core.utils.Constants.Companion.REGISTRATION_INVITE_CODE
+import com.uoa.core.utils.Constants.Companion.REGISTRATION_MODE
 import com.uoa.core.utils.SecureCredentialStorage
 import com.uoa.driverprofile.R
 import com.uoa.driverprofile.domain.usecase.DeleteDriverProfileByEmailUseCase
 import com.uoa.driverprofile.domain.usecase.GetDriverProfileByEmailUseCase
 import com.uoa.driverprofile.domain.usecase.InsertDriverProfileUseCase
+import com.uoa.driverprofile.presentation.model.RegistrationMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,8 +66,9 @@ class DriverProfileViewModel @Inject constructor(
     fun createDriverProfile(
         email: String,
         password: String,
-        shouldScheduleUpload: Boolean = true,
-        callback: (Boolean) -> Unit
+        registrationMode: RegistrationMode,
+        inviteCode: String?,
+        callback: (Boolean, UUID?) -> Unit
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
@@ -74,7 +79,7 @@ class DriverProfileViewModel @Inject constructor(
                 _driverProfileUploadSuccess.value = false
                 _creationMessage.value = application.getString(R.string.onboarding_password_too_long)
                 withContext(Dispatchers.Main) {
-                    callback(false)
+                    callback(false, null)
                 }
                 _isLoading.value = false
                 return@launch
@@ -90,7 +95,7 @@ class DriverProfileViewModel @Inject constructor(
                     }
                 )
                 withContext(Dispatchers.Main) {
-                    callback(false)
+                    callback(false, null)
                 }
                 _isLoading.value = false
                 return@launch
@@ -106,7 +111,7 @@ class DriverProfileViewModel @Inject constructor(
                     Log.e("DriverProfileViewModel", "Failed to save driver profile locally.", localResult.exceptionOrNull())
                     _driverProfileUploadSuccess.value = false
                     withContext(Dispatchers.Main) {
-                        callback(false)
+                    callback(false, null)
                     }
                     _creationMessage.value = "Unable to save profile locally."
                     return@launch
@@ -116,22 +121,28 @@ class DriverProfileViewModel @Inject constructor(
                 prefs.edit()
                     .putString(DRIVER_PROFILE_ID, profileId.toString())
                     .putString(DRIVER_EMAIL_ID, trimmedEmail)
+                    .putString(REGISTRATION_MODE, registrationMode.name)
                     .apply()
-
+                if (registrationMode == RegistrationMode.InviteCode && !inviteCode.isNullOrBlank()) {
+                    prefs.edit()
+                        .putString(REGISTRATION_INVITE_CODE, inviteCode)
+                        .apply()
+                } else {
+                    prefs.edit()
+                        .remove(REGISTRATION_INVITE_CODE)
+                        .apply()
+                }
                 _driverProfileUploadSuccess.value = true
                 secureCredentialStorage.saveCredentials(trimmedEmail, trimmedPassword)
-                if (shouldScheduleUpload) {
-                    scheduleDataUploadWork(application.applicationContext)
-                }
                 _creationMessage.value = "Profile saved locally and will sync when you're online."
                 _currentDriverProfile.value = DriverProfileResponse(profileId, trimmedEmail, false)
-                withContext(Dispatchers.Main) { callback(true) }
+                withContext(Dispatchers.Main) { callback(true, profileId) }
 
             } catch (exception: Exception) {
                 Log.e("DriverProfileViewModel", "Failed to create profile.", exception)
                 _creationMessage.value = "An unexpected error occurred while creating your profile."
                 withContext(Dispatchers.Main) {
-                    callback(false)
+                    callback(false, null)
                 }
             } finally {
                 _isLoading.value = false
@@ -156,6 +167,7 @@ class DriverProfileViewModel @Inject constructor(
     }
 
     fun triggerUploadWork() {
+        enqueueImmediateUploadWork(application.applicationContext)
         scheduleDataUploadWork(application.applicationContext)
     }
 

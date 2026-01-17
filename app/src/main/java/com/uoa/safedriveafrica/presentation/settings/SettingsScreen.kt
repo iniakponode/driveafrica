@@ -154,23 +154,30 @@ fun SettingsScreen(
         Text(
             text = "Settings",
             style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.onBackground
         )
         Spacer(modifier = Modifier.height(16.dp))
 
+        val cardColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+            colors = cardColors
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
-                Text(text = "Notifications", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "Notifications",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 Text(
                     text = if (notificationsEnabled) {
                         "Notifications are enabled."
                     } else {
                         "Notifications are disabled."
                     },
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 if (!notificationsEnabled) {
@@ -190,7 +197,7 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(12.dp))
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+            colors = cardColors
         ) {
             Row(
                 modifier = Modifier
@@ -201,11 +208,13 @@ fun SettingsScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Auto Trip Detection",
-                        style = MaterialTheme.typography.titleMedium
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "Enable background trip detection when you start driving.",
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Switch(
@@ -218,10 +227,14 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(12.dp))
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+            colors = cardColors
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
-                Text(text = "Trip Detection Sensitivity", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "Trip Detection Sensitivity",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 SensitivityOptionRow(
                     selected = tripSensitivity == "high",
@@ -248,7 +261,8 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Enable Auto Trip Detection to apply sensitivity changes.",
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -257,7 +271,7 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(12.dp))
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+            colors = cardColors
         ) {
             Row(
                 modifier = Modifier
@@ -268,11 +282,13 @@ fun SettingsScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Allow Metered Uploads",
-                        style = MaterialTheme.typography.titleMedium
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "Allow uploads over mobile data.",
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Switch(
@@ -285,13 +301,18 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(12.dp))
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+            colors = cardColors
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
-                Text(text = "Manual Sync", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "Manual Sync",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 Text(
                     text = "Upload any pending data now.",
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(onClick = onSyncNow, modifier = Modifier.fillMaxWidth()) {
@@ -304,13 +325,18 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(12.dp))
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                colors = cardColors
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
-                    Text(text = "Debug", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = "Debug",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     Text(
                         text = "Run the trip ML classifier for the latest trip.",
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Button(
@@ -345,8 +371,16 @@ private fun SensitivityOptionRow(
             enabled = enabled
         )
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyMedium)
-            Text(text = description, style = MaterialTheme.typography.bodySmall)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

@@ -12,9 +12,11 @@ import com.uoa.safedriveafrica.DAAppState
 import com.uoa.safedriveafrica.ui.splashscreens.splashScreen
 import com.uoa.driverprofile.presentation.ui.navigation.drivingTipDetailsScreen
 import com.uoa.driverprofile.presentation.ui.navigation.homeScreen
+import com.uoa.driverprofile.presentation.ui.navigation.joinFleetScreen
 
 import com.uoa.driverprofile.presentation.ui.navigation.onboardingFormScreen
 import com.uoa.driverprofile.presentation.ui.navigation.onboardingInfoScreen
+import com.uoa.driverprofile.presentation.ui.navigation.registrationChoiceScreen
 import com.uoa.nlgengine.presentation.ui.reportNavigation.filterScreen
 import com.uoa.nlgengine.presentation.ui.reportNavigation.reportScreen
 import com.uoa.sensor.presentation.ui.sensornavigation.sensorControlScreen
@@ -45,11 +47,13 @@ fun DAAppNavHost(
             navController = navController,
             onShowSnackbar = onShowSnackbar
         )
+        registrationChoiceScreen(navController)
         onboardingFormScreen(
             navController = navController,
             onShowSnackbar = onShowSnackbar
         )
         homeScreen(navController)
+        joinFleetScreen(navController)
         drivingTipDetailsScreen(navController)
         reportScreen(navController)
         filterScreen(navController)

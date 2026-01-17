@@ -1,10 +1,7 @@
 package com.uoa.core.nlg.lngrepositoryimpl.remote.nlgApiRepositoryImpl
 
 import android.content.Context
-import android.net.http.HttpException
-import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresExtension
 import com.uoa.core.database.repository.LocationRepository
 import com.uoa.core.nlg.repository.NLGEngineRepository
 import com.uoa.core.network.apiservices.ChatGPTApiService
@@ -16,6 +13,7 @@ import com.uoa.core.network.model.chatGPT.RequestBody
 import com.uoa.core.network.model.nominatim.ReverseGeocodeResponse
 import com.uoa.core.nlg.utils.getGeminiPayload
 import kotlinx.coroutines.delay
+import retrofit2.HttpException
 import java.util.UUID
 import javax.inject.Inject
 
@@ -31,7 +29,7 @@ class NLGEngineRepositoryImpl @Inject constructor(
         return chatGPTApiService.getChatCompletion(requestBody)
     }
 
-        override suspend fun sendGeminiPrompt(context: Context, prompt: String): GeminiResponse {
+    override suspend fun sendGeminiPrompt(context: Context, prompt: String): GeminiResponse {
         val payload = getGeminiPayload(prompt)
 
         try {

@@ -1,8 +1,8 @@
 package com.uoa.core.apiServices.services.auth
 
+import com.uoa.core.apiServices.models.auth.AuthResponse
 import com.uoa.core.apiServices.models.auth.LoginRequest
 import com.uoa.core.apiServices.models.auth.RegisterRequest
-import com.uoa.core.apiServices.models.auth.TokenResponse
 import com.uoa.core.apiServices.models.driverProfile.DriverProfileResponse
 import com.uoa.core.utils.Resource
 import com.uoa.core.utils.SecureTokenStorage
@@ -19,18 +19,18 @@ class AuthRepository @Inject constructor(
     private val secureTokenStorage: SecureTokenStorage
 ) {
 
-    suspend fun registerDriver(request: RegisterRequest): Resource<TokenResponse> =
+    suspend fun registerDriver(request: RegisterRequest): Resource<AuthResponse> =
         performAuthRequest { authApiService.registerDriver(request) }
 
-    suspend fun loginDriver(request: LoginRequest): Resource<TokenResponse> =
+    suspend fun loginDriver(request: LoginRequest): Resource<AuthResponse> =
         performAuthRequest { authApiService.loginDriver(request) }
 
     private suspend fun performAuthRequest(
-        call: suspend () -> TokenResponse
-    ): Resource<TokenResponse> = withContext(Dispatchers.IO) {
+        call: suspend () -> AuthResponse
+    ): Resource<AuthResponse> = withContext(Dispatchers.IO) {
         try {
             val response = call()
-            secureTokenStorage.saveToken(response.accessToken)
+            secureTokenStorage.saveToken(response.token)
             Resource.Success(response)
         } catch (e: HttpException) {
             val errorBody = e.response()?.errorBody()?.string()

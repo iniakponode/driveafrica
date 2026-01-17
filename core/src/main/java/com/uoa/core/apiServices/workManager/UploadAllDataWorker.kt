@@ -20,6 +20,7 @@ import com.uoa.core.apiServices.services.alcoholQuestionnaireService.Questionnai
 import com.uoa.core.apiServices.services.auth.AuthRepository
 import com.uoa.core.apiServices.services.driverSyncApiService.DriverSyncApiRepository
 import com.uoa.core.apiServices.services.drivingTipApiService.DrivingTipApiRepository
+import com.uoa.core.apiServices.services.fleetApiService.DriverFleetApiRepository
 import com.uoa.core.apiServices.services.locationApiService.LocationApiRepository
 import com.uoa.core.apiServices.services.nlgReportApiService.NLGReportApiRepository
 import com.uoa.core.apiServices.services.rawSensorApiService.RawSensorDataApiRepository
@@ -45,6 +46,7 @@ import com.uoa.core.model.UnsafeBehaviourModel
 import com.uoa.core.notifications.VehicleNotificationManager
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.core.utils.Constants.Companion.REGISTRATION_INVITE_CODE
 import com.uoa.core.utils.Constants.Companion.UPLOAD_AUTH_REMINDER_TIMESTAMP
 import com.uoa.core.utils.DateConversionUtils
 import com.uoa.core.utils.PreferenceUtils
@@ -92,6 +94,7 @@ class UploadAllDataWorker @AssistedInject constructor(
     private val reportStatisticsApiRepository: ReportStatisticsApiRepository,
     private val driverProfileLocalRepository: DriverProfileRepository,
     private val driverSyncApiRepository: DriverSyncApiRepository,
+    private val driverFleetApiRepository: DriverFleetApiRepository,
     private val tripLocalRepository: TripDataRepository,
     private val tripApiRepository: TripApiRepository,
     private val roadLocalRepository: RoadRepository,
@@ -235,9 +238,22 @@ class UploadAllDataWorker @AssistedInject constructor(
      * Upload Single Driver Profile
      ****/
     private suspend fun registerDriverProfileIfNeeded(): Boolean {
+        val pendingInviteCode = getPendingInviteCode()
         val existingToken = secureTokenStorage.getToken()
         if (!existingToken.isNullOrBlank()) {
+            return handleInviteCodeJoinIfNeeded(pendingInviteCode)
+        }
+        if (PreferenceUtils.isRegistrationPending(applicationContext)) {
+            Log.d("UploadDriverProfile", "Registration already in progress; skipping worker registration.")
             return true
+        }
+        if (PreferenceUtils.isRegistrationCompleted(applicationContext)) {
+            Log.d("UploadDriverProfile", "Registration already completed; skipping worker registration.")
+            return true
+        }
+
+        if (!validateInviteCodeIfNeeded(pendingInviteCode)) {
+            return false
         }
 
         val unsyncedProfile =
@@ -263,45 +279,138 @@ class UploadAllDataWorker @AssistedInject constructor(
             sync = true
         )
 
-        return when (val result = authRepository.registerDriver(registerRequest)) {
-            is Success -> {
-                secureTokenStorage.saveToken(result.data.accessToken)
-                val returnedProfileId = try {
-                    UUID.fromString(result.data.driverProfileId)
-                } catch (e: IllegalArgumentException) {
-                    Log.w("UploadDriverProfile", "Invalid driverProfileId from server: ${e.message}")
-                    return false
+        PreferenceUtils.setRegistrationPending(applicationContext, true)
+        return try {
+            when (val result = authRepository.registerDriver(registerRequest)) {
+                is Success -> {
+                    secureTokenStorage.saveToken(result.data.token)
+                    val returnedProfileId = result.data.driverProfile?.id ?: runCatching {
+                        UUID.fromString(result.data.driverProfileId ?: "")
+                    }.getOrNull()
+
+                    if (returnedProfileId == null) {
+                        Log.w(
+                            "UploadDriverProfile",
+                            "Driver profile id missing from auth response."
+                        )
+                        return false
+                    }
+
+                    driverProfileLocalRepository.updateDriverProfileByEmail(
+                        driverProfileId = returnedProfileId,
+                        sync = true,
+                        email = email
+                    )
+
+                    val prefs =
+                        applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    prefs.edit()
+                        .putString(DRIVER_PROFILE_ID, result.data.driverProfileId.toString())
+                        .apply()
+
+                    Log.d(
+                        "UploadDriverProfile",
+                        "Driver profile ${result.data.driverProfileId} registered successfully."
+                    )
+                vehicleNotificationManager.displayNotification(
+                    "Registration complete",
+                    "Your driver profile is connected to Safe Drive Africa."
+                )
+                PreferenceUtils.setRegistrationCompleted(applicationContext, true)
+                handleInviteCodeJoinIfNeeded(pendingInviteCode)
+            }
+
+                is Resource.Error -> {
+                    Log.e("UploadDriverProfile", "Failed to register profile: ${result.message}")
+                    false
                 }
 
-                driverProfileLocalRepository.updateDriverProfileByEmail(
-                    driverProfileId = returnedProfileId,
-                    sync = true,
-                    email = email
-                )
+                Resource.Loading -> {
+                    Log.d("UploadDriverProfile", "Registration request is loading.")
+                    false
+                }
+            }
+        } finally {
+            PreferenceUtils.setRegistrationPending(applicationContext, false)
+        }
+    }
 
-                val prefs =
-                    applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                prefs.edit()
-                    .putString(DRIVER_PROFILE_ID, result.data.driverProfileId.toString())
-                    .apply()
 
-                Log.d(
-                    "UploadDriverProfile",
-                    "Driver profile ${result.data.driverProfileId} registered successfully."
+    private fun getPendingInviteCode(): String? {
+        val prefs = applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(REGISTRATION_INVITE_CODE, null)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+    }
+
+    private fun clearPendingInviteCode() {
+        val prefs = applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().remove(REGISTRATION_INVITE_CODE).apply()
+    }
+
+    private suspend fun validateInviteCodeIfNeeded(inviteCode: String?): Boolean {
+        if (inviteCode.isNullOrBlank()) {
+            return true
+        }
+        return when (val result = driverFleetApiRepository.validateInviteCode(inviteCode)) {
+            is Success -> true
+            is Resource.Error -> {
+                val message = result.message
+                if (isNonRetryableInviteCodeError(message)) {
+                    notifyInviteCodeIssue(message)
+                    clearPendingInviteCode()
+                    true
+                } else {
+                    Log.e("UploadDriverProfile", "Invite code validation failed: $message")
+                    false
+                }
+            }
+            Resource.Loading -> false
+        }
+    }
+
+    private suspend fun handleInviteCodeJoinIfNeeded(inviteCode: String?): Boolean {
+        if (inviteCode.isNullOrBlank()) {
+            return true
+        }
+        return when (val result = driverFleetApiRepository.joinFleet(inviteCode)) {
+            is Success -> {
+                clearPendingInviteCode()
+                vehicleNotificationManager.displayNotification(
+                    "Fleet request submitted",
+                    "Your invite code was accepted. Waiting for fleet approval."
                 )
                 true
             }
-
             is Resource.Error -> {
-                Log.e("UploadDriverProfile", "Failed to register profile: ${result.message}")
-                false
+                val message = result.message
+                if (isNonRetryableInviteCodeError(message)) {
+                    notifyInviteCodeIssue(message)
+                    clearPendingInviteCode()
+                    true
+                } else {
+                    Log.e("UploadDriverProfile", "Join fleet failed: $message")
+                    false
+                }
             }
-
-            Resource.Loading -> {
-                Log.d("UploadDriverProfile", "Registration request is loading.")
-                false
-            }
+            Resource.Loading -> false
         }
+    }
+
+    private fun notifyInviteCodeIssue(message: String?) {
+        val details = message?.takeIf { it.isNotBlank() }
+            ?: "Invite code could not be verified. Please try again."
+        vehicleNotificationManager.displayNotification("Invite code issue", details)
+    }
+
+    private fun isNonRetryableInviteCodeError(message: String?): Boolean {
+        if (message.isNullOrBlank()) {
+            return false
+        }
+        val normalized = message.lowercase(Locale.ROOT)
+        return normalized.contains("invite code") ||
+            normalized.contains("already part of a fleet") ||
+            normalized.contains("pending request")
     }
 
 

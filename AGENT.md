@@ -38,6 +38,14 @@ orient quickly and make safe changes.
 - `app/src/main/java/com/uoa/safedriveafrica/presentation/settings/SettingsScreen.kt`:
   settings UI (scrollable).
 
+## Latest session notes (2026-01-17)
+
+- Onboarding invite codes: added `joinWithCode` call to `/api/driver-join/join-with-code` and wired invite-mode onboarding to call it automatically after registration; normal join-from-settings continues to use `/api/driver/join-fleet` (pending approval path).
+- Backend uncertainty: saw 404 when hitting `/api/driver-join/join-with-code`; if backend expects `/driver-join/join-with-code`, adjust the base path. Because of the 404, the app fell back to `/api/driver/join-fleet` and showed “pending approval” even during invite onboarding.
+- Registration flow: offline-first now checks connectivity, defers to WorkManager if offline, saves token on successful online registration, and gates fleet-status calls on having a token + network.
+- Navigation: invite onboarding should go straight home after join-with-code; join-from-settings remains for existing users without a fleet.
+- Repo state: Changes committed and pushed to `main` in commit `b3c6c0c` (“Fix onboarding invite code flow”). Untracked files (logs, artifacts, .idea/deviceManager.xml) intentionally not committed.
+- Next steps: confirm the correct join-with-code endpoint with backend, rebuild/install, and re-test invite onboarding. If 404 persists, flip the path to `/driver-join/join-with-code` and retest.
 ## Database and migrations
 
 - Room database: `core/src/main/java/com/uoa/core/Sdadb.kt` (version 45).

@@ -25,7 +25,6 @@ import com.uoa.safedriveafrica.presentation.settings.SettingsRoute
 import androidx.navigation.compose.composable
 
 
-@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun DAAppNavHost(
     appState: DAAppState,

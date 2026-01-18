@@ -57,7 +57,7 @@ suspend fun computeReportStatistics(
     unsafeBehaviours: List<UnsafeBehaviourModel>,
     tripRepository: TripDataRepository,
     locationRepository: LocationRepository,
-    lastInsertedUnsafeBehaviour: com.uoa.core.utils.GetLastInsertedUnsafeBehaviourUseCase,
+    lastInsertedUnsafeBehaviour: GetLastInsertedUnsafeBehaviourUseCase,
     tripSummaryRepository: TripSummaryRepository
 ): ReportStatistics? {
     // Retrieve driver profile ID from shared preferences.
@@ -416,17 +416,17 @@ suspend fun computeReportStatistics(
 
 
 
-private fun getLocalDateTimeFromTrip(startTime: Any): LocalDateTime {
-    return when (startTime) {
-        is Long -> Instant.ofEpochMilli(startTime).atZone(ZoneId.systemDefault()).toLocalDateTime()
-        is Instant -> startTime.atZone(ZoneId.systemDefault()).toLocalDateTime()
-        is LocalDateTime -> startTime
-        else -> throw IllegalArgumentException("Unsupported startTime type")
-    }
-}
-private fun getLocalDateTimeFromBehavior(behavior: UnsafeBehaviourModel): LocalDateTime {
-    return Instant.ofEpochMilli(behavior.timestamp).atZone(ZoneId.systemDefault()).toLocalDateTime()
-}
+//private fun getLocalDateTimeFromTrip(startTime: Any): LocalDateTime {
+//    return when (startTime) {
+//        is Long -> Instant.ofEpochMilli(startTime).atZone(ZoneId.systemDefault()).toLocalDateTime()
+//        is Instant -> startTime.atZone(ZoneId.systemDefault()).toLocalDateTime()
+//        is LocalDateTime -> startTime
+//        else -> throw IllegalArgumentException("Unsupported startTime type")
+//    }
+//}
+//private fun getLocalDateTimeFromBehavior(behavior: UnsafeBehaviourModel): LocalDateTime {
+//    return Instant.ofEpochMilli(behavior.timestamp).atZone(ZoneId.systemDefault()).toLocalDateTime()
+//}
 
 private fun computeDistanceAndAverageSpeed(locations: List<LocationData>): Pair<Double, Double> {
     var totalDistance = 0.0 // in kilometers

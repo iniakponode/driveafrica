@@ -61,6 +61,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -91,11 +92,13 @@ import com.uoa.driverprofile.presentation.viewmodel.AuthEvent
 import com.uoa.driverprofile.presentation.viewmodel.AuthViewModel
 import com.uoa.driverprofile.presentation.viewmodel.DriverProfileViewModel
 import com.uoa.driverprofile.presentation.model.FleetEnrollmentChoice
-import com.uoa.driverprofile.presentation.model.RegistrationMode
 import com.uoa.core.utils.JOIN_FLEET_ROUTE
 import com.uoa.core.utils.ONBOARDING_FORM_ROUTE
 import java.util.UUID
 import java.util.Locale
+import androidx.core.net.toUri
+import androidx.core.content.edit
+import com.uoa.driverprofile.presentation.model.RegistrationMode
 
 private const val MAX_PASSWORD_BYTES = 72
 
@@ -607,6 +610,7 @@ private fun NotificationOnboardingCard(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun OnboardingInfoRoute(
     onContinue: () -> Unit
@@ -639,7 +643,7 @@ fun OnboardingInfoRoute(
     val shouldShowRationale = activity?.let {
         ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.POST_NOTIFICATIONS)
     } ?: false
-    val canRequestNotifications = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+    val canRequestNotifications = true
     val showRequestPermissionButton = canRequestNotifications &&
         !notificationsEnabled &&
         (!hasRequestedNotificationPermission || shouldShowRationale)
@@ -922,7 +926,7 @@ private fun openNotificationSettings(context: Context) {
 }
 
 private fun openPrivacyPolicy(context: Context) {
-    val uri = Uri.parse("https://datahub.safedriveafrica.com/privacy")
+    val uri = "https://datahub.safedriveafrica.com/privacy".toUri()
     val intent = Intent(Intent.ACTION_VIEW, uri).apply {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
@@ -964,6 +968,7 @@ private fun AuthModeToggleChip(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun DriverProfileCreationRoute(
     navController: NavController,
@@ -1016,7 +1021,7 @@ fun DriverProfileCreationRoute(
     val shouldShowRationale = activity?.let {
         ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.POST_NOTIFICATIONS)
     } ?: false
-    val canRequestNotifications = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+    val canRequestNotifications = true
     val showRequestPermissionButton = canRequestNotifications &&
         !notificationsEnabled &&
         (!hasRequestedNotificationPermission || shouldShowRationale)
@@ -1030,7 +1035,7 @@ fun DriverProfileCreationRoute(
         if (savedProfileId != null) {
             val profileId = try {
                 UUID.fromString(savedProfileId)
-            } catch (e: IllegalArgumentException) {
+            } catch (_: IllegalArgumentException) {
                 null
             }
             if (profileId != null) {
@@ -1040,8 +1045,8 @@ fun DriverProfileCreationRoute(
                     navController.navigateToHomeScreen(profileId)
                 }
             } else {
-                prefs.edit().remove(DRIVER_PROFILE_ID).apply()
-                prefs.edit().remove(DRIVER_EMAIL_ID).apply()
+                prefs.edit { remove(DRIVER_PROFILE_ID) }
+                prefs.edit {remove(DRIVER_EMAIL_ID)}
             }
         }
     }
@@ -1103,13 +1108,11 @@ fun DriverProfileCreationRoute(
                 requestNotificationPermission()
             }
         }
-        showPermissionSnackbar = false
     }
 
     LaunchedEffect(notificationsEnabled, pendingUploadWork) {
         if (notificationsEnabled && pendingUploadWork) {
             driverProfileViewModel.triggerUploadWork()
-            pendingUploadWork = false
         }
     }
 
@@ -1117,7 +1120,6 @@ fun DriverProfileCreationRoute(
         val profileId = pendingProfileId
         if (notificationsEnabled && profileId != null) {
             navController.navigateToHomeScreen(profileId)
-            pendingProfileId = null
         }
     }
 
@@ -1173,25 +1175,17 @@ fun DriverProfileCreationRoute(
         onEmailChange = { newEmail ->
             emailState = newEmail
             val trimmedEmail = newEmail.trim()
-            val isBlank = trimmedEmail.isBlank()
-            val isInvalidFormat = trimmedEmail.isNotEmpty() && !isValidEmail(trimmedEmail)
-            isError = isBlank || isInvalidFormat
-            emailErrorMessageResId = when {
-                isBlank -> R.string.onboarding_error_empty
-                isInvalidFormat -> R.string.onboarding_error_invalid_email
-                else -> null
-            }
+            trimmedEmail.isBlank()
+            trimmedEmail.isNotEmpty() && !isValidEmail(trimmedEmail)
         },
         password = passwordState,
         onPasswordChange = { newPassword ->
             passwordState = newPassword
-            isPasswordError = false
             isPasswordTooLong = newPassword.encodeToByteArray().size > MAX_PASSWORD_BYTES
         },
         fleetChoice = fleetChoice,
         onFleetChoiceChange = { choice ->
             fleetChoiceKey = choice.name
-            showFleetChoiceError = false
             if (choice == FleetEnrollmentChoice.Independent) {
                 hasInviteCode = false
             }
@@ -1215,7 +1209,6 @@ fun DriverProfileCreationRoute(
         authMode = authMode,
         onAuthModeChange = { mode ->
             authMode = mode
-            showFleetChoiceError = false
         },
         authStatusMessage = authState.errorMessage ?: authState.successMessage,
         authStatusIsError = authState.errorMessage != null

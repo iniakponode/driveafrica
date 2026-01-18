@@ -34,6 +34,7 @@ import com.uoa.core.utils.Constants.Companion.MONITORING_PERMISSIONS_REQUESTED
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.PreferenceUtils
 import com.uoa.sensor.services.VehicleMovementServiceUpdate
+import androidx.core.content.edit
 
 @Composable
 fun VehicleMonitoringGate() {
@@ -61,7 +62,7 @@ fun VehicleMonitoringGate() {
     ) { _ ->
         val granted = hasRequiredPermissions(context, requiredPermissions())
         permissionsGranted.value = granted
-        prefs.edit().putBoolean(MONITORING_PERMISSIONS_REQUESTED, true).apply()
+        prefs.edit { putBoolean(MONITORING_PERMISSIONS_REQUESTED, true) }
         hasRequestedPermissions = true
         if (granted) {
             startMonitoringIfReady(context, isProfileReady)
@@ -101,7 +102,7 @@ fun VehicleMonitoringGate() {
 
     LaunchedEffect(autoMonitoringEnabled, hasRequestedPermissions, permissionsGranted.value) {
         if (autoMonitoringEnabled && !permissionsGranted.value && !hasRequestedPermissions) {
-            val activity = context as? Activity ?: return@LaunchedEffect
+//            val activity = context as? Activity ?: return@LaunchedEffect
             requestPermissionsLauncher.launch(requiredPermissions().toTypedArray())
         }
     }
@@ -157,9 +158,7 @@ private fun requiredPermissions(): List<String> {
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.ACCESS_COARSE_LOCATION
     )
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        permissions.add(Manifest.permission.ACTIVITY_RECOGNITION)
-    }
+    permissions.add(Manifest.permission.ACTIVITY_RECOGNITION)
     return permissions
 }
 
@@ -176,11 +175,7 @@ private fun startMonitoringIfReady(context: Context, isProfileReady: Boolean) {
         return
     }
     val intent = Intent(context, VehicleMovementServiceUpdate::class.java)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        ContextCompat.startForegroundService(context, intent)
-    } else {
-        context.startService(intent)
-    }
+    ContextCompat.startForegroundService(context, intent)
 }
 
 private fun stopMonitoringIfRunning(context: Context) {

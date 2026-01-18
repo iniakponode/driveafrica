@@ -65,6 +65,7 @@ import com.uoa.driverprofile.presentation.model.FleetEnrollmentChoice
 import com.uoa.driverprofile.presentation.viewmodel.FleetStatusViewModel
 import com.uoa.ml.presentation.viewmodel.TripClassificationDebugViewModel
 import java.util.Locale
+import androidx.core.content.edit
 
 @Composable
 fun SettingsRoute(navController: NavController) {
@@ -138,26 +139,25 @@ fun SettingsRoute(navController: NavController) {
         onOpenNotificationSettings = { openNotificationSettings(context) },
         autoTripEnabled = autoTripEnabled,
         onAutoTripToggle = { enabled ->
-            autoTripEnabled = enabled
-            prefs.edit()
-                .putBoolean(AUTO_TRIP_DETECTION_ENABLED, enabled)
-                .apply()
+            prefs.edit {
+                putBoolean(AUTO_TRIP_DETECTION_ENABLED, enabled)
+            }
             if (!enabled) {
-                prefs.edit()
-                    .putBoolean(MONITORING_PERMISSIONS_REQUESTED, false)
-                    .apply()
+                prefs.edit {
+                    putBoolean(MONITORING_PERMISSIONS_REQUESTED, false)
+                }
             }
         },
         tripSensitivity = sensitivity,
         onTripSensitivityChange = { newValue ->
-            sensitivity = newValue
-            prefs.edit()
-                .putString(TRIP_DETECTION_SENSITIVITY, newValue)
-                .apply()
+//            sensitivity = newValue
+            prefs.edit {
+                putString(TRIP_DETECTION_SENSITIVITY, newValue)
+            }
         },
         allowMeteredUploads = allowMeteredUploads,
         onAllowMeteredUploadsChange = { allowed ->
-            allowMeteredUploads = allowed
+//            allowMeteredUploads = allowed
             PreferenceUtils.setMeteredUploadsAllowed(context, allowed)
         },
         fleetStatus = fleetState.fleetStatus,
@@ -519,14 +519,14 @@ private fun FleetMembershipCard(
                     Text(
                         text = stringResource(
                             R.string.settings_fleet_membership_assigned,
-                            fleetStatus?.fleet?.name ?: "Unknown"
+                            fleetStatus.fleet?.name ?: "Unknown"
                         ),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
                         text = stringResource(
                             R.string.settings_fleet_membership_vehicle_group,
-                            fleetStatus?.vehicleGroup?.name ?: "Not assigned"
+                            fleetStatus.vehicleGroup?.name ?: "Not assigned"
                         ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -537,7 +537,7 @@ private fun FleetMembershipCard(
                         text = stringResource(R.string.settings_fleet_membership_pending),
                         style = MaterialTheme.typography.bodyMedium
                     )
-                    fleetStatus?.pendingRequest?.let { request ->
+                    fleetStatus.pendingRequest?.let { request ->
                         Text(
                             text = stringResource(
                                 R.string.settings_fleet_membership_pending_fleet,

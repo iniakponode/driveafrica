@@ -43,7 +43,6 @@ import javax.inject.Inject
  * starts/stops trip data collection based on sustained motion detection.
  */
 @AndroidEntryPoint
-@RequiresApi(Build.VERSION_CODES.O)
 open class VehicleMovementServiceUpdate : LifecycleService() {
     @RequiresApi(Build.VERSION_CODES.S)
     private fun isForegroundStartAllowedException(throwable: Throwable): Boolean {
@@ -75,7 +74,7 @@ open class VehicleMovementServiceUpdate : LifecycleService() {
 
     companion object {
         const val TAG = "VehicleMovementSvc"
-        private const val CHANNEL_ID = "vehicle_movement"
+//        private const val CHANNEL_ID = "vehicle_movement"
 
 
     }
@@ -182,7 +181,7 @@ open class VehicleMovementServiceUpdate : LifecycleService() {
 
     @Suppress("DEPRECATION")
     private fun isDataCollectionServiceRunning(): Boolean {
-        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        val activityManager = getSystemService(ACTIVITY_SERVICE) as? ActivityManager
             ?: return false
         val services = activityManager.getRunningServices(Int.MAX_VALUE)
         return services.any { it.service.className == DataCollectionService::class.java.name }

@@ -1,5 +1,7 @@
 package com.uoa.driverprofile.presentation.ui.navigation
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptionsBuilder
@@ -19,11 +21,11 @@ fun NavController.navigateToOnboardingInfoScreen(navOptions: NavOptionsBuilder.(
     }
 }
 
-fun NavController.navigateToRegistrationChoiceScreen(navOptions: NavOptionsBuilder.() -> Unit = {}) {
-    if (graph.findNode(REGISTRATION_CHOICE_ROUTE) != null) {
-        navigate(REGISTRATION_CHOICE_ROUTE, navOptions)
-    }
-}
+//fun NavController.navigateToRegistrationChoiceScreen(navOptions: NavOptionsBuilder.() -> Unit = {}) {
+//    if (graph.findNode(REGISTRATION_CHOICE_ROUTE) != null) {
+//        navigate(REGISTRATION_CHOICE_ROUTE, navOptions)
+//    }
+//}
 
 fun NavController.navigateToOnboardingFormScreen(
     registrationMode: RegistrationMode,
@@ -41,6 +43,7 @@ fun NavController.navigateToOnboardingFormScreen(
  * @param onShowSnackbar The lambda function that will be used to show a snackbar
  */
 
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 fun NavGraphBuilder.onboardingInfoScreen(
     navController: NavController,
     onShowSnackbar: suspend (String, String?) -> Boolean
@@ -64,6 +67,7 @@ fun NavGraphBuilder.registrationChoiceScreen(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 fun NavGraphBuilder.onboardingFormScreen(
     navController: NavController,
     onShowSnackbar: suspend (String, String?) -> Boolean

@@ -90,9 +90,9 @@ class FleetStatusViewModel @Inject constructor(
         }
     }
 
-    fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
-    }
+//    fun clearError() {
+//        _state.update { it.copy(errorMessage = null) }
+//    }
 
     companion object {
         private const val POLL_INTERVAL_MS = 5000L

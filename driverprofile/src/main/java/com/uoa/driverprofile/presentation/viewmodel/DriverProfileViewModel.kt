@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import javax.inject.Inject
+import androidx.core.content.edit
 
 @HiltViewModel
 class DriverProfileViewModel @Inject constructor(
@@ -46,10 +47,10 @@ class DriverProfileViewModel @Inject constructor(
     val email: MutableLiveData<String> get() = _email
 
     private val _profile_id = MutableLiveData<String>()
-    val profile_id: MutableLiveData<String> get() = _profile_id
+//    val profile_id: MutableLiveData<String> get() = _profile_id
 
     private val _driverProfileUploadSuccess = MutableStateFlow(false)
-    val driverProfileUploadSuccess: StateFlow<Boolean> get() = _driverProfileUploadSuccess.asStateFlow()
+//    val driverProfileUploadSuccess: StateFlow<Boolean> get() = _driverProfileUploadSuccess.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> get() = _isLoading.asStateFlow()
@@ -125,9 +126,9 @@ class DriverProfileViewModel @Inject constructor(
                     .putString(REGISTRATION_FLEET_CHOICE, fleetChoice.name)
                     .putBoolean(REGISTRATION_HAS_INVITE_CODE, hasInviteCode)
                     .apply()
-                prefs.edit()
-                    .remove(REGISTRATION_INVITE_CODE)
-                    .apply()
+                prefs.edit {
+                    remove(REGISTRATION_INVITE_CODE)
+                }
                 _driverProfileUploadSuccess.value = true
                 secureCredentialStorage.saveCredentials(trimmedEmail, trimmedPassword)
                 _creationMessage.value = "Profile saved locally and will sync when you're online."
@@ -146,21 +147,21 @@ class DriverProfileViewModel @Inject constructor(
         }
     }
 
-    fun getDriverProfileByEmail() {
-        viewModelScope.launch {
-            val emailValue = email.value.toString()
-            Log.d("DriverProfileViewModel", "Getting driver profile by email: $emailValue")
-            getDriverProfileByEmailUseCase.execute(emailValue)
-        }
-    }
+//    fun getDriverProfileByEmail() {
+//        viewModelScope.launch {
+//            val emailValue = email.value.toString()
+//            Log.d("DriverProfileViewModel", "Getting driver profile by email: $emailValue")
+//            getDriverProfileByEmailUseCase.execute(emailValue)
+//        }
+//    }
 
-    fun deleteDriverProfileByEmail() {
-        viewModelScope.launch {
-            val emailValue = email.value.toString()
-            Log.d("DriverProfileViewModel", "Deleting driver profile by email: $emailValue")
-            deleteDriverProfileByEmailUseCase.execute(emailValue)
-        }
-    }
+//    fun deleteDriverProfileByEmail() {
+//        viewModelScope.launch {
+//            val emailValue = email.value.toString()
+//            Log.d("DriverProfileViewModel", "Deleting driver profile by email: $emailValue")
+//            deleteDriverProfileByEmailUseCase.execute(emailValue)
+//        }
+//    }
 
     fun triggerUploadWork() {
         enqueueImmediateUploadWork(application.applicationContext)

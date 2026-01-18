@@ -384,7 +384,7 @@ fun HomeScreenRoute(
         reportsEnabled = ApiKeyUtils.hasChatGptKey(),
         tipsLoading = tipsLoading,
         showReminder = showReminder,
-        onDismissReminder = { showReminder = false }
+        onDismissReminder = { }
         ,
         fleetStatus = fleetState.fleetStatus,
         fleetStatusLoading = fleetState.isLoading,

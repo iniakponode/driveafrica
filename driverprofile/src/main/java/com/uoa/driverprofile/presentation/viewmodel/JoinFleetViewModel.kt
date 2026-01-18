@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Locale
 import javax.inject.Inject
+import androidx.core.content.edit
 
 @HiltViewModel
 class JoinFleetViewModel @Inject constructor(
@@ -73,7 +74,7 @@ class JoinFleetViewModel @Inject constructor(
                     _refreshTrigger.tryEmit(Unit)
                 }
                 is Resource.Error -> {
-                    val message = result.message ?: ""
+                    val message = result.message
                     if (isNetworkError(message)) {
                         queueInviteCodeRequest(normalizedCode)
                         return@launch
@@ -97,57 +98,57 @@ class JoinFleetViewModel @Inject constructor(
         }
     }
 
-    fun clearMessage() {
-        _state.update { it.copy(errorMessage = null, success = false, queuedOffline = false) }
-    }
+//    fun clearMessage() {
+//        _state.update { it.copy(errorMessage = null, success = false, queuedOffline = false) }
+//    }
 
-    fun joinWithCode(code: String) {
-        val normalizedCode = code.trim().uppercase(Locale.ROOT)
-        if (!isValidInviteCode(normalizedCode)) {
-            _state.update {
-                it.copy(
-                    errorMessage = "Invite code format appears incorrect.",
-                    success = false
-                )
-            }
-            return
-        }
-        viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, errorMessage = null, success = false) }
-            when (val result = driverFleetApiRepository.joinWithCode(normalizedCode)) {
-                is Resource.Success -> {
-                    val fleetName = result.data.fleet?.name
-                    val status = result.data.status
-                    _state.update {
-                        it.copy(
-                            isLoading = false,
-                            success = true,
-                            errorMessage = null,
-                            queuedOffline = false,
-                            fleetName = fleetName,
-                            requestStatus = status
-                        )
-                    }
-                    _refreshTrigger.tryEmit(Unit)
-                }
-                is Resource.Error -> {
-                    _state.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = result.message,
-                            success = false,
-                            queuedOffline = false
-                        )
-                    }
-                }
-                else -> Unit
-            }
-        }
-    }
+//    fun joinWithCode(code: String) {
+//        val normalizedCode = code.trim().uppercase(Locale.ROOT)
+//        if (!isValidInviteCode(normalizedCode)) {
+//            _state.update {
+//                it.copy(
+//                    errorMessage = "Invite code format appears incorrect.",
+//                    success = false
+//                )
+//            }
+//            return
+//        }
+//        viewModelScope.launch {
+//            _state.update { it.copy(isLoading = true, errorMessage = null, success = false) }
+//            when (val result = driverFleetApiRepository.joinWithCode(normalizedCode)) {
+//                is Resource.Success -> {
+//                    val fleetName = result.data.fleet?.name
+//                    val status = result.data.status
+//                    _state.update {
+//                        it.copy(
+//                            isLoading = false,
+//                            success = true,
+//                            errorMessage = null,
+//                            queuedOffline = false,
+//                            fleetName = fleetName,
+//                            requestStatus = status
+//                        )
+//                    }
+//                    _refreshTrigger.tryEmit(Unit)
+//                }
+//                is Resource.Error -> {
+//                    _state.update {
+//                        it.copy(
+//                            isLoading = false,
+//                            errorMessage = result.message,
+//                            success = false,
+//                            queuedOffline = false
+//                        )
+//                    }
+//                }
+//                else -> Unit
+//            }
+//        }
+//    }
 
     private fun queueInviteCodeRequest(inviteCode: String) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putString(REGISTRATION_INVITE_CODE, inviteCode).apply()
+        prefs.edit { putString(REGISTRATION_INVITE_CODE, inviteCode) }
         enqueueImmediateUploadWork(context)
         scheduleDataUploadWork(context)
         _state.update {

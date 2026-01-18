@@ -402,9 +402,9 @@ suspend fun onJoinFleetClicked(inviteCode: String) {
   "token_type": "bearer",
   "driver_profile_id": "uuid",
   "email": "driver@example.com",
-  "fleet_assignment": null,  // or object if invited by email
+  "fleet_assignment": null,
   "fleet_status": {
-    "status": "none",  // or "assigned" if invited
+    "status": "none",
     "fleet": null,
     "vehicle_group": null,
     "vehicle": null,

@@ -34,6 +34,7 @@ import java.io.IOException
 import java.util.UUID
 import java.util.Locale
 import javax.inject.Inject
+import androidx.core.content.edit
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
@@ -87,7 +88,7 @@ class AuthViewModel @Inject constructor(
                     }
                     is Resource.Loading -> Unit
                 }
-            } catch (ioe: IOException) {
+            } catch (_: IOException) {
                 enqueueImmediateUploadWork(getApplication())
                 scheduleDataUploadWork(getApplication())
                 _state.update {
@@ -204,10 +205,10 @@ class AuthViewModel @Inject constructor(
 
     private fun persistDriverProfile(driverProfileId: UUID, email: String) {
         val prefs = getApplication<Application>().getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit()
-            .putString(Constants.DRIVER_PROFILE_ID, driverProfileId.toString())
-            .putString(Constants.DRIVER_EMAIL_ID, email)
-            .apply()
+        prefs.edit {
+            putString(Constants.DRIVER_PROFILE_ID, driverProfileId.toString())
+                .putString(Constants.DRIVER_EMAIL_ID, email)
+        }
     }
 }
 

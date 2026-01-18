@@ -59,7 +59,7 @@ import com.uoa.core.database.daos.TripFeatureStateDao
                         QuestionnaireEntity::class,
                         FFTFeatureEntity::class,
                         TripFeatureStateEntity::class],
-                        version = 46)
+                        version = 47)
 @TypeConverters(Converters::class)
 abstract class Sdadb : RoomDatabase() {
     abstract fun sensorDataDao(): SensorDataDao

@@ -51,6 +51,17 @@
     <string name="onboarding_button">Create profile</string>
     <string name="onboarding_backend_summary">A secure profile ID is minted locally, sent to the backend, and reused across trips, questionnaires, and NLG reports.</string>
     <string name="profile_sync_note">Profile IDs stay local and upload once you are online.</string>
+    <string name="settings_fleet_membership_title">Fleet membership</string>
+    <string name="settings_fleet_membership_none">You are not part of a fleet yet.</string>
+    <string name="settings_fleet_membership_assigned">Fleet: %1$s</string>
+    <string name="settings_fleet_membership_vehicle_group">Vehicle group: %1$s</string>
+    <string name="settings_fleet_membership_pending">Join request pending</string>
+    <string name="settings_fleet_membership_pending_fleet">Fleet: %1$s</string>
+    <string name="settings_fleet_membership_pending_requested">Submitted: %1$s</string>
+    <string name="settings_fleet_join_button">Join a fleet</string>
+    <string name="settings_fleet_cancel_button">Cancel request</string>
+    <string name="settings_fleet_refresh">Refresh status</string>
+    <string name="settings_fleet_status_unavailable">Fleet status will update when you are online.</string>
     <string name="home">Home</string>
     <string name="reports">Reports</string>
     <string name="driving_tips">Safety Tips</string>

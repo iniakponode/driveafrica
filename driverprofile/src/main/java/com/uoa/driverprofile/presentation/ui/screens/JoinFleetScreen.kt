@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +71,29 @@ fun JoinFleetScreenRoute(
     LaunchedEffect(fleetState.fleetStatus) {
         val status = fleetState.fleetStatus?.status?.lowercase(Locale.ROOT)
         if ((status == "assigned" || status == "pending") && storedProfileId != null) {
+            navController.navigateToHomeScreen(storedProfileId) {
+                popUpTo(navController.graph.startDestinationId) { inclusive = false }
+                launchSingleTop = true
+            }
+        }
+    }
+
+    LaunchedEffect(fleetState.fleetStatus, uiState.queuedOffline) {
+        val status = fleetState.fleetStatus?.status?.lowercase(Locale.ROOT)
+        if (status == "pending" || uiState.queuedOffline) {
+            fleetStatusViewModel.startPolling()
+        } else {
+            fleetStatusViewModel.stopPolling()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { fleetStatusViewModel.stopPolling() }
+    }
+
+    LaunchedEffect(uiState.requestStatus, uiState.queuedOffline) {
+        val status = uiState.requestStatus?.lowercase(Locale.ROOT)
+        if ((status == "pending" || uiState.queuedOffline) && storedProfileId != null) {
             navController.navigateToHomeScreen(storedProfileId) {
                 popUpTo(navController.graph.startDestinationId) { inclusive = false }
                 launchSingleTop = true
@@ -126,6 +150,13 @@ fun JoinFleetScreenRoute(
                 Text(
                     text = message,
                     color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            if (uiState.queuedOffline) {
+                Text(
+                    text = stringResource(R.string.join_fleet_offline_queued),
+                    color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodySmall
                 )
             }

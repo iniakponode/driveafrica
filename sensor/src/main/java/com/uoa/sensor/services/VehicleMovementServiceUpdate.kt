@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import com.uoa.core.apiServices.models.tripModels.TripCreate
 import com.uoa.core.apiServices.services.tripApiService.TripApiRepository
 import com.uoa.core.database.daos.AlcoholQuestionnaireResponseDao
+import com.uoa.core.database.daos.DriverProfileDAO
 import com.uoa.core.database.repository.TripDataRepository
 import com.uoa.core.mlclassifier.data.InferenceResult
 import com.uoa.core.model.Trip
@@ -60,6 +61,7 @@ open class VehicleMovementServiceUpdate : LifecycleService() {
     @Inject lateinit var localTripRepository: TripDataRepository
     @Inject lateinit var locationManager: LocationManager
     @Inject lateinit var questionnaireDao: AlcoholQuestionnaireResponseDao
+    @Inject lateinit var driverProfileDao: DriverProfileDAO
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var currentTripId: UUID? = null
@@ -105,6 +107,17 @@ open class VehicleMovementServiceUpdate : LifecycleService() {
             Log.d(TAG, "Profile ID found: $driverProfileId")
         } else {
             Log.d(TAG, "No profile ID found in persistent storage")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        val localProfile = runBlocking(Dispatchers.IO) {
+            driverProfileDao.getDriverProfileById(driverProfileId!!)
+        }
+        if (localProfile == null) {
+            Log.w(TAG, "Driver profile missing locally; blocking monitoring until hydrated.")
+            notificationManager.displayPermissionNotification(
+                "Open the app to finish profile setup before monitoring can start."
+            )
             stopSelf()
             return START_NOT_STICKY
         }

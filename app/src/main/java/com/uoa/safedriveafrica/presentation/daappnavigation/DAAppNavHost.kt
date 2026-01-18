@@ -58,7 +58,7 @@ fun DAAppNavHost(
         reportScreen(navController)
         filterScreen(navController)
         sensorControlScreen(navController)
-        composable(SETTINGS_ROUTE) { SettingsRoute() }
+        composable(SETTINGS_ROUTE) { SettingsRoute(navController = navController) }
 
         // Add the Alcohol Questionnaire screen route
         alcoholQuestionnaireScreen(navController)

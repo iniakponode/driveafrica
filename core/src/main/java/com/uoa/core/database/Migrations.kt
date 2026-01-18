@@ -187,6 +187,15 @@ val MIGRATION_45_46 = object : Migration(45, 46) {
     }
 }
 
+val MIGRATION_46_47 = object : Migration(46, 47) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS index_trip_feature_state_tripId " +
+                "ON trip_feature_state(tripId)"
+        )
+    }
+}
+
 private fun createTripSummaryTable(db: SupportSQLiteDatabase, tableName: String) {
     db.execSQL(
         """

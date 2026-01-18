@@ -17,6 +17,7 @@ import com.uoa.core.model.BehaviourOccurrence
 import com.uoa.core.model.Road
 import com.uoa.core.model.getAggregationLevel
 import com.uoa.core.network.apiservices.OSMSpeedLimitApiService
+import com.uoa.core.network.model.nominatim.OverpassResponse
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import kotlinx.coroutines.async
@@ -28,6 +29,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import retrofit2.HttpException
+import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -520,14 +522,25 @@ private suspend fun getRoadDataForLocations(
                             coordinate.second,
                             radius = radius
                         )
-                        val response = speedLimitApiService.fetchSpeedLimits(query)
+                        val response = fetchSpeedLimitWithRetry(speedLimitApiService, query)
 
                         // Extract maxspeed from Overpass response (simple numeric parsing)
-                        val rawMaxSpeed = response.elements.firstOrNull()
+                        val rawMaxSpeed = response?.elements?.firstOrNull()
                             ?.tags?.get("maxspeed")
                         speedLimit = parseSpeedLimitKmh(rawMaxSpeed)
 
-                        val roadType = response.elements.firstOrNull()
+                        if (speedLimit == null) {
+                            val cached = roadRepository.getSpeedLimitByCoordinates(
+                                coordinate.first,
+                                coordinate.second,
+                                radius
+                            )
+                            if (cached != null && cached > 0) {
+                                speedLimit = cached
+                            }
+                        }
+
+                        val roadType = response?.elements?.firstOrNull()
                             ?.tags?.get("highway") ?: "unknown"
 
                         val speedLimitValue = speedLimit ?: 0
@@ -635,15 +648,26 @@ suspend fun getRoadDataForLocation(
             val radius = 200.0
             // Build Overpass API query to fetch speed limit information.
             val query = buildSpeedLimitQuery(location.latitude, location.longitude, radius)
-            val response = speedLimitApiService.fetchSpeedLimits(query)
+            val response = fetchSpeedLimitWithRetry(speedLimitApiService, query)
 
             // Extract the speed limit from the response.
-            val rawMaxSpeed = response.elements.firstOrNull()
+            val rawMaxSpeed = response?.elements?.firstOrNull()
                 ?.tags?.get("maxspeed")
             speedLimit = parseSpeedLimitKmh(rawMaxSpeed)
 
+            if (speedLimit == null) {
+                val cached = roadRepository.getSpeedLimitByCoordinates(
+                    location.latitude,
+                    location.longitude,
+                    radius
+                )
+                if (cached != null && cached > 0) {
+                    speedLimit = cached
+                }
+            }
+
             // Optionally, retrieve the road type (defaulting to "unknown").
-            val roadType = response.elements.firstOrNull()?.tags?.get("highway") ?: "unknown"
+            val roadType = response?.elements?.firstOrNull()?.tags?.get("highway") ?: "unknown"
 
             val speedLimitValue = speedLimit ?: 0
             // Build a Road object with the fetched data.
@@ -706,6 +730,36 @@ private fun parseSpeedLimitKmh(rawMaxSpeed: String?): Int? {
     }
 }
 
+private suspend fun fetchSpeedLimitWithRetry(
+    speedLimitApiService: OSMSpeedLimitApiService,
+    query: String,
+    maxAttempts: Int = 3,
+    initialDelayMs: Long = 600
+): OverpassResponse? {
+    var attempt = 1
+    var delayMs = initialDelayMs
+    while (attempt <= maxAttempts) {
+        try {
+            applyRateLimit()
+            return speedLimitApiService.fetchSpeedLimits(query)
+        } catch (e: HttpException) {
+            if (e.code() !in setOf(429, 500, 502, 503, 504)) {
+                throw e
+            }
+            Log.w("SpeedLimitService", "Overpass HTTP ${e.code()} (attempt $attempt/$maxAttempts).")
+        } catch (e: IOException) {
+            Log.w("SpeedLimitService", "Overpass network error (attempt $attempt/$maxAttempts).", e)
+        } catch (e: Exception) {
+            Log.w("SpeedLimitService", "Overpass unexpected error (attempt $attempt/$maxAttempts).", e)
+        }
+        if (attempt == maxAttempts) break
+        delay(delayMs)
+        delayMs = (delayMs * 2).coerceAtMost(4000)
+        attempt += 1
+    }
+    return null
+}
+
 
 
 
@@ -731,10 +785,10 @@ private suspend fun getSpeedLimitsForLocations(
                     // Build query for current coordinate
                     val query =
                         buildSpeedLimitQuery(coordinate.first, coordinate.second, radius = 200.0)
-                    val response = speedLimitApiService.fetchSpeedLimits(query)
+                    val response = fetchSpeedLimitWithRetry(speedLimitApiService, query)
 
                     // Extract the first found speed limit for this coordinate
-                    val rawMaxSpeed = response.elements.firstOrNull()?.tags?.get("maxspeed")
+                    val rawMaxSpeed = response?.elements?.firstOrNull()?.tags?.get("maxspeed")
                     val speedLimit = parseSpeedLimitKmh(rawMaxSpeed)
                     speedLimitCache[coordinate] = speedLimit
                 } catch (e: Exception) {

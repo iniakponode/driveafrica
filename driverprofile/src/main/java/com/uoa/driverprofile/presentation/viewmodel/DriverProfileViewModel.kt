@@ -14,14 +14,15 @@ import com.uoa.core.database.entities.DriverProfileEntity
 import com.uoa.core.utils.Constants.Companion.DRIVER_EMAIL_ID
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.core.utils.Constants.Companion.REGISTRATION_FLEET_CHOICE
+import com.uoa.core.utils.Constants.Companion.REGISTRATION_HAS_INVITE_CODE
 import com.uoa.core.utils.Constants.Companion.REGISTRATION_INVITE_CODE
-import com.uoa.core.utils.Constants.Companion.REGISTRATION_MODE
 import com.uoa.core.utils.SecureCredentialStorage
 import com.uoa.driverprofile.R
 import com.uoa.driverprofile.domain.usecase.DeleteDriverProfileByEmailUseCase
 import com.uoa.driverprofile.domain.usecase.GetDriverProfileByEmailUseCase
 import com.uoa.driverprofile.domain.usecase.InsertDriverProfileUseCase
-import com.uoa.driverprofile.presentation.model.RegistrationMode
+import com.uoa.driverprofile.presentation.model.FleetEnrollmentChoice
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,8 +67,8 @@ class DriverProfileViewModel @Inject constructor(
     fun createDriverProfile(
         email: String,
         password: String,
-        registrationMode: RegistrationMode,
-        inviteCode: String?,
+        fleetChoice: FleetEnrollmentChoice,
+        hasInviteCode: Boolean,
         callback: (Boolean, UUID?) -> Unit
     ) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -121,17 +122,12 @@ class DriverProfileViewModel @Inject constructor(
                 prefs.edit()
                     .putString(DRIVER_PROFILE_ID, profileId.toString())
                     .putString(DRIVER_EMAIL_ID, trimmedEmail)
-                    .putString(REGISTRATION_MODE, registrationMode.name)
+                    .putString(REGISTRATION_FLEET_CHOICE, fleetChoice.name)
+                    .putBoolean(REGISTRATION_HAS_INVITE_CODE, hasInviteCode)
                     .apply()
-                if (registrationMode == RegistrationMode.InviteCode && !inviteCode.isNullOrBlank()) {
-                    prefs.edit()
-                        .putString(REGISTRATION_INVITE_CODE, inviteCode)
-                        .apply()
-                } else {
-                    prefs.edit()
-                        .remove(REGISTRATION_INVITE_CODE)
-                        .apply()
-                }
+                prefs.edit()
+                    .remove(REGISTRATION_INVITE_CODE)
+                    .apply()
                 _driverProfileUploadSuccess.value = true
                 secureCredentialStorage.saveCredentials(trimmedEmail, trimmedPassword)
                 _creationMessage.value = "Profile saved locally and will sync when you're online."

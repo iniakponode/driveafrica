@@ -8,6 +8,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,13 +21,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,23 +38,36 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
+import com.uoa.safedriveafrica.R
+import com.uoa.core.apiServices.models.auth.FleetStatusResponse
 import com.uoa.core.apiServices.workManager.enqueueImmediateUploadWork
 import com.uoa.core.utils.Constants.Companion.AUTO_TRIP_DETECTION_ENABLED
 import com.uoa.core.utils.Constants.Companion.MONITORING_PERMISSIONS_REQUESTED
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.core.utils.Constants.Companion.REGISTRATION_FLEET_CHOICE
 import com.uoa.core.utils.Constants.Companion.TRIP_DETECTION_SENSITIVITY
+import com.uoa.core.utils.JOIN_FLEET_ROUTE
 import com.uoa.core.utils.PreferenceUtils
+import com.uoa.core.utils.SecureTokenStorage
+import com.uoa.driverprofile.presentation.model.FleetEnrollmentChoice
+import com.uoa.driverprofile.presentation.viewmodel.FleetStatusViewModel
 import com.uoa.ml.presentation.viewmodel.TripClassificationDebugViewModel
+import java.util.Locale
 
 @Composable
-fun SettingsRoute() {
+fun SettingsRoute(navController: NavController) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val prefs = remember(context) {
@@ -69,6 +86,16 @@ fun SettingsRoute() {
         mutableStateOf(areNotificationsAllowed(context))
     }
     val debugViewModel: TripClassificationDebugViewModel = hiltViewModel()
+    val fleetStatusViewModel: FleetStatusViewModel = hiltViewModel()
+    val fleetState by fleetStatusViewModel.state.collectAsStateWithLifecycle()
+    val tokenStorage = remember { SecureTokenStorage(context) }
+    val fleetChoice = remember {
+        prefs.getString(REGISTRATION_FLEET_CHOICE, null)
+    }
+    var driverProfileId by rememberSaveable {
+        mutableStateOf(prefs.getString(com.uoa.core.utils.Constants.DRIVER_PROFILE_ID, null))
+    }
+    val showJoinWithoutStatus = fleetChoice == FleetEnrollmentChoice.Independent.name
     val isDebuggable =
         (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
@@ -82,10 +109,20 @@ fun SettingsRoute() {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 notificationsEnabled = areNotificationsAllowed(context)
+                driverProfileId = prefs.getString(com.uoa.core.utils.Constants.DRIVER_PROFILE_ID, null)
+                if (!tokenStorage.getToken().isNullOrBlank()) {
+                    fleetStatusViewModel.refreshFleetStatus()
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    LaunchedEffect(Unit) {
+        if (!tokenStorage.getToken().isNullOrBlank()) {
+            fleetStatusViewModel.refreshFleetStatus()
+        }
     }
 
     SettingsScreen(
@@ -123,9 +160,17 @@ fun SettingsRoute() {
             allowMeteredUploads = allowed
             PreferenceUtils.setMeteredUploadsAllowed(context, allowed)
         },
+        fleetStatus = fleetState.fleetStatus,
+        fleetStatusLoading = fleetState.isLoading,
+        fleetStatusError = fleetState.errorMessage,
+        showJoinWithoutStatus = showJoinWithoutStatus,
+        onJoinFleetClick = { navController.navigate(JOIN_FLEET_ROUTE) },
+        onCancelJoinRequest = { fleetStatusViewModel.cancelJoinRequest() },
+        onRefreshFleetStatus = { fleetStatusViewModel.refreshFleetStatus() },
         onSyncNow = { enqueueImmediateUploadWork(context) },
         showDebugActions = isDebuggable,
-        onDebugTripClassification = { debugViewModel.runLatestTripClassification() }
+        onDebugTripClassification = { debugViewModel.runLatestTripClassification() },
+        driverProfileId = driverProfileId
     )
 }
 
@@ -141,10 +186,19 @@ fun SettingsScreen(
     onTripSensitivityChange: (String) -> Unit,
     allowMeteredUploads: Boolean,
     onAllowMeteredUploadsChange: (Boolean) -> Unit,
+    fleetStatus: FleetStatusResponse?,
+    fleetStatusLoading: Boolean,
+    fleetStatusError: String?,
+    showJoinWithoutStatus: Boolean,
+    onJoinFleetClick: () -> Unit,
+    onCancelJoinRequest: () -> Unit,
+    onRefreshFleetStatus: () -> Unit,
     onSyncNow: () -> Unit,
     showDebugActions: Boolean,
-    onDebugTripClassification: () -> Unit
+    onDebugTripClassification: () -> Unit,
+    driverProfileId: String?
 ) {
+    val clipboardManager = LocalClipboardManager.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -193,6 +247,49 @@ fun SettingsScreen(
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = cardColors
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    text = "Driver Profile ID",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = driverProfileId ?: "Not available",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Use this ID when requesting account or data deletion.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (!driverProfileId.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(onClick = {
+                        clipboardManager.setText(AnnotatedString(driverProfileId))
+                    }) {
+                        Text(text = "Copy ID")
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        FleetMembershipCard(
+            fleetStatus = fleetStatus,
+            isLoading = fleetStatusLoading,
+            errorMessage = fleetStatusError,
+            showJoinWithoutStatus = showJoinWithoutStatus,
+            onJoinFleetClick = onJoinFleetClick,
+            onCancelJoinRequest = onCancelJoinRequest,
+            onRefreshFleetStatus = onRefreshFleetStatus
+        )
 
         Spacer(modifier = Modifier.height(12.dp))
         Card(
@@ -381,6 +478,129 @@ private fun SensitivityOptionRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun FleetMembershipCard(
+    fleetStatus: FleetStatusResponse?,
+    isLoading: Boolean,
+    errorMessage: String?,
+    showJoinWithoutStatus: Boolean,
+    onJoinFleetClick: () -> Unit,
+    onCancelJoinRequest: () -> Unit,
+    onRefreshFleetStatus: () -> Unit
+) {
+    val status = fleetStatus?.status?.lowercase(Locale.ROOT)
+    val canJoin = status == null || status == "none"
+    val showJoin = status == "none" || (status == null && showJoinWithoutStatus)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.settings_fleet_membership_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (isLoading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+            when (status) {
+                "assigned" -> {
+                    Text(
+                        text = stringResource(
+                            R.string.settings_fleet_membership_assigned,
+                            fleetStatus?.fleet?.name ?: "Unknown"
+                        ),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.settings_fleet_membership_vehicle_group,
+                            fleetStatus?.vehicleGroup?.name ?: "Not assigned"
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                "pending" -> {
+                    Text(
+                        text = stringResource(R.string.settings_fleet_membership_pending),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    fleetStatus?.pendingRequest?.let { request ->
+                        Text(
+                            text = stringResource(
+                                R.string.settings_fleet_membership_pending_fleet,
+                                request.fleetName ?: "Unknown"
+                            ),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = stringResource(
+                                R.string.settings_fleet_membership_pending_requested,
+                                request.requestedAt ?: "Unknown"
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = onCancelJoinRequest,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading
+                    ) {
+                        Text(text = stringResource(R.string.settings_fleet_cancel_button))
+                    }
+                }
+                else -> {
+                    Text(
+                        text = stringResource(R.string.settings_fleet_membership_none),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (showJoin) {
+                        Button(
+                            onClick = onJoinFleetClick,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            enabled = !isLoading
+                        ) {
+                            Text(text = stringResource(R.string.settings_fleet_join_button))
+                        }
+                    } else if (canJoin) {
+                        Text(
+                            text = stringResource(R.string.settings_fleet_status_unavailable),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            if (!isLoading) {
+                TextButton(onClick = onRefreshFleetStatus) {
+                    Text(text = stringResource(R.string.settings_fleet_refresh))
+                }
+            }
+
+            errorMessage?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 }

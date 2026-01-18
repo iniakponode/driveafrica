@@ -44,6 +44,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
@@ -84,11 +86,11 @@ import com.uoa.core.apiServices.models.driverProfile.DriverProfileResponse
 import com.uoa.core.utils.Constants.Companion.DRIVER_EMAIL_ID
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
-import com.uoa.core.utils.Constants.Companion.REGISTRATION_INVITE_CODE
 import com.uoa.driverprofile.presentation.ui.navigation.navigateToHomeScreen
 import com.uoa.driverprofile.presentation.viewmodel.AuthEvent
 import com.uoa.driverprofile.presentation.viewmodel.AuthViewModel
 import com.uoa.driverprofile.presentation.viewmodel.DriverProfileViewModel
+import com.uoa.driverprofile.presentation.model.FleetEnrollmentChoice
 import com.uoa.driverprofile.presentation.model.RegistrationMode
 import com.uoa.core.utils.JOIN_FLEET_ROUTE
 import com.uoa.core.utils.ONBOARDING_FORM_ROUTE
@@ -115,16 +117,17 @@ private fun areNotificationsAllowed(context: Context): Boolean {
 fun DriverProfileCreationScreen(
     email: String,
     onEmailChange: (String) -> Unit,
-    inviteCode: String,
-    onInviteCodeChange: (String) -> Unit,
-    showInviteCodeField: Boolean,
-    isInviteCodeError: Boolean,
     password: String,
     onPasswordChange: (String) -> Unit,
     isError: Boolean,
     @StringRes emailErrorMessageResId: Int?,
     isPasswordError: Boolean,
     isPasswordTooLong: Boolean,
+    fleetChoice: FleetEnrollmentChoice?,
+    onFleetChoiceChange: (FleetEnrollmentChoice) -> Unit,
+    hasInviteCode: Boolean,
+    onHasInviteCodeChange: (Boolean) -> Unit,
+    showFleetChoiceError: Boolean,
     onSubmit: () -> Unit,
     isLoading: Boolean,
     statusMessage: String?,
@@ -195,25 +198,14 @@ fun DriverProfileCreationScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (showInviteCodeField) {
-                    OutlinedTextField(
-                        value = inviteCode,
-                        onValueChange = onInviteCodeChange,
-                        label = { Text(text = stringResource(R.string.join_fleet_code_label)) },
-                        singleLine = true,
-                        isError = isInviteCodeError,
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(
-                            imeAction = ImeAction.Next,
-                            keyboardType = KeyboardType.Ascii
-                        )
+                if (authMode == AuthMode.Register) {
+                    FleetEnrollmentSelector(
+                        selection = fleetChoice,
+                        onSelect = onFleetChoiceChange,
+                        hasInviteCode = hasInviteCode,
+                        onHasInviteCodeChange = onHasInviteCodeChange,
+                        showError = showFleetChoiceError
                     )
-                    if (isInviteCodeError) {
-                        Text(
-                            text = stringResource(R.string.onboarding_invite_code_error),
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
                 }
 
                 OutlinedTextField(
@@ -298,12 +290,17 @@ fun DriverProfileCreationScreen(
                     )
                 }
 
+                val actionLabel = if (authMode == AuthMode.Login) {
+                    stringResource(R.string.auth_mode_login)
+                } else {
+                    stringResource(R.string.onboarding_button)
+                }
                 Button(
                     onClick = onSubmit,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
-                    enabled = !isLoading,
+                    enabled = !isLoading && (authMode != AuthMode.Register || fleetChoice != null),
                     shape = MaterialTheme.shapes.medium
                 ) {
                     if (isLoading) {
@@ -319,9 +316,110 @@ fun DriverProfileCreationScreen(
                         Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Text(text = stringResource(R.string.onboarding_button))
+                    Text(text = actionLabel)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun FleetEnrollmentSelector(
+    selection: FleetEnrollmentChoice?,
+    onSelect: (FleetEnrollmentChoice) -> Unit,
+    hasInviteCode: Boolean,
+    onHasInviteCodeChange: (Boolean) -> Unit,
+    showError: Boolean
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.registration_fleet_choice_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = stringResource(R.string.registration_fleet_choice_required),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        FleetChoiceRow(
+            selected = selection == FleetEnrollmentChoice.Independent,
+            title = stringResource(R.string.registration_fleet_choice_independent_title),
+            body = stringResource(R.string.registration_fleet_choice_independent_body),
+            onClick = { onSelect(FleetEnrollmentChoice.Independent) }
+        )
+        FleetChoiceRow(
+            selected = selection == FleetEnrollmentChoice.HaveFleet,
+            title = stringResource(R.string.registration_fleet_choice_have_fleet_title),
+            body = stringResource(R.string.registration_fleet_choice_have_fleet_body),
+            onClick = { onSelect(FleetEnrollmentChoice.HaveFleet) }
+        )
+        if (selection == FleetEnrollmentChoice.HaveFleet) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Switch(
+                    checked = hasInviteCode,
+                    onCheckedChange = onHasInviteCodeChange
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.registration_fleet_choice_invite_toggle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Text(
+                text = stringResource(R.string.registration_fleet_choice_invite_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 48.dp)
+            )
+        }
+        if (showError) {
+            Text(
+                text = stringResource(R.string.registration_fleet_choice_error),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+    }
+}
+
+@Composable
+private fun FleetChoiceRow(
+    selected: Boolean,
+    title: String,
+    body: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(
+            selected = selected,
+            onClick = onClick
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -684,6 +782,7 @@ fun OnboardingInfoRoute(
                 color = MaterialTheme.colorScheme.error
             )
         }
+
     }
 }
 
@@ -878,23 +977,22 @@ fun DriverProfileCreationRoute(
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     val savedProfileId = prefs.getString(DRIVER_PROFILE_ID, null)
     var emailState by rememberSaveable { mutableStateOf("") }
-    var inviteCodeState by rememberSaveable { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
     var emailErrorMessageResId by remember { mutableStateOf<Int?>(null) }
     val isLoading by driverProfileViewModel.isLoading.collectAsStateWithLifecycle()
     val authViewModel: AuthViewModel = hiltViewModel()
-    val joinFleetViewModel: com.uoa.driverprofile.presentation.viewmodel.JoinFleetViewModel = hiltViewModel()
     val authState by authViewModel.state.collectAsStateWithLifecycle()
     val statusMessage by driverProfileViewModel.creationMessage.collectAsStateWithLifecycle()
     val currentDriverProfile by driverProfileViewModel.currentDriverProfile.collectAsStateWithLifecycle()
     var isPasswordTooLong by rememberSaveable { mutableStateOf(false) }
-    var isInviteCodeError by rememberSaveable { mutableStateOf(false) }
     var pendingUploadWork by rememberSaveable { mutableStateOf(false) }
     var pendingProfileId by rememberSaveable { mutableStateOf<UUID?>(null) }
     var notificationsEnabled by rememberSaveable { mutableStateOf(areNotificationsAllowed(context)) }
     var hasRequestedNotificationPermission by rememberSaveable { mutableStateOf(false) }
     var authMode by rememberSaveable { mutableStateOf(AuthMode.Register) }
-    var inviteJoinTriggered by rememberSaveable { mutableStateOf(false) }
+    var fleetChoiceKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var hasInviteCode by rememberSaveable { mutableStateOf(false) }
+    var showFleetChoiceError by rememberSaveable { mutableStateOf(false) }
     val requestNotificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) {
@@ -963,24 +1061,22 @@ fun DriverProfileCreationRoute(
     }
 
     LaunchedEffect(authViewModel.events) {
-            authViewModel.events.collect { event ->
-                if (event is AuthEvent.Authenticated) {
-                    val currentAuthState = authViewModel.state.value
-                    val fleetStatus = currentAuthState.fleetStatus
-                    val fleetStatusValue = fleetStatus?.status?.lowercase(Locale.ROOT)
-                    val shouldAttemptInstantJoin = registrationMode == RegistrationMode.InviteCode &&
-                        inviteCodeState.isNotBlank() &&
-                        !inviteJoinTriggered &&
-                        fleetStatusValue != "assigned"
-                    if (shouldAttemptInstantJoin) {
-                        joinFleetViewModel.joinWithCode(inviteCodeState.trim().uppercase(Locale.ROOT))
-                        inviteJoinTriggered = true
-                    }
-                    val hasPendingInvite = prefs.getString(REGISTRATION_INVITE_CODE, null)?.isNotBlank() == true
-                    val shouldNavigateHome = currentAuthState.fleetAssignment != null ||
-                        fleetStatusValue == "assigned" ||
-                        fleetStatusValue == "pending" ||
-                        hasPendingInvite
+        authViewModel.events.collect { event ->
+            if (event is AuthEvent.Authenticated) {
+                val currentAuthState = authViewModel.state.value
+                val fleetStatus = currentAuthState.fleetStatus
+                val fleetStatusValue = fleetStatus?.status?.lowercase(Locale.ROOT)
+                val fleetChoice = fleetChoiceKey?.let {
+                    runCatching { FleetEnrollmentChoice.valueOf(it) }.getOrNull()
+                }
+                val wantsInviteCode = fleetChoice == FleetEnrollmentChoice.HaveFleet && hasInviteCode
+                val hasFleetAssignment = currentAuthState.fleetAssignment != null ||
+                    fleetStatusValue == "assigned" ||
+                    fleetStatusValue == "pending"
+                val shouldNavigateHome = authMode == AuthMode.Login ||
+                    fleetChoice == FleetEnrollmentChoice.Independent ||
+                    !wantsInviteCode ||
+                    hasFleetAssignment
                 if (shouldNavigateHome) {
                     if (notificationsEnabled) {
                         navController.navigateToHomeScreen(event.driverProfileId) {
@@ -1027,14 +1123,12 @@ fun DriverProfileCreationRoute(
 
     var passwordState by rememberSaveable { mutableStateOf("") }
     var isPasswordError by remember { mutableStateOf(false) }
-    val showInviteCodeField = authMode == AuthMode.Register &&
-        registrationMode == RegistrationMode.InviteCode
+    val fleetChoice = fleetChoiceKey?.let {
+        runCatching { FleetEnrollmentChoice.valueOf(it) }.getOrNull()
+    }
     val onSubmit: () -> Unit = onSubmit@{
-        val trimmedInviteCode = inviteCodeState.trim().uppercase(Locale.ROOT)
         val trimmedEmail = emailState.trim()
         val trimmedPassword = passwordState.trim()
-        val inviteCodeInvalid = showInviteCodeField &&
-            (trimmedInviteCode.isBlank() || !isValidInviteCode(trimmedInviteCode))
         val emailInvalid = trimmedEmail.isBlank()
         val emailFormatInvalid = trimmedEmail.isNotEmpty() && !isValidEmail(trimmedEmail)
         val passwordInvalid = trimmedPassword.length < 6
@@ -1042,7 +1136,8 @@ fun DriverProfileCreationRoute(
         val passwordByteCount = trimmedPassword.encodeToByteArray().size
         isPasswordTooLong = passwordByteCount > MAX_PASSWORD_BYTES
 
-        isInviteCodeError = inviteCodeInvalid
+        val fleetChoiceMissing = authMode == AuthMode.Register && fleetChoice == null
+        showFleetChoiceError = fleetChoiceMissing
         emailErrorMessageResId = when {
             emailInvalid -> R.string.onboarding_error_empty
             emailFormatInvalid -> R.string.onboarding_error_invalid_email
@@ -1051,7 +1146,7 @@ fun DriverProfileCreationRoute(
         isError = emailInvalid || emailFormatInvalid
         isPasswordError = passwordInvalid
 
-        if (inviteCodeInvalid || emailInvalid || emailFormatInvalid || passwordInvalid || isPasswordTooLong) {
+        if (fleetChoiceMissing || emailInvalid || emailFormatInvalid || passwordInvalid || isPasswordTooLong) {
             return@onSubmit
         }
 
@@ -1059,8 +1154,8 @@ fun DriverProfileCreationRoute(
             driverProfileViewModel.createDriverProfile(
                 trimmedEmail,
                 trimmedPassword,
-                registrationMode,
-                trimmedInviteCode.takeIf { showInviteCodeField }
+                fleetChoice ?: FleetEnrollmentChoice.Independent,
+                hasInviteCode
             ) { success, profileId ->
                 if (success && profileId != null) {
                     authViewModel.register(profileId, trimmedEmail, trimmedPassword)
@@ -1093,13 +1188,17 @@ fun DriverProfileCreationRoute(
             isPasswordError = false
             isPasswordTooLong = newPassword.encodeToByteArray().size > MAX_PASSWORD_BYTES
         },
-        inviteCode = inviteCodeState,
-        onInviteCodeChange = { newCode ->
-            inviteCodeState = newCode
-            isInviteCodeError = false
+        fleetChoice = fleetChoice,
+        onFleetChoiceChange = { choice ->
+            fleetChoiceKey = choice.name
+            showFleetChoiceError = false
+            if (choice == FleetEnrollmentChoice.Independent) {
+                hasInviteCode = false
+            }
         },
-        showInviteCodeField = showInviteCodeField,
-        isInviteCodeError = isInviteCodeError,
+        hasInviteCode = hasInviteCode,
+        onHasInviteCodeChange = { enabled -> hasInviteCode = enabled },
+        showFleetChoiceError = showFleetChoiceError,
         isError = isError,
         emailErrorMessageResId = emailErrorMessageResId,
         isPasswordError = isPasswordError,
@@ -1114,7 +1213,10 @@ fun DriverProfileCreationRoute(
         onRequestPermission = requestNotificationPermission,
         onOpenSettings = { openNotificationSettings(context) },
         authMode = authMode,
-        onAuthModeChange = { authMode = it },
+        onAuthModeChange = { mode ->
+            authMode = mode
+            showFleetChoiceError = false
+        },
         authStatusMessage = authState.errorMessage ?: authState.successMessage,
         authStatusIsError = authState.errorMessage != null
     )
@@ -1127,9 +1229,4 @@ enum class AuthMode {
 
 private fun isValidEmail(email: String): Boolean {
     return Patterns.EMAIL_ADDRESS.matcher(email).matches()
-}
-
-private fun isValidInviteCode(code: String): Boolean {
-    val pattern = Regex("^[A-Z]{3,4}-[A-Z0-9]{5,8}$")
-    return pattern.matches(code)
 }

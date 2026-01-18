@@ -13,6 +13,7 @@ import com.uoa.core.apiServices.models.auth.RegisterRequest
 import com.uoa.core.apiServices.services.auth.AuthRepository
 import com.uoa.core.apiServices.workManager.scheduleDataUploadWork
 import com.uoa.core.apiServices.workManager.enqueueImmediateUploadWork
+import com.uoa.core.database.entities.DriverProfileEntity
 import com.uoa.core.utils.Constants
 import com.uoa.core.utils.PreferenceUtils
 import com.uoa.core.utils.Resource
@@ -25,8 +26,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.UUID
 import java.util.Locale
@@ -121,10 +124,12 @@ class AuthViewModel @Inject constructor(
     }
 
     private suspend fun markProfileSynced(driverProfileId: UUID, email: String) {
-        runCatching {
-            driverProfileRepository.updateDriverProfileByEmail(driverProfileId, true, email)
-        }.onFailure { throwable ->
-            Log.w("AuthViewModel", "Failed to mark driver profile synced: ${throwable.localizedMessage}")
+        withContext(Dispatchers.IO) {
+            runCatching {
+                driverProfileRepository.updateDriverProfileByEmail(driverProfileId, true, email)
+            }.onFailure { throwable ->
+                Log.w("AuthViewModel", "Failed to mark driver profile synced: ${throwable.localizedMessage}")
+            }
         }
     }
 
@@ -143,6 +148,7 @@ class AuthViewModel @Inject constructor(
             return
         }
 
+        ensureLocalProfile(profileId, email)
         persistDriverProfile(profileId, email)
 
         val fleetAssignment = response.fleetAssignment
@@ -167,6 +173,33 @@ class AuthViewModel @Inject constructor(
         }
 
         _events.emit(AuthEvent.Authenticated(profileId))
+    }
+
+    private suspend fun ensureLocalProfile(profileId: UUID, email: String) {
+        withContext(Dispatchers.IO) {
+            val existingById = runCatching {
+                driverProfileRepository.getDriverProfileById(profileId)
+            }.getOrNull()
+            if (existingById != null) {
+                if (existingById.email != email) {
+                    driverProfileRepository.updateDriverProfile(
+                        DriverProfileEntity(driverProfileId = profileId, email = email, sync = true)
+                    )
+                }
+                return@withContext
+            }
+
+            val existingByEmail = runCatching {
+                driverProfileRepository.getDriverProfileByEmail(email)
+            }.getOrNull()
+            if (existingByEmail != null) {
+                driverProfileRepository.updateDriverProfileByEmail(profileId, true, email)
+            } else {
+                driverProfileRepository.insertDriverProfile(
+                    DriverProfileEntity(driverProfileId = profileId, email = email, sync = true)
+                )
+            }
+        }
     }
 
     private fun persistDriverProfile(driverProfileId: UUID, email: String) {

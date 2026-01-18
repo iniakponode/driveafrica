@@ -29,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -49,6 +50,7 @@ import com.uoa.core.utils.ApiKeyUtils
 import com.uoa.core.utils.Constants.Companion.DRIVER_EMAIL_ID
 import com.uoa.core.utils.Constants.Companion.LAST_QUESTIONNAIRE_DAY
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
+import com.uoa.core.utils.Constants.Companion.REGISTRATION_INVITE_CODE
 import com.uoa.core.utils.FILTER_SCREEN_ROUTE
 import com.uoa.core.utils.JOIN_FLEET_ROUTE
 import com.uoa.core.utils.SENSOR_CONTROL_SCREEN_ROUTE
@@ -81,6 +83,7 @@ fun HomeScreen(
     fleetStatus: FleetStatusResponse?,
     fleetStatusLoading: Boolean,
     fleetStatusError: String?,
+    queuedInviteCode: Boolean,
     onJoinFleetClick: () -> Unit
 ) {
 
@@ -100,6 +103,7 @@ fun HomeScreen(
             fleetStatus = fleetStatus,
             isLoading = fleetStatusLoading,
             errorMessage = fleetStatusError,
+            queuedInviteCode = queuedInviteCode,
             onJoinFleetClick = onJoinFleetClick
         )
         Spacer(modifier = Modifier.height(16.dp))
@@ -223,6 +227,7 @@ private fun FleetStatusBanner(
     fleetStatus: FleetStatusResponse?,
     isLoading: Boolean,
     errorMessage: String?,
+    queuedInviteCode: Boolean,
     onJoinFleetClick: () -> Unit
 ) {
     Card(
@@ -269,26 +274,38 @@ private fun FleetStatusBanner(
                     }
                 }
                 else -> {
-                    Text(
-                        text = "You're not part of a fleet yet",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    if (!isLoading) {
-                        Button(
-                            onClick = onJoinFleetClick,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp)
-                        ) {
-                            Text(text = stringResource(R.string.join_fleet_cta))
-                        }
-                    } else {
+                    if (queuedInviteCode) {
                         Text(
-                            text = "Checking fleet status...",
+                            text = stringResource(R.string.join_fleet_queued_title),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = stringResource(R.string.join_fleet_queued_body),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    } else {
+                        Text(
+                            text = "You're not part of a fleet yet",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        if (!isLoading) {
+                            Button(
+                                onClick = onJoinFleetClick,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                            ) {
+                                Text(text = stringResource(R.string.join_fleet_cta))
+                            }
+                        } else {
+                            Text(
+                                text = "Checking fleet status...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
@@ -332,6 +349,7 @@ fun HomeScreenRoute(
     val context = LocalContext.current
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     val lastDay = prefs.getString(LAST_QUESTIONNAIRE_DAY, null)
+    val queuedInviteCode = prefs.getString(REGISTRATION_INVITE_CODE, null)?.isNotBlank() == true
     val today = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
     var showReminder by remember { mutableStateOf(lastDay != today) }
     LaunchedEffect(profileId) {
@@ -340,6 +358,19 @@ fun HomeScreenRoute(
         if (!token.isNullOrBlank()) {
             fleetStatusViewModel.refreshFleetStatus()
         }
+    }
+
+    LaunchedEffect(fleetState.fleetStatus, queuedInviteCode) {
+        val status = fleetState.fleetStatus?.status?.lowercase(Locale.ROOT)
+        if (status == "pending" || queuedInviteCode) {
+            fleetStatusViewModel.startPolling()
+        } else {
+            fleetStatusViewModel.stopPolling()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { fleetStatusViewModel.stopPolling() }
     }
 
     HomeScreen(
@@ -358,6 +389,7 @@ fun HomeScreenRoute(
         fleetStatus = fleetState.fleetStatus,
         fleetStatusLoading = fleetState.isLoading,
         fleetStatusError = fleetState.errorMessage,
+        queuedInviteCode = queuedInviteCode,
         onJoinFleetClick = { navController.navigate(JOIN_FLEET_ROUTE) }
     )
 }

@@ -11,6 +11,8 @@ class Constants {
         const val ALLOW_METERED_UPLOADS = "allow_metered_uploads"
         const val UPLOAD_AUTH_REMINDER_TIMESTAMP = "upload_auth_reminder_timestamp"
         const val REGISTRATION_MODE = "registration_mode"
+        const val REGISTRATION_FLEET_CHOICE = "registration_fleet_choice"
+        const val REGISTRATION_HAS_INVITE_CODE = "registration_has_invite_code"
         const val REGISTRATION_INVITE_CODE = "registration_invite_code"
         const val REGISTRATION_PENDING = "registration_pending"
         const val REGISTRATION_COMPLETED = "registration_completed"

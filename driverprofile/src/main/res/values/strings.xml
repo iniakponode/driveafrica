@@ -50,6 +50,15 @@
     <string name="onboarding_password_error">Please enter a password that has at least 6 characters.</string>
     <string name="onboarding_password_too_long">Passwords must be 72 bytes or shorter (UTF-8).</string>
     <string name="onboarding_button">Create profile</string>
+    <string name="registration_fleet_choice_title">Fleet enrollment</string>
+    <string name="registration_fleet_choice_required">Select how you want to join a fleet.</string>
+    <string name="registration_fleet_choice_independent_title">Independent driver</string>
+    <string name="registration_fleet_choice_independent_body">Use the app now and join a fleet later from Settings.</string>
+    <string name="registration_fleet_choice_have_fleet_title">Have a fleet</string>
+    <string name="registration_fleet_choice_have_fleet_body">Your fleet manager is expecting you.</string>
+    <string name="registration_fleet_choice_invite_toggle">I have an invite code</string>
+    <string name="registration_fleet_choice_invite_hint">You will enter the invite code after registration.</string>
+    <string name="registration_fleet_choice_error">Choose an option to continue.</string>
     <string name="auth_mode_register">Register</string>
     <string name="auth_mode_login">Log in</string>
     <string name="join_fleet_title">Join a Fleet</string>
@@ -61,6 +70,9 @@
     <string name="join_fleet_success_fleet">Fleet: %1$s</string>
     <string name="join_fleet_success_status">Status: %1$s</string>
     <string name="join_fleet_help">Do not have a code? Contact your fleet manager to get one.</string>
+    <string name="join_fleet_offline_queued">Offline right now. We will submit your request when you are back online.</string>
+    <string name="join_fleet_queued_title">Join request queued</string>
+    <string name="join_fleet_queued_body">We will submit your invite code when you are back online.</string>
     <string name="action_back">Back</string>
     <string name="join_fleet_cta">Join a Fleet</string>
     <string name="profile_sync_note">Profile IDs stay local and upload once you are online.</string>

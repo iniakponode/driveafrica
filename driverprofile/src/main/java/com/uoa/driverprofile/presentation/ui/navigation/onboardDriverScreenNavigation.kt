@@ -48,7 +48,7 @@ fun NavGraphBuilder.onboardingInfoScreen(
     composable(route = ONBOARDING_SCREEN_ROUTE) {
         OnboardingInfoRoute(
             onContinue = {
-                navController.navigateToRegistrationChoiceScreen {
+                navController.navigateToOnboardingFormScreen(RegistrationMode.Email) {
                     popUpTo(ONBOARDING_SCREEN_ROUTE) { inclusive = true }
                 }
             }

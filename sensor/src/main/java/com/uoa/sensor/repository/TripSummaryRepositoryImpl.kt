@@ -3,6 +3,7 @@ package com.uoa.sensor.repository
 import com.uoa.core.database.daos.TripSummaryDao
 import com.uoa.core.database.repository.TripSummaryRepository
 import com.uoa.core.model.TripSummary
+import com.uoa.core.utils.toBehaviourEntities
 import com.uoa.core.utils.toDomainModel
 import com.uoa.core.utils.toEntity
 import java.util.Date
@@ -13,7 +14,10 @@ class TripSummaryRepositoryImpl @Inject constructor(
     private val tripSummaryDao: TripSummaryDao
 ) : TripSummaryRepository {
     override suspend fun insertTripSummary(tripSummary: TripSummary) {
-        tripSummaryDao.insertTripSummary(tripSummary.toEntity())
+        tripSummaryDao.upsertTripSummaryWithBehaviours(
+            tripSummary.toEntity(),
+            tripSummary.toBehaviourEntities()
+        )
     }
 
     override suspend fun getTripSummaryByTripId(tripId: UUID): TripSummary? {
@@ -27,6 +31,18 @@ class TripSummaryRepositoryImpl @Inject constructor(
     ): List<TripSummary> {
         return tripSummaryDao.getTripSummariesByDriverAndDateRange(driverId, startDate, endDate)
             .map { it.toDomainModel() }
+    }
+
+    override suspend fun getUnsyncedTripSummaries(): List<TripSummary> {
+        return tripSummaryDao.getUnsyncedTripSummaries()
+            .map { it.toDomainModel() }
+    }
+
+    override suspend fun markTripSummariesSynced(tripIds: List<UUID>, synced: Boolean) {
+        if (tripIds.isEmpty()) {
+            return
+        }
+        tripSummaryDao.markTripSummariesSynced(tripIds, synced)
     }
 
     override suspend fun countTripSummariesByDriverAndDateRange(

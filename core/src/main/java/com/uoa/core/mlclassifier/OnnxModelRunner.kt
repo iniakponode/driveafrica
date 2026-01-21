@@ -43,7 +43,7 @@ class OnnxModelRunner private constructor(
                 "Context required to load ONNX model from assets."
             }
             // Copy the model file from assets to internal storage
-            val modelFileName = "bagging_classifier_with_probabilities.onnx"
+            val modelFileName = "svm_classifier_best.onnx"
             val modelFile = copyAssetToFile(appContext, modelFileName)
             // Create the session using the model file path
             ortEnvironmentWrapper.createSession(modelFile.absolutePath)
@@ -103,6 +103,9 @@ class OnnxModelRunner private constructor(
             if (session.outputNames.isEmpty()) {
                 throw IllegalStateException("Model has no output names")
             }
+            if (!outputSchemaLogged) {
+                logModelSignature()
+            }
 
             // Prepare the input tensor
             val inputTensor = OnnxTensor.createTensor(
@@ -124,7 +127,9 @@ class OnnxModelRunner private constructor(
                     val inference = outputInterpreter.interpret(outputValues)
                     Log.d(
                         "OnnxModelRunner",
-                        "Inference prob=${inference.probability} influenced=${inference.isAlcoholInfluenced}"
+                        "Inference prob=${inference.probability} influenced=${inference.isAlcoholInfluenced} " +
+                            "label=${inference.rawLabel} raw=${formatProbArray(inference.rawProbabilities)} " +
+                            "normalized=${formatProbArray(inference.normalizedProbabilities)}"
                     )
                     return inference
                 }
@@ -133,6 +138,12 @@ class OnnxModelRunner private constructor(
             Log.e("OnnxModelRunner", "Error during inference: ${e.message}", e)
             throw e
         }
+    }
+
+    private fun formatProbArray(values: FloatArray?): String {
+        return values?.joinToString(prefix = "[", postfix = "]") { value ->
+            String.format("%.4f", value)
+        } ?: "n/a"
     }
 
     private fun extractOutputValue(
@@ -156,6 +167,17 @@ class OnnxModelRunner private constructor(
     private fun logOutputSchema(outputs: Map<String, Any?>) {
         outputs.forEach { (name, value) ->
             Log.i("OnnxModelRunner", "Model output '$name' -> ${describeOutputValue(value)}")
+        }
+    }
+
+    private fun logModelSignature() {
+        Log.i("OnnxModelRunner", "Model inputs: ${session.inputNames.joinToString()}")
+        Log.i("OnnxModelRunner", "Model outputs: ${session.outputNames.joinToString()}")
+        session.inputInfo.forEach { (name, nodeInfo) ->
+            Log.i("OnnxModelRunner", "Input '$name' -> ${nodeInfo.info}")
+        }
+        session.outputInfo.forEach { (name, nodeInfo) ->
+            Log.i("OnnxModelRunner", "Output '$name' -> ${nodeInfo.info}")
         }
     }
 

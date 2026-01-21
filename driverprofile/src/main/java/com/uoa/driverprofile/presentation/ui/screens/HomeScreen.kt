@@ -244,25 +244,30 @@ private fun FleetStatusBanner(
             if (isLoading) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
-            when (fleetStatus?.status?.lowercase(Locale.ROOT)) {
-                "assigned" -> {
+            val status = fleetStatus?.status?.trim()?.lowercase(Locale.ROOT)
+            val isAssigned = status?.contains("assigned") == true ||
+                fleetStatus?.fleet != null ||
+                fleetStatus?.vehicleGroup != null ||
+                fleetStatus?.vehicle != null
+            when {
+                isAssigned -> {
                     Text(
-                        text = "Fleet: ${fleetStatus.fleet?.name ?: "Unknown"}",
+                        text = "Fleet: ${fleetStatus?.fleet?.name ?: "Unknown"}",
                         style = MaterialTheme.typography.titleMedium
                     )
-                    fleetStatus.vehicle?.let { vehicle ->
+                    fleetStatus?.vehicle?.let { vehicle ->
                         Text(
                             text = "Vehicle: ${vehicle.licensePlate} ${vehicle.make ?: ""} ${vehicle.model ?: ""}".trim(),
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
-                "pending" -> {
+                isPendingStatus(fleetStatus) -> {
                     Text(
                         text = "Join request pending",
                         style = MaterialTheme.typography.titleMedium
                     )
-                    fleetStatus.pendingRequest?.let { request ->
+                    fleetStatus?.pendingRequest?.let { request ->
                         Text(
                             text = "Fleet: ${request.fleetName ?: "Unknown"}",
                             style = MaterialTheme.typography.bodyMedium
@@ -361,8 +366,8 @@ fun HomeScreenRoute(
     }
 
     LaunchedEffect(fleetState.fleetStatus, queuedInviteCode) {
-        val status = fleetState.fleetStatus?.status?.lowercase(Locale.ROOT)
-        if (status == "pending" || queuedInviteCode) {
+        val isPending = isPendingStatus(fleetState.fleetStatus)
+        if (isPending || queuedInviteCode) {
             fleetStatusViewModel.startPolling()
         } else {
             fleetStatusViewModel.stopPolling()
@@ -392,4 +397,9 @@ fun HomeScreenRoute(
         queuedInviteCode = queuedInviteCode,
         onJoinFleetClick = { navController.navigate(JOIN_FLEET_ROUTE) }
     )
+}
+
+private fun isPendingStatus(fleetStatus: FleetStatusResponse?): Boolean {
+    val status = fleetStatus?.status?.trim()?.lowercase(Locale.ROOT)
+    return status?.contains("pending") == true || fleetStatus?.pendingRequest != null
 }

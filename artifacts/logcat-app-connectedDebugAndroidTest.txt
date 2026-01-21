@@ -1,0 +1,404 @@
+﻿--------- beginning of main
+01-08 00:26:22.506 E/audit   (  935): type=1300 audit(1767831982.501:296968): arch=c00000b7 syscall=29 success=no exit=-13 a0=6 a1=f522 a2=7a387c2878 a3=b4000077b6a368c0 items=0 ppid=954 pid=31486 auid=4294967295 uid=1000 gid=1000 euid=1000 suid=1000 fsuid=1000 egid=1000 sgid=1000 fsgid=1000 tty=(none) ses=4294967295 comm="pool-3-thread-1" exe="/system/bin/app_process64" subj=u:r:system_app:s0 key=(null)
+01-08 00:26:22.506 E/audit   (  935): type=1327 audit(1767831982.501:296968): proctitle="com.samsung.android.bixby.wakeup"
+01-08 00:26:22.508 E/msys    (30866): E[N mns]_LogError(228)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+01-08 00:26:22.508 E/msys    (30866): E[N mns]_OnSystemDNSFailureCallback(411)=>Falling back to secondary DNS resolver
+--------- beginning of system
+01-08 00:26:22.515 I/SDHMS:C ( 4728): SIOP:: AP:398 BAT:311 USB:0 CHG:378 PA:410 WIFI:429 BLK:0 SUBBAT:0 SKIN:393 SKINF:366 SKINB:375 LRP:375 LRP2:393 LRF:366 LRB:375 LRF2:361 LRB2:393 AP2:390 CHG2:366 WIFI2:393 SPK2:311 
+01-08 00:26:22.515 I/SDHMS:C ( 4728): MODEMQ:: MMWTHM:270(270) 
+01-08 00:26:22.518 I/native  (21232): I0000 00:00:1767831982.518602   21247 soda_async_impl.cc:1360] SODA received first mic audio buffer, size in bytes: 320, format: 1, channels: 1, sample rate: 16000
+01-08 00:26:22.547 E/msys    (30866): E[N mns]_LogError(228)=>Failed to resolve using secondary DNS resolver, ares error: Could not contact DNS servers, timeouts: 0
+01-08 00:26:22.547 E/msys    (30866): E[ADNSUCTIMH WAJMNSDNSResolver]_MNSDNSResolutionFailure(78)=>DNS Resolution Failed with 0 Error
+01-08 00:26:22.877 D/io_stats(  712): !@   8,0 r 101031221 1693715452 w 22680901 270679088 d 4107971 288379364 f 0 0 iot 24266648 0 th 0 0 0 pt 0 inp 0 0 372177.314
+01-08 00:26:23.042 I/native  (21232): I0000 00:00:1767831983.042648   21247 soda_async_impl.cc:1129] Not receiving any loopback audio in 500ms. Last audio received time: 1970-01-01T01:00:00+01:00, Current time: 2026-01-08T00:26:23.04264206+00:00
+01-08 00:26:23.136 I/bauth_FPBAuthService( 1515): pcf : 0x1012, 0 ,1 ,0 ,0 ,0 ,0, 8.0.0.0
+01-08 00:26:23.136 I/bauth_FPBAuthService( 1515): thread id : 1, preenroll_flag : 0, nd cnt : 0, cso : 0, et : 0
+01-08 00:26:23.136 I/bauth_FPBAuthService( 1515): FPBAuthService, 11458
+01-08 00:26:23.426 I/native  (21232): I0000 00:00:1767831983.426717   21247 hotword_processor.cc:848] Hotword has timed out.
+01-08 00:26:23.428 I/native  (21232): I0000 00:00:1767831983.427861   21247 soda_impl.cc:1922] Adding hotword timeout event
+01-08 00:26:23.428 I/native  (21232): I0000 00:00:1767831983.428682   21247 soda_async_impl.cc:1019] SODA stopped processing audio, mics audio processed in millis: 3000, loopback audio processed in millis: 0
+01-08 00:26:23.429 I/native  (21232): I0000 00:00:1767831983.429538   21247 soda_async_impl.cc:1031] Audio readers are stopped.
+01-08 00:26:23.430 W/ProxyAndroidLoggerBackend(21232): Too many Flogger logs received before configuration. Dropping old logs.
+01-08 00:26:23.430 I/native  (21232): I0000 00:00:1767831983.430604   21247 soda_async_impl.cc:1490] Ending ASR due to process sync signal.
+01-08 00:26:23.430 W/ProxyAndroidLoggerBackend(21232): Too many Flogger logs received before configuration. Dropping old logs.
+01-08 00:26:23.431 W/ProxyAndroidLoggerBackend(21232): Too many Flogger logs received before configuration. Dropping old logs.
+01-08 00:26:23.431 W/ProxyAndroidLoggerBackend(21232): Too many Flogger logs received before configuration. Dropping old logs.
+01-08 00:26:23.432 I/native  (21232): I0000 00:00:1767831983.431983   21247 soda_async_impl.cc:1094] SODA session stopped due to: HOTWORD_TIMEOUT
+01-08 00:26:23.432 W/ProxyAndroidLoggerBackend(21232): Too many Flogger logs received before configuration. Dropping old logs.
+01-08 00:26:23.485 I/EDMNativeHelperService( 1335): isFaceRecognitionAllowedEvenCameraBlocked 
+01-08 00:26:23.488 I/EDMNativeHelperService( 1335): isCameraEnabled
+01-08 00:26:23.488 D/EDMNativeHelper( 1335): isCameraEnabled
+01-08 00:26:23.489 D/EDMNativeHelper( 1335): checking for camera in EnterpriseDeviceManagerService
+01-08 00:26:23.489 D/EnterpriseDeviceManagerService( 1335): isCameraEnabledNative
+01-08 00:26:23.489 D/EnterpriseDeviceManagerService( 1335): checking for camera in restriction policy
+01-08 00:26:23.489 D/RestrictionPolicy( 1335): isCameraEnabled ret(true) userId(0) cxtInfo.mCallerUid(1000) cxtInfo.mContainerId(0)
+01-08 00:26:23.493 I/EDMNativeHelperService( 1335): isFaceRecognitionAllowedEvenCameraBlocked 
+01-08 00:26:23.493 I/EDMNativeHelperService( 1335): isFaceRecognitionAllowedEvenCameraBlocked 
+01-08 00:26:23.495 I/EDMNativeHelperService( 1335): isCameraEnabled
+01-08 00:26:23.496 D/EDMNativeHelper( 1335): isCameraEnabled
+01-08 00:26:23.496 I/EDMNativeHelperService( 1335): isCameraEnabled
+01-08 00:26:23.496 D/EDMNativeHelper( 1335): isCameraEnabled
+01-08 00:26:23.497 D/EDMNativeHelper( 1335): checking for camera in EnterpriseDeviceManagerService
+01-08 00:26:23.497 D/EnterpriseDeviceManagerService( 1335): isCameraEnabledNative
+01-08 00:26:23.497 D/EnterpriseDeviceManagerService( 1335): checking for camera in restriction policy
+01-08 00:26:23.497 D/RestrictionPolicy( 1335): isCameraEnabled ret(true) userId(0) cxtInfo.mCallerUid(1000) cxtInfo.mContainerId(0)
+01-08 00:26:23.497 D/EDMNativeHelper( 1335): checking for camera in EnterpriseDeviceManagerService
+01-08 00:26:23.497 D/EnterpriseDeviceManagerService( 1335): isCameraEnabledNative
+01-08 00:26:23.497 D/EnterpriseDeviceManagerService( 1335): checking for camera in restriction policy
+01-08 00:26:23.497 D/RestrictionPolicy( 1335): isCameraEnabled ret(true) userId(0) cxtInfo.mCallerUid(1000) cxtInfo.mContainerId(0)
+01-08 00:26:23.520 D/audioserver( 1183): FGS Logger Transaction failed
+01-08 00:26:23.520 D/audioserver( 1183): -129
+01-08 00:26:23.523 D/audio_hw_primary( 1104): in_standby: enter: stream (0xf07807f0) usecase(24: audio-record)
+01-08 00:26:23.523 D/audio_hw_primary( 1104): in_standby: sound trigger pcm stop lab
+01-08 00:26:23.539 I/SemWifiApDataUsage( 1335): handleMessage: 14
+01-08 00:26:23.539 I/SemWifiApEbpf( 1335): DATA_USAGE_STATS_START_POLL,mhs= true,upstream= 2,client size 1
+01-08 00:26:23.540 D/SemWifiApEbpf( 1335): getWifiApDataUsageForOverAllMhs():  overall data is4500724810
+01-08 00:26:23.541 I/SemWifiApEbpf( 1335): updating the overall dataUsage , overall =4500724810 , global = {mTotalDataBytes=4500053663,mTotalDataIngressBytes=0,mTotalDataEgressBytes=0,mCellularBytes=4500053663,mCurrentDayAndSimCellularBytes=294561886}
+01-08 00:26:23.638 D/sound_trigger_hw( 1104): ape_stop_buffering:[127] Enter pcm 0xf3b401f0
+01-08 00:26:23.639 D/sound_trigger_hw( 1104): ape_stop_buffering:[127] Exit, status=0
+01-08 00:26:23.640 D/sound_trigger_hw( 1104): buffering_state_fn:[c127] post deferred stop on buffering end
+01-08 00:26:23.644 V/APM_AudioPolicyManager( 1183): stopInput portId 5412
+01-08 00:26:23.648 I/AudioService.RecordingActivityMonitor( 1335): rec stop riid:-1 uid:99303 session:25169 src:HOTWORD not silenced pack:
+01-08 00:26:23.652 D/audio_hw_primary( 1104): adev_release_audio_patch: Remove patch with handle 1272
+01-08 00:26:23.652 I/audio_hw_sec( 1104): sec_route_input_stream: enter: in->is_st_session(1)
+01-08 00:26:23.652 D/audio_hw_primary( 1104): route_input_stream: exit: status(0)
+01-08 00:26:23.653 V/APM_AudioPolicyManager( 1183): resetInputDevice() releaseAudioPatch returned 0
+01-08 00:26:23.658 I/SoundTriggerMiddlewareLogging( 1335): RESOURCES_AVAILABLE ()
+01-08 00:26:23.658 I/SoundTriggerMiddlewareLogging( 1335): RESOURCES_AVAILABLE ()
+01-08 00:26:23.659 I/SoundTriggerMiddlewareLogging( 1335): RESOURCES_AVAILABLE ()
+01-08 00:26:23.659 V/APM_AudioPolicyManager( 1183): releaseInput portId 5412
+01-08 00:26:23.659 V/APM_AudioPolicyManager( 1183): releaseInput 5022
+01-08 00:26:23.659 V/APM_AudioPolicyManager( 1183): closeInput(5022)
+01-08 00:26:23.662 E/BWU@DspControlUtil(31486): Ph_OnServiceStateChanged 0 [main] 
+01-08 00:26:23.663 I/BWU@DspControlService(31486): Ph_hibixby onRecognitionResumed() [main] 
+01-08 00:26:23.666 W/mediametrics::Item(21232): selfrecord: failed to record: {audiorecord, (01-01 01:00:00.000), (, -1, -1), (android.media.audiorecord.attributes={ Content type: AUDIO_CONTENT_TYPE_UNKNOWN Usage: AUDIO_USAGE_UNKNOWN Source: AUDIO_SOURCE_HOTWORD Flags: 0x800 Tags:  }, android.media.audiorecord.channelMask=16, android.media.audiorecord.channels=1, android.media.audiorecord.durationMs=1.155571e+03, android.media.audiorecord.encoding=AUDIO_FORMAT_PCM_16_BIT, android.media.audiorecord.frameCount=160000, android.media.audiorecord.latency=10000, android.media.audiorecord.logSessionId=, android.media.audiorecord.portId=5412, android.media.audiorecord.samplerate=16000, android.media.audiorecord.source=AUDIO_SOURCE_HOTWORD, android.media.audiorecord.startCount=1)}
+01-08 00:26:23.666 I/MultiRecordManager( 1183): closeInputStream() skipMultiRecord
+01-08 00:26:23.666 W/ProxyAndroidLoggerBackend(21232): Too many Flogger logs received before configuration. Dropping old logs.
+01-08 00:26:23.667 W/word_detector_0(21232): Long monitor contention with owner pool-3-thread-1 (23473) at void say.f()(PG:172) waiters=0 in void say.f() for 235ms
+01-08 00:26:23.667 I/SoundTriggerMiddlewareLogging( 1335): RESOURCES_AVAILABLE ()
+01-08 00:26:23.667 V/APM_AudioPolicyManager( 1183): releaseInput exit
+01-08 00:26:23.668 I/AlwaysOnHotwordDetector(29844): onRejected
+01-08 00:26:23.668 E/BWU@DspControlUtil(31486): Ph_OnServiceStateChanged 0 [main] 
+01-08 00:26:23.667 I/SoundTriggerMiddlewareLogging( 1335): RESOURCES_AVAILABLE ()
+01-08 00:26:23.669 I/BWU@DspControlService(31486): Ph_hibixby onRecognitionResumed() [main] 
+01-08 00:26:23.669 I/AlwaysOnHotwordDetector(29844): handle message 6
+01-08 00:26:23.669 I/SoundTriggerMiddlewareLogging( 1335): RESOURCES_AVAILABLE ()
+01-08 00:26:23.669 I/dyhe    (29844): #onRejected
+01-08 00:26:23.672 I/dyhe    (29844): Hotword timeout.
+01-08 00:26:23.672 I/dyid    (29844): (REDACTED) Hotword score : %f, Hotword model id : %s.
+01-08 00:26:23.672 I/dyid    (29844): (REDACTED) Timeout reason %s, Coarse channel index %d.
+01-08 00:26:23.667 W/ProxyAndroidLoggerBackend(21232): Too many Flogger logs received before configuration. Dropping old logs.
+01-08 00:26:23.673 W/ProxyAndroidLoggerBackend(21232): Too many Flogger logs received before configuration. Dropping old logs.
+01-08 00:26:23.674 D/audio_hw_primary( 1104): adev_close_input_stream: enter:stream_handle(0xf07807f0)
+01-08 00:26:23.674 D/audio_hw_primary( 1104): io_streams_map_remove: Removed stream with handle 5022
+01-08 00:26:23.674 D/soundtrigger( 1104): audio_extn_sound_trigger_check_ec_ref_enable: EC Reference is disabled
+01-08 00:26:23.674 D/sound_trigger_hw( 1104): handle_audio_ec_ref_enabled: Enter
+01-08 00:26:23.674 D/sound_trigger_hw( 1104): handle_audio_ec_ref_enabled: Exit audio ec ref=0
+01-08 00:26:23.674 D/soundtrigger( 1104): audio_extn_sound_trigger_update_ec_ref_status: update audio echo ref status false
+01-08 00:26:23.674 D/audio_hw_primary( 1104): in_standby: enter: stream (0xf07807f0) usecase(24: audio-record)
+01-08 00:26:23.675 V/sec_audio_hw( 1104): sec_dev_close_audio_stream: enter
+01-08 00:26:23.675 V/sec_audio_hw( 1104): sec_dev_close_audio_stream: close sec audio stream for handle 5022, type 1
+01-08 00:26:23.675 V/sec_audio_hw( 1104): sec_dev_close_audio_stream: exit
+01-08 00:26:23.678 I/dyij    (29844): onHotwordRejected called
+01-08 00:26:23.679 I/dyij    (29844): (REDACTED) This is hotwordRejectionEventTimestamp: %s
+01-08 00:26:23.682 I/dxzi    (29844): (REDACTED) HDM. Inside Sequencer. Try to start recognition again after %s
+01-08 00:26:23.683 I/dxzi    (29844): (REDACTED) getAllConfigAndTakeAction called because of %s
+01-08 00:26:23.683 I/dxzi    (29844): (REDACTED) #onSodaStop received %s
+01-08 00:26:23.683 D/AudioAnalytics( 1452): gc(1700, 2000): log size:1700 item map size:194, item map items:1700
+01-08 00:26:23.684 I/dxzi    (29844): (REDACTED) #onSodaStop inside sequentialExecutor %s
+01-08 00:26:23.684 I/dyhe    (29844): (REDACTED) DSP hotword running %s
+01-08 00:26:23.684 W/dxzi    (29844): (REDACTED) %s. Completer is null; It could be set earlier or we ware not waiting for the disconnect signal.
+01-08 00:26:23.684 I/dkrv    (29844): (REDACTED) HDM event received: %s
+01-08 00:26:23.685 D/audioserver( 1183): FGS Logger Transaction failed
+01-08 00:26:23.685 D/audioserver( 1183): -129
+01-08 00:26:23.686 I/dkod    (29844): (REDACTED) Platform configuration for connection(%s) has changed(@%s):%s
+01-08 00:26:23.686 I/dycb    (29844): (REDACTED) No need to try to get the fallback locale. for keyphrase %s, locale %s
+01-08 00:26:23.686 I/dych    (29844): (REDACTED) #getDspAvailableResult locale : %s, dsp locale : %s, keyphrase : %s, DSP keyphrase : %s, isKeyphraseAndLocaleSupported : %b, canUseDownloadDspModel : %b. forceUniversalDspHotwordModel : %b
+01-08 00:26:23.686 W/KeyphraseEnrollmentInfo(29844): No enrollment application supports the given keyphrase/locale: 'Y Google'/en_GB
+01-08 00:26:23.686 I/dklz    (29844): (REDACTED) On platform configuration update(@%s) in connection(%s).
+01-08 00:26:23.687 I/dych    (29844): (REDACTED) isDspHotwordSupportedByPlatform = %s, isDspHotwordModelAvailable = %s
+01-08 00:26:23.687 I/aebl    (29844): (REDACTED) On platform configuration update(%s).
+01-08 00:26:23.687 I/dxzi    (29844): (REDACTED) getAllConfigAndTakeAction dspAvailable: %b, disableDspInTest: %b
+01-08 00:26:23.687 I/aeat    (29844): Received ConfigurationUpdate from Triggering API
+01-08 00:26:23.687 I/dxxi    (29844): (REDACTED) hotword enrollment state is enrolled:  %b, speakerId model exist: %b.
+01-08 00:26:23.689 I/dxxi    (29844): (REDACTED) Hotword enrollment state : %s.
+01-08 00:26:23.689 I/dxzi    (29844): Registering for screen on/off intent ...
+01-08 00:26:23.689 W/ProxyAndroidLoggerBackend(21232): Too many Flogger logs received before configuration. Dropping old logs.
+01-08 00:26:23.689 I/dxxi    (29844): (REDACTED) Hotword enrollment state : %s.
+01-08 00:26:23.690 W/ProxyAndroidLoggerBackend(21232): Too many Flogger logs received before configuration. Dropping old logs.
+01-08 00:26:23.690 W/ProxyAndroidLoggerBackend(21232): Too many Flogger logs received before configuration. Dropping old logs.
+01-08 00:26:23.690 W/ProxyAndroidLoggerBackend(21232): Too many Flogger logs received before configuration. Dropping old logs.
+01-08 00:26:23.696 W/ProcessStats( 1335): Tracking association SourceState{babc51b com.google.android.gms.persistent/10227 BFgs #1133713} whose proc state 4 is better than process ProcessState{7c7fda3 com.google.android.adservices.api/10253 pkg=com.google.android.adservices.api} proc state 14 (3 skipped)
+01-08 00:26:23.699 I/espt    ( 9074): (REDACTED) Created gRPC endpoint for service %s
+01-08 00:26:23.701 I/dyaj    (29844): (REDACTED) Operational mode passed in HotwordConfig is %s
+01-08 00:26:23.702 I/dxxi    (29844): (REDACTED) Hotword enrollment state : %s.
+01-08 00:26:23.702 I/dyab    (29844): (REDACTED) DefaultPersonalDecisionMaker#getNextAction. Voice match enabled: %b. incomplete enrollment state: %b, screen on: %b, screen locked: %b dsp available: %b
+01-08 00:26:23.702 I/dyal    (29844): (REDACTED) SharedDecisionMaker#getNextAction for requester %s, mode %s 
+01-08 00:26:23.702 I/dyal    (29844): #SharedDecisionMaker. NextAction.START
+01-08 00:26:23.709 I/dxxy    (29844): Reconfig not needed.
+01-08 00:26:23.709 I/dxzi    (29844): (REDACTED) currentReconfigCheckerResult %s
+01-08 00:26:23.709 I/dyfx    (29844): (REDACTED) #setSpeakerIdRequired: %s
+01-08 00:26:23.709 I/dyhe    (29844): (REDACTED) #setSpeakerIdRequired inside sequencer %b
+01-08 00:26:23.709 I/dxzi    (29844): (REDACTED) Get the next action %s for requester %s.
+01-08 00:26:23.709 I/dyhe    (29844): No change in speaker-id requirement, so no need to update.
+01-08 00:26:23.709 I/dyht    (29844): Trusted hotword enabled for flag
+01-08 00:26:23.710 I/dxzi    (29844): getDspTriggerNotificationRequirement
+01-08 00:26:23.710 I/dxzi    (29844): (REDACTED) dspTriggerNotificationRequirement: %s
+01-08 00:26:23.710 I/dyht    (29844): Trusted hotword enabled for flag
+01-08 00:26:23.710 I/dxxv    (29844): Starting trusted DSP hotword detection
+01-08 00:26:23.710 I/dyhe    (29844): #setDspHotwordModel
+01-08 00:26:23.710 I/dyhe    (29844): #startDspHotwordRecognition
+01-08 00:26:23.710 I/dyhe    (29844): #setDspHotwordModel inside sequencer.
+01-08 00:26:23.710 I/dxzi    (29844): #handleStartHotwordDetectionResult
+01-08 00:26:23.710 I/dyhe    (29844): onHotwordDetectionServiceInitialized() already Called!
+01-08 00:26:23.710 I/dxzi    (29844): #handleStartHotwordDetectionResult: calling addDspHotwordPropertiesToRequestHandlingMetadata
+01-08 00:26:23.711 I/dych    (29844): #addDspHotwordPropertiesToRequestHandlingMetadata
+01-08 00:26:23.711 I/dyhe    (29844): #createAlwaysOnHotwordDetectorIfNecessary
+01-08 00:26:23.711 I/dych    (29844): (REDACTED) #addDspHotwordPropertiesToRequestHandlingMetadata: properties=%s
+01-08 00:26:23.711 I/dyhe    (29844): alwaysOnHotwordDetector already created and first onAvailabilityChanged called.
+01-08 00:26:23.711 I/dybz    (29844): #prepareDspModel
+01-08 00:26:23.711 I/dybz    (29844): #prepareDspModel inside ExecutionSequencer
+01-08 00:26:23.711 I/dybz    (29844): #prepareDspModel, already enrolled
+01-08 00:26:23.711 I/dyhe    (29844): (REDACTED) dspModelEnrollmentResult: %s, currentDownloadedDspHotwordModel.isPresent(): %b, directDspModeOrRetryInProgress: %b
+01-08 00:26:23.713 E/audit   (  935): type=1400 audit(1767831983.709:296969): avc:  denied  { ioctl } for  pid=1335 comm="binder:1335_D" path="/data/system/sound_model.db" dev="dm-52" ino=8205 ioctlcmd=0xf522 scontext=u:r:system_server:s0 tcontext=u:object_r:system_data_file:s0 tclass=file permissive=0 SEPF_SM-A526B_12_0001 audit_filtered
+01-08 00:26:23.713 E/audit   (  935): type=1300 audit(1767831983.709:296969): arch=c00000b7 syscall=29 success=no exit=-13 a0=2b8 a1=f522 a2=7a387c2878 a3=b4000077b6ad4a80 items=0 ppid=954 pid=1335 auid=4294967295 uid=1000 gid=1000 euid=1000 suid=1000 fsuid=1000 egid=1000 sgid=1000 fsgid=1000 tty=(none) ses=4294967295 comm="binder:1335_D" exe="/system/bin/app_process64" subj=u:r:system_server:s0 key=(null)
+01-08 00:26:23.713 E/audit   (  935): type=1327 audit(1767831983.709:296969): proctitle="system_server"
+01-08 00:26:23.718 D/sound_trigger_hw( 1104): stdev_start_recognition:[127] Enter
+01-08 00:26:23.718 D/sound_trigger_hw( 1104): update_hw_config_on_start: No smlib, opaque data would be sent as is
+01-08 00:26:23.718 D/sound_trigger_hw( 1104): update_hw_config_on_start:[127] lab enabled 1
+01-08 00:26:23.718 D/sound_trigger_hw( 1104): buffering_state_fn:[c127-127] handle event START/RESTART
+01-08 00:26:23.719 D/sound_trigger_hw( 1104): ape_stop:[127] Enter
+01-08 00:26:23.720 D/sound_trigger_hw( 1104): ape_stop:[127] Exit, status=0
+01-08 00:26:23.720 D/sound_trigger_hw( 1104): ape_dereg_sm_params:[127] Enter
+01-08 00:26:23.720 D/sound_trigger_hw( 1104): ape_enable_use_case: disable use case = listen-voice-wakeup-2
+01-08 00:26:23.736 D/sound_trigger_hw( 1104): sound_trigger_set_device: disable device (1) = listen-ape-handset-mic
+01-08 00:26:23.741 D/sound_trigger_hw( 1104): session[127]: buffering_state_fn ---> loaded_state_fn
+01-08 00:26:23.741 E/sound_trigger_hw( 1104): check_gcs_usecase_switch: Invalid session or non CPE session!
+01-08 00:26:23.741 D/sound_trigger_platform( 1104): platform_stdev_get_capture_device: Device = 0x80000004
+01-08 00:26:23.741 D/sound_trigger_platform( 1104): platform_stdev_get_capture_device: Available device = 0x80000004
+01-08 00:26:23.741 D/sound_trigger_platform( 1104): platform_stdev_get_device_sample_rate: sample rate 16000
+01-08 00:26:23.741 D/sound_trigger_platform( 1104): platform_stdev_send_calibration_v2: send dev cal for device(1) acdb_id(602) cal_mode(0) app_id(0)
+01-08 00:26:23.741 D/ACDB-LOADER( 1104): acdb_loader_send_listen_device_cal_v1: sample_rate: 16000
+01-08 00:26:23.741 D/ACDB-LOADER( 1104): ACDB -> send_adm_topology
+01-08 00:26:23.741 D/ACDB-LOADER( 1104): ACDB -> ACDB_CMD_GET_AUDPROC_COMMON_TOPOLOGY_ID
+01-08 00:26:23.741 D/ACDB-LOADER( 1104): Error: ACDB get adm topology for acdb id = 602, returned = -8
+01-08 00:26:23.741 D/ACDB-LOADER( 1104): ACDB -> send_audtable
+01-08 00:26:23.741 D/ACDB-LOADER( 1104): ACDB -> ACDB_CMD_GET_AUDPROC_INSTANCE_COMMON_TABLE_SIZE
+01-08 00:26:23.741 D/android.hardware.audio.service( 1104): Failed to fetch the lookup information of the device 0000025A 
+01-08 00:26:23.741 D/ACDB-LOADER( 1104): Error: ACDB_CMD_GET_AUDPROC_INSTANCE_COMMON_TABLE_SIZE Returned = -19
+01-08 00:26:23.741 D/ACDB-LOADER( 1104): ACDB -> ACDB_CMD_GET_AUDPROC_INSTANCE_COMMON_TABLE
+01-08 00:26:23.741 D/android.hardware.audio.service( 1104): Failed to fetch the lookup information of the device 0000025A 
+01-08 00:26:23.741 D/ACDB-LOADER( 1104): Error: ACDB audproc returned = -19
+01-08 00:26:23.741 D/ACDB-LOADER( 1104): ACDB -> AUDIO_SET_AUDPROC_CAL cal_type[48] acdb_id[602] app_type[0]
+01-08 00:26:23.741 D/ACDB-LOADER( 1104): ACDB -> send_afe_topology
+01-08 00:26:23.741 D/ACDB-LOADER( 1104): ACDB -> ACDB_CMD_GET_AFE_TOPOLOGY_ID
+01-08 00:26:23.741 D/ACDB-LOADER( 1104): ACDB -> GET_AFE_TOPOLOGY_ID for adcd_id 602, Topology Id 10028006
+01-08 00:26:23.741 D/ACDB-LOADER( 1104): ACDB -> send_afe_cal
+01-08 00:26:23.741 D/ACDB-LOADER( 1104): ACDB -> ACDB_CMD_GET_AFE_INSTANCE_COMMON_TABLE_SIZE
+01-08 00:26:23.741 D/ACDB-LOADER( 1104): ACDB -> ACDB_CMD_GET_AFE_INSTANCE_COMMON_TABLE
+01-08 00:26:23.741 D/ACDB-LOADER( 1104): ACDB -> AUDIO_SET_AFE_CAL cal_type[46] acdb_id[602]
+01-08 00:26:23.741 D/sound_trigger_platform( 1104): platform_stdev_get_capture_device: Device = 0x80000004
+01-08 00:26:23.741 D/sound_trigger_platform( 1104): platform_stdev_get_capture_device: Available device = 0x80000004
+01-08 00:26:23.741 D/sound_trigger_hw( 1104): sound_trigger_set_device: enable device (1) = listen-ape-handset-mic
+01-08 00:26:23.741 D/audio_route( 1104): Apply path: listen-ape-handset-mic
+01-08 00:26:23.744 D/sound_trigger_hw( 1104): ape_reg_sm_params:[127] Enter
+01-08 00:26:23.744 D/audio_route( 1104): Apply path: listen-voice-wakeup-2 port
+01-08 00:26:23.745 D/sound_trigger_hw( 1104): ape_enable_use_case: enable use case = listen-voice-wakeup-2
+01-08 00:26:23.745 D/sound_trigger_platform( 1104): platform_stdev_send_stream_app_type_cfg: send Stream App Type Cfg for LPI
+01-08 00:26:23.746 D/audio_route( 1104): Apply path: listen-voice-wakeup-2
+01-08 00:26:23.776 D/sound_trigger_hw( 1104): ape_reg_sm_params: st_recogntion_mode 1, det_mode 1, lab 1
+01-08 00:26:23.777 D/sound_trigger_hw( 1104): ape_start:[127] Enter
+01-08 00:26:23.777 D/sound_trigger_hw( 1104): ape_start:[127] Exit, status=0
+01-08 00:26:23.777 D/sound_trigger_hw( 1104): session[127]: buffering_state_fn ---> active_state_fn
+01-08 00:26:23.778 D/sound_trigger_hw( 1104): reg_hal_event_session:[c127] ST_EVENT_SESSION_REGISTER capture_handle 5022
+01-08 00:26:23.778 D/audio_hw_sec( 1104): sec_set_sound_trigger_state changed sthal_state 0x2
+01-08 00:26:23.778 D/sound_trigger_hw( 1104): stdev_start_recognition:[127] Exit
+01-08 00:26:23.779 I/SoundTriggerMiddlewareLogging( 1335): START_RECOGNITION (126, android.media.soundtrigger.RecognitionConfig{captureRequested: true, phraseRecognitionExtras: [android.media.soundtrigger.PhraseRecognitionExtra{id: 101, recognitionModes: 1, confidenceLevel: 0, levels: []}], audioCapabilities: 0, data: []}) -> android.os.Binder@706c617
+01-08 00:26:23.779 I/SoundTriggerHelper( 1335): startRecognition successful.
+01-08 00:26:23.780 I/dyhe    (29844): Start DSP hotword detection successfully.
+01-08 00:26:23.782 I/dxzi    (29844): Hotword started successfully.
+01-08 00:26:23.783 I/dkrv    (29844): (REDACTED) HDM event received: %s
+01-08 00:26:23.783 I/dxzi    (29844): after notify apa
+01-08 00:26:23.783 I/dxzi    (29844): #logRequestHandlingNonErrorEndEvent. Reset requestIdOfFirstError, firstStartErrorCausesRetry and numOfRetriesDoneForHotwordDetectorStartErrors!
+01-08 00:26:23.786 I/dkod    (29844): (REDACTED) Platform configuration for connection(%s) has changed(@%s):%s
+01-08 00:26:23.787 I/dklz    (29844): (REDACTED) On platform configuration update(@%s) in connection(%s).
+01-08 00:26:23.787 I/aebl    (29844): (REDACTED) On platform configuration update(%s).
+01-08 00:26:23.788 I/aeat    (29844): Received ConfigurationUpdate from Triggering API
+01-08 00:26:23.864 I/BWU@KeywordPreference(31486): Ph_getLocale unknown @ pref android.app.SharedPreferencesImpl@8821c44 [main] 
+01-08 00:26:23.875 I/BCL@Common( 2891): (SettingsProvider) query, content://com.samsung.android.bixby.agent.common.settings/bixby_locale
+01-08 00:26:23.876 I/BCL@Common( 2891): (SdkInitializerDelegator) initialize()
+01-08 00:26:23.876 I/BCL@BixbyApp( 2891): (SdkInitializer) initialize()
+01-08 00:26:23.882 I/BWU@BixbyAgentInfo(31486): Ph_bixbyLocale : en_GB [main] 
+01-08 00:26:23.884 I/BWU@VoiceWakeupInfo(31486): Ph_getWakeupLanguage(0) : en_GB(defaultPref : en-GB, keywordPref : en_GB) [main] 
+01-08 00:26:23.884 I/BWU@VoiceWakeupInfo(31486): Ph_getWakeupDefaultKeyword Locale : en_GB isSanxingxiaobeiKeywordSupport false [main] 
+01-08 00:26:23.884 I/BWU@KeywordPreference(31486): Ph_getLocale unknown @ pref android.app.SharedPreferencesImpl@8821c44 [main] 
+01-08 00:26:23.886 I/BCL@Common( 2891): (SettingsProvider) query, content://com.samsung.android.bixby.agent.common.settings/bixby_locale
+01-08 00:26:23.886 I/BCL@Common( 2891): (SdkInitializerDelegator) initialize()
+01-08 00:26:23.886 I/BCL@BixbyApp( 2891): (SdkInitializer) initialize()
+01-08 00:26:23.890 I/BWU@BixbyAgentInfo(31486): Ph_bixbyLocale : en_GB [main] 
+01-08 00:26:23.891 I/BWU@VoiceWakeupInfo(31486): Ph_getWakeupLanguage(0) : en_GB(defaultPref : en-GB, keywordPref : en_GB) [main] 
+01-08 00:26:23.891 I/BWU@VoiceWakeupInfo(31486): Ph_getWakeupKeywordType: hibixby [main] 
+01-08 00:26:23.892 I/BWU@DspControlService(31486): Ph_Starting recognition for hibixby, UUID=61356562383535372d373266312d346439322d613962612d653365353662326136316333 [main] 
+01-08 00:26:23.892 I/BWU@KeywordPreference(31486): Ph_getLocale unknown @ pref android.app.SharedPreferencesImpl@8821c44 [main] 
+01-08 00:26:23.893 I/BCL@Common( 2891): (SettingsProvider) query, content://com.samsung.android.bixby.agent.common.settings/bixby_locale
+01-08 00:26:23.893 I/BCL@Common( 2891): (SdkInitializerDelegator) initialize()
+01-08 00:26:23.893 I/BCL@BixbyApp( 2891): (SdkInitializer) initialize()
+01-08 00:26:23.896 I/BWU@BixbyAgentInfo(31486): Ph_bixbyLocale : en_GB [main] 
+01-08 00:26:23.897 I/BWU@VoiceWakeupInfo(31486): Ph_getWakeupLanguage(0) : en_GB(defaultPref : en-GB, keywordPref : en_GB) [main] 
+01-08 00:26:23.897 I/BWU@VoiceWakeupInfo(31486): Ph_getWakeupDefaultKeyword Locale : en_GB isSanxingxiaobeiKeywordSupport false [main] 
+01-08 00:26:23.897 I/BWU@KeywordPreference(31486): Ph_getLocale unknown @ pref android.app.SharedPreferencesImpl@8821c44 [main] 
+01-08 00:26:23.898 I/BCL@Common( 2891): (SettingsProvider) query, content://com.samsung.android.bixby.agent.common.settings/bixby_locale
+01-08 00:26:23.898 I/BCL@Common( 2891): (SdkInitializerDelegator) initialize()
+01-08 00:26:23.898 I/BCL@BixbyApp( 2891): (SdkInitializer) initialize()
+01-08 00:26:23.902 I/BWU@BixbyAgentInfo(31486): Ph_bixbyLocale : en_GB [main] 
+01-08 00:26:23.902 I/BWU@VoiceWakeupInfo(31486): Ph_getWakeupLanguage(0) : en_GB(defaultPref : en-GB, keywordPref : en_GB) [main] 
+01-08 00:26:23.902 I/BWU@VoiceWakeupInfo(31486): Ph_getWakeupKeywordType: hibixby [main] 
+01-08 00:26:23.903 I/BWU@DspEnrollmentUtil(31486): Ph_set seamless parameter : voice_trig=1300;wakeup_mode=3; [main] 
+01-08 00:26:23.906 D/sound_trigger_hw( 1104): stdev_start_recognition:[126] Enter
+01-08 00:26:23.906 I/sound_trigger_hw( 1104): stdev_start_recognition params(30) : voice_trig=1300;wakeup_mode=3;
+01-08 00:26:23.906 D/sound_trigger_hw( 1104): update_hw_config_on_start: No smlib, opaque data would be sent as is
+01-08 00:26:23.906 D/sound_trigger_hw( 1104): update_hw_config_on_start:[126] lab enabled 1
+01-08 00:26:23.906 D/sound_trigger_hw( 1104): loaded_state_fn:[c126-126] handle event id 2
+01-08 00:26:23.906 E/sound_trigger_hw( 1104): check_gcs_usecase_switch: Invalid session or non CPE session!
+01-08 00:26:23.906 D/sound_trigger_platform( 1104): platform_stdev_get_capture_device: Device = 0x80000004
+01-08 00:26:23.906 D/sound_trigger_platform( 1104): platform_stdev_get_capture_device: Available device = 0x80000004
+01-08 00:26:23.906 D/sound_trigger_platform( 1104): platform_stdev_get_device_sample_rate: sample rate 16000
+01-08 00:26:23.906 D/sound_trigger_platform( 1104): platform_stdev_send_calibration_v2: send dev cal for device(1) acdb_id(602) cal_mode(0) app_id(0)
+01-08 00:26:23.906 D/ACDB-LOADER( 1104): acdb_loader_send_listen_device_cal_v1: sample_rate: 16000
+01-08 00:26:23.906 D/ACDB-LOADER( 1104): ACDB -> send_adm_topology
+01-08 00:26:23.906 D/ACDB-LOADER( 1104): ACDB -> ACDB_CMD_GET_AUDPROC_COMMON_TOPOLOGY_ID
+01-08 00:26:23.906 D/ACDB-LOADER( 1104): Error: ACDB get adm topology for acdb id = 602, returned = -8
+01-08 00:26:23.906 D/ACDB-LOADER( 1104): ACDB -> send_audtable
+01-08 00:26:23.906 D/ACDB-LOADER( 1104): ACDB -> ACDB_CMD_GET_AUDPROC_INSTANCE_COMMON_TABLE_SIZE
+01-08 00:26:23.906 D/android.hardware.audio.service( 1104): Failed to fetch the lookup information of the device 0000025A 
+01-08 00:26:23.906 D/ACDB-LOADER( 1104): Error: ACDB_CMD_GET_AUDPROC_INSTANCE_COMMON_TABLE_SIZE Returned = -19
+01-08 00:26:23.906 D/ACDB-LOADER( 1104): ACDB -> ACDB_CMD_GET_AUDPROC_INSTANCE_COMMON_TABLE
+01-08 00:26:23.906 D/android.hardware.audio.service( 1104): Failed to fetch the lookup information of the device 0000025A 
+01-08 00:26:23.906 D/ACDB-LOADER( 1104): Error: ACDB audproc returned = -19
+01-08 00:26:23.906 D/ACDB-LOADER( 1104): ACDB -> AUDIO_SET_AUDPROC_CAL cal_type[48] acdb_id[602] app_type[0]
+01-08 00:26:23.907 D/ACDB-LOADER( 1104): ACDB -> send_afe_topology
+01-08 00:26:23.907 D/ACDB-LOADER( 1104): ACDB -> ACDB_CMD_GET_AFE_TOPOLOGY_ID
+01-08 00:26:23.907 D/ACDB-LOADER( 1104): ACDB -> GET_AFE_TOPOLOGY_ID for adcd_id 602, Topology Id 10028006
+01-08 00:26:23.907 D/ACDB-LOADER( 1104): ACDB -> send_afe_cal
+01-08 00:26:23.907 D/ACDB-LOADER( 1104): ACDB -> ACDB_CMD_GET_AFE_INSTANCE_COMMON_TABLE_SIZE
+01-08 00:26:23.907 D/ACDB-LOADER( 1104): ACDB -> ACDB_CMD_GET_AFE_INSTANCE_COMMON_TABLE
+01-08 00:26:23.907 D/ACDB-LOADER( 1104): ACDB -> AUDIO_SET_AFE_CAL cal_type[46] acdb_id[602]
+01-08 00:26:23.907 D/sound_trigger_hw( 1104): ape_reg_sm_params:[126] Enter
+01-08 00:26:23.907 D/audio_route( 1104): Apply path: listen-voice-wakeup-3 port
+01-08 00:26:23.909 D/sound_trigger_hw( 1104): ape_enable_use_case: enable use case = listen-voice-wakeup-3
+01-08 00:26:23.909 D/sound_trigger_platform( 1104): platform_stdev_send_stream_app_type_cfg: send Stream App Type Cfg for LPI
+01-08 00:26:23.909 D/audio_route( 1104): Apply path: listen-voice-wakeup-3
+01-08 00:26:23.913 D/sound_trigger_hw( 1104): ape_reg_sm_params: st_recogntion_mode 1, det_mode 1, lab 1
+01-08 00:26:23.913 D/sound_trigger_hw( 1104): ape_start:[126] Enter
+01-08 00:26:23.914 D/sound_trigger_hw( 1104): ape_start:[126] Exit, status=0
+01-08 00:26:23.914 D/sound_trigger_hw( 1104): session[126]: loaded_state_fn ---> active_state_fn
+01-08 00:26:23.914 D/sound_trigger_hw( 1104): reg_hal_event_session:[c126] ST_EVENT_SESSION_REGISTER capture_handle 0
+01-08 00:26:23.914 D/audio_hw_sec( 1104): sec_set_sound_trigger_state changed sthal_state 0x3
+01-08 00:26:23.914 D/sound_trigger_hw( 1104): stdev_start_recognition:[126] Exit
+01-08 00:26:23.915 I/SoundTriggerMiddlewareLogging( 1335): START_RECOGNITION (125, android.media.soundtrigger.RecognitionConfig{captureRequested: true, phraseRecognitionExtras: [android.media.soundtrigger.PhraseRecognitionExtra{id: 0, recognitionModes: 1, confidenceLevel: 60, levels: []}], audioCapabilities: 0, data: [118, 111, 105, 99, 101, 95, 116, 114, 105, 103, 61, 49, 51, 48, 48, 59, 119, 97, 107, 101, 117, 112, 95, 109, 111, 100, 101, 61, 51, 59]}) -> android.os.Binder@b078a04
+01-08 00:26:23.916 I/BWU@DspControlService(31486): Ph_Service state : Started [main] 
+01-08 00:26:24.137 I/bauth_FPBAuthService( 1515): pcf : 0x1012, 0 ,1 ,0 ,0 ,0 ,0, 8.0.0.0
+01-08 00:26:24.137 I/bauth_FPBAuthService( 1515): thread id : 1, preenroll_flag : 0, nd cnt : 0, cso : 0, et : 0
+01-08 00:26:24.137 I/bauth_FPBAuthService( 1515): FPBAuthService, 11458
+01-08 00:26:24.816 I/EDMNativeHelperService( 1335): isFaceRecognitionAllowedEvenCameraBlocked 
+01-08 00:26:24.819 I/EDMNativeHelperService( 1335): isCameraEnabled
+01-08 00:26:24.819 D/EDMNativeHelper( 1335): isCameraEnabled
+01-08 00:26:24.820 D/EDMNativeHelper( 1335): checking for camera in EnterpriseDeviceManagerService
+01-08 00:26:24.820 D/EnterpriseDeviceManagerService( 1335): isCameraEnabledNative
+01-08 00:26:24.821 D/EnterpriseDeviceManagerService( 1335): checking for camera in restriction policy
+01-08 00:26:24.821 D/RestrictionPolicy( 1335): isCameraEnabled ret(true) userId(0) cxtInfo.mCallerUid(1000) cxtInfo.mContainerId(0)
+01-08 00:26:25.137 I/bauth_FPBAuthService( 1515): pcf : 0x1012, 0 ,1 ,0 ,0 ,0 ,0, 8.0.0.0
+01-08 00:26:25.137 I/bauth_FPBAuthService( 1515): thread id : 1, preenroll_flag : 0, nd cnt : 0, cso : 0, et : 0
+01-08 00:26:25.137 I/bauth_FPBAuthService( 1515): FPBAuthService, 11458
+01-08 00:26:26.137 I/bauth_FPBAuthService( 1515): pcf : 0x1012, 0 ,1 ,0 ,0 ,0 ,0, 8.0.0.0
+01-08 00:26:26.137 I/bauth_FPBAuthService( 1515): thread id : 1, preenroll_flag : 0, nd cnt : 0, cso : 0, et : 0
+01-08 00:26:26.137 I/bauth_FPBAuthService( 1515): FPBAuthService, 11458
+01-08 00:26:26.494 I/EDMNativeHelperService( 1335): isFaceRecognitionAllowedEvenCameraBlocked 
+01-08 00:26:26.497 I/EDMNativeHelperService( 1335): isCameraEnabled
+01-08 00:26:26.497 D/EDMNativeHelper( 1335): isCameraEnabled
+01-08 00:26:26.498 D/EDMNativeHelper( 1335): checking for camera in EnterpriseDeviceManagerService
+01-08 00:26:26.498 D/EnterpriseDeviceManagerService( 1335): isCameraEnabledNative
+01-08 00:26:26.498 D/EnterpriseDeviceManagerService( 1335): checking for camera in restriction policy
+01-08 00:26:26.498 D/RestrictionPolicy( 1335): isCameraEnabled ret(true) userId(0) cxtInfo.mCallerUid(1000) cxtInfo.mContainerId(0)
+01-08 00:26:26.501 I/EDMNativeHelperService( 1335): isFaceRecognitionAllowedEvenCameraBlocked 
+01-08 00:26:26.501 I/EDMNativeHelperService( 1335): isFaceRecognitionAllowedEvenCameraBlocked 
+01-08 00:26:26.503 I/EDMNativeHelperService( 1335): isCameraEnabled
+01-08 00:26:26.503 D/EDMNativeHelper( 1335): isCameraEnabled
+01-08 00:26:26.504 I/EDMNativeHelperService( 1335): isCameraEnabled
+01-08 00:26:26.504 D/EDMNativeHelper( 1335): isCameraEnabled
+01-08 00:26:26.504 D/EDMNativeHelper( 1335): checking for camera in EnterpriseDeviceManagerService
+01-08 00:26:26.504 D/EnterpriseDeviceManagerService( 1335): isCameraEnabledNative
+01-08 00:26:26.504 D/EnterpriseDeviceManagerService( 1335): checking for camera in restriction policy
+01-08 00:26:26.504 D/RestrictionPolicy( 1335): isCameraEnabled ret(true) userId(0) cxtInfo.mCallerUid(1000) cxtInfo.mContainerId(0)
+01-08 00:26:26.505 D/EDMNativeHelper( 1335): checking for camera in EnterpriseDeviceManagerService
+01-08 00:26:26.505 D/EnterpriseDeviceManagerService( 1335): isCameraEnabledNative
+01-08 00:26:26.505 D/EnterpriseDeviceManagerService( 1335): checking for camera in restriction policy
+01-08 00:26:26.505 D/RestrictionPolicy( 1335): isCameraEnabled ret(true) userId(0) cxtInfo.mCallerUid(1000) cxtInfo.mContainerId(0)
+01-08 00:26:26.879 D/io_stats(  712): !@   8,0 r 101031221 1693715452 w 22680917 270680988 d 4107971 288379364 f 0 0 iot 24266680 0 th 0 0 0 pt 0 inp 0 0 372181.316
+01-08 00:26:27.138 I/bauth_FPBAuthService( 1515): pcf : 0x1012, 0 ,1 ,0 ,0 ,0 ,0, 8.0.0.0
+01-08 00:26:27.138 I/bauth_FPBAuthService( 1515): thread id : 1, preenroll_flag : 0, nd cnt : 0, cso : 0, et : 0
+01-08 00:26:27.138 I/bauth_FPBAuthService( 1515): FPBAuthService, 11458
+01-08 00:26:27.219 D/SecPowerUI.Notification( 2624): showChargingNotice oldChargingType : 11 / currentChargingType : 11, oldChargingTime : 0 / mChargingTime : 0
+01-08 00:26:27.219 D/SecPowerUI.Notification( 2624): showChargingNotice There is no change about charging status, so return!
+01-08 00:26:27.826 I/EDMNativeHelperService( 1335): isFaceRecognitionAllowedEvenCameraBlocked 
+01-08 00:26:27.829 I/EDMNativeHelperService( 1335): isCameraEnabled
+01-08 00:26:27.830 D/EDMNativeHelper( 1335): isCameraEnabled
+01-08 00:26:27.831 D/EDMNativeHelper( 1335): checking for camera in EnterpriseDeviceManagerService
+01-08 00:26:27.831 D/EnterpriseDeviceManagerService( 1335): isCameraEnabledNative
+01-08 00:26:27.831 D/EnterpriseDeviceManagerService( 1335): checking for camera in restriction policy
+01-08 00:26:27.831 D/RestrictionPolicy( 1335): isCameraEnabled ret(true) userId(0) cxtInfo.mCallerUid(1000) cxtInfo.mContainerId(0)
+01-08 00:26:28.139 I/bauth_FPBAuthService( 1515): pcf : 0x1012, 0 ,1 ,0 ,0 ,0 ,0, 8.0.0.0
+01-08 00:26:28.139 I/bauth_FPBAuthService( 1515): thread id : 1, preenroll_flag : 0, nd cnt : 0, cso : 0, et : 0
+01-08 00:26:28.139 I/bauth_FPBAuthService( 1515): FPBAuthService, 11458
+01-08 00:26:28.543 I/SemWifiApDataUsage( 1335): handleMessage: 14
+01-08 00:26:28.543 I/SemWifiApEbpf( 1335): DATA_USAGE_STATS_START_POLL,mhs= true,upstream= 2,client size 1
+01-08 00:26:28.545 D/SemWifiApEbpf( 1335): getWifiApDataUsageForOverAllMhs():  overall data is4501318656
+01-08 00:26:28.545 I/SemWifiApEbpf( 1335): updating the overall dataUsage , overall =4501318656 , global = {mTotalDataBytes=4500724810,mTotalDataIngressBytes=0,mTotalDataEgressBytes=0,mCellularBytes=4500724810,mCurrentDayAndSimCellularBytes=295233033}
+01-08 00:26:28.992 I/SDHMS:LOAD( 4728): type: LoadsFreqs, value: 0:0:0:787200:787200:787200:666624:1708800:576000:253:253:253
+01-08 00:26:29.139 I/bauth_FPBAuthService( 1515): pcf : 0x1012, 0 ,1 ,0 ,0 ,0 ,0, 8.0.0.0
+01-08 00:26:29.140 I/bauth_FPBAuthService( 1515): thread id : 1, preenroll_flag : 0, nd cnt : 0, cso : 0, et : 0
+01-08 00:26:29.140 I/bauth_FPBAuthService( 1515): FPBAuthService, 11458
+01-08 00:26:29.505 I/EDMNativeHelperService( 1335): isFaceRecognitionAllowedEvenCameraBlocked 
+01-08 00:26:29.507 I/EDMNativeHelperService( 1335): isCameraEnabled
+01-08 00:26:29.507 D/EDMNativeHelper( 1335): isCameraEnabled
+01-08 00:26:29.508 I/EDMNativeHelperService( 1335): isFaceRecognitionAllowedEvenCameraBlocked 
+01-08 00:26:29.508 D/EDMNativeHelper( 1335): checking for camera in EnterpriseDeviceManagerService
+01-08 00:26:29.508 D/EnterpriseDeviceManagerService( 1335): isCameraEnabledNative
+01-08 00:26:29.508 D/EnterpriseDeviceManagerService( 1335): checking for camera in restriction policy
+01-08 00:26:29.508 D/RestrictionPolicy( 1335): isCameraEnabled ret(true) userId(0) cxtInfo.mCallerUid(1000) cxtInfo.mContainerId(0)
+01-08 00:26:29.509 I/EDMNativeHelperService( 1335): isFaceRecognitionAllowedEvenCameraBlocked 
+01-08 00:26:29.511 I/EDMNativeHelperService( 1335): isCameraEnabled
+01-08 00:26:29.511 D/EDMNativeHelper( 1335): isCameraEnabled
+01-08 00:26:29.511 I/EDMNativeHelperService( 1335): isCameraEnabled
+01-08 00:26:29.511 D/EDMNativeHelper( 1335): isCameraEnabled
+01-08 00:26:29.512 D/EDMNativeHelper( 1335): checking for camera in EnterpriseDeviceManagerService
+01-08 00:26:29.512 D/EnterpriseDeviceManagerService( 1335): isCameraEnabledNative
+01-08 00:26:29.512 D/EnterpriseDeviceManagerService( 1335): checking for camera in restriction policy
+01-08 00:26:29.513 D/EDMNativeHelper( 1335): checking for camera in EnterpriseDeviceManagerService
+01-08 00:26:29.513 D/EnterpriseDeviceManagerService( 1335): isCameraEnabledNative
+01-08 00:26:29.513 D/RestrictionPolicy( 1335): isCameraEnabled ret(true) userId(0) cxtInfo.mCallerUid(1000) cxtInfo.mContainerId(0)
+01-08 00:26:29.513 D/EnterpriseDeviceManagerService( 1335): checking for camera in restriction policy
+01-08 00:26:29.513 D/RestrictionPolicy( 1335): isCameraEnabled ret(true) userId(0) cxtInfo.mCallerUid(1000) cxtInfo.mContainerId(0)
+01-08 00:26:29.983 E/Tethering( 2520): [api31.BpfCoordinatorShimImpl] ERROR Could not insert entry (iif: 32, dstMac: d2:2c:29:d8:4e:8b, l4proto: 6, src4: /10.33.164.75, dst4: /139.133.1.100, srcPort: 56504, dstPort: 443, oif: 20, ethDstMac: 00:00:00:00:00:00, ethSrcMac: 00:00:00:00:00:00, ethProto: 2048, pmtu: 1500, src46: /10.192.199.150, dst46: /139.133.1.100, srcPort: 56504, dstPort: 443, lastUsed: 0): android.system.ErrnoException: nativeWriteToMapEntry failed: E2BIG (Argument list too long)
+01-08 00:26:29.986 E/Tethering( 2520): [api31.BpfCoordinatorShimImpl] ERROR Could not insert entry (iif: 20, dstMac: 00:00:00:00:00:00, l4proto: 6, src4: /139.133.1.100, dst4: /10.192.199.150, srcPort: 443, dstPort: 56504, oif: 32, ethDstMac: a8:64:f1:8e:d1:ef, ethSrcMac: d2:2c:29:d8:4e:8b, ethProto: 2048, pmtu: 1500, src46: /139.133.1.100, dst46: /10.33.164.75, srcPort: 443, dstPort: 56504, lastUsed: 0): android.system.ErrnoException: nativeWriteToMapEntry failed: E2BIG (Argument list too long)
+01-08 00:26:30.110 D/StatusBarIconController( 2624): ignoring old pipeline callbacks, because the new mobile icons are enabled
+01-08 00:26:30.140 I/bauth_FPBAuthService( 1515): pcf : 0x1012, 0 ,1 ,0 ,0 ,0 ,0, 8.0.0.0
+01-08 00:26:30.140 I/bauth_FPBAuthService( 1515): thread id : 1, preenroll_flag : 0, nd cnt : 0, cso : 0, et : 0
+01-08 00:26:30.140 I/bauth_FPBAuthService( 1515): FPBAuthService, 11458
+01-08 00:26:30.181 I/vendor.rmt_storage( 1192): rmt_storage_connect_cb: clnt_h=0x392 conn_h=0xb40000751dccf090
+01-08 00:26:30.181 I/vendor.rmt_storage( 1192): rmt_storage_rw_iovec_cb: /boot/modem_fs1: req_h=0x392 msg_id=3: R/W request received (wr_count 906)
+01-08 00:26:30.181 I/vendor.rmt_storage( 1192): wakelock acquired: 1, error no: 11
+01-08 00:26:30.181 I/vendor.rmt_storage( 1192): rmt_storage_client_thread: /boot/modem_fs1: Unblock worker thread (th_id: 492269841584)
+01-08 00:26:30.238 E/Tethering( 2520): [api31.BpfCoordinatorShimImpl] ERROR Could not insert entry (iif: 32, dstMac: d2:2c:29:d8:4e:8b, l4proto: 6, src4: /10.33.164.75, dst4: /139.133.1.100, srcPort: 56504, dstPort: 443, oif: 20, ethDstMac: 00:00:00:00:00:00, ethSrcMac: 00:00:00:00:00:00, ethProto: 2048, pmtu: 1500, src46: /10.192.199.150, dst46: /139.133.1.100, srcPort: 56504, dstPort: 443, lastUsed: 0): android.system.ErrnoException: nativeWriteToMapEntry failed: E2BIG (Argument list too long)
+01-08 00:26:30.238 E/Tethering( 2520): [api31.BpfCoordinatorShimImpl] ERROR Could not insert entry (iif: 20, dstMac: 00:00:00:00:00:00, l4proto: 6, src4: /139.133.1.100, dst4: /10.192.199.150, srcPort: 443, dstPort: 56504, oif: 32, ethDstMac: a8:64:f1:8e:d1:ef, ethSrcMac: d2:2c:29:d8:4e:8b, ethProto: 2048, pmtu: 1500, src46: /139.133.1.100, dst46: /10.33.164.75, srcPort: 443, dstPort: 56504, lastUsed: 0): android.system.ErrnoException: nativeWriteToMapEntry failed: E2BIG (Argument list too long)
+01-08 00:26:30.252 E/Tethering( 2520): [api31.BpfCoordinatorShimImpl] ERROR Could not insert entry (iif: 32, dstMac: d2:2c:29:d8:4e:8b, l4proto: 6, src4: /10.33.164.75, dst4: /139.133.1.100, srcPort: 56504, dstPort: 443, oif: 20, ethDstMac: 00:00:00:00:00:00, ethSrcMac: 00:00:00:00:00:00, ethProto: 2048, pmtu: 1500, src46: /10.192.199.150, dst46: /139.133.1.100, srcPort: 56504, dstPort: 443, lastUsed: 0): android.system.ErrnoException: nativeWriteToMapEntry failed: E2BIG (Argument list too long)
+01-08 00:26:30.253 E/Tethering( 2520): [api31.BpfCoordinatorShimImpl] ERROR Could not insert entry (iif: 20, dstMac: 00:00:00:00:00:00, l4proto: 6, src4: /139.133.1.100, dst4: /10.192.199.150, srcPort: 443, dstPort: 56504, oif: 32, ethDstMac: a8:64:f1:8e:d1:ef, ethSrcMac: d2:2c:29:d8:4e:8b, ethProto: 2048, pmtu: 1500, src46: /139.133.1.100, dst46: /10.33.164.75, srcPort: 443, dstPort: 56504, lastUsed: 0): android.system.ErrnoException: nativeWriteToMapEntry failed: E2BIG (Argument list too long)
+01-08 00:26:30.256 E/Tethering( 2520): [api31.BpfCoordinatorShimImpl] ERROR Could not insert entry (iif: 32, dstMac: d2:2c:29:d8:4e:8b, l4proto: 6, src4: /10.33.164.75, dst4: /139.133.1.100, srcPort: 56504, dstPort: 443, oif: 20, ethDstMac: 00:00:00:00:00:00, ethSrcMac: 00:00:00:00:00:00, ethProto: 2048, pmtu: 1500, src46: /10.192.199.150, dst46: /139.133.1.100, srcPort: 56504, dstPort: 443, lastUsed: 0): android.system.ErrnoException: nativeWriteToMapEntry failed: E2BIG (Argument list too long)
+01-08 00:26:30.258 E/Tethering( 2520): [api31.BpfCoordinatorShimImpl] ERROR Could not insert entry (iif: 20, dstMac: 00:00:00:00:00:00, l4proto: 6, src4: /139.133.1.100, dst4: /10.192.199.150, srcPort: 443, dstPort: 56504, oif: 32, ethDstMac: a8:64:f1:8e:d1:ef, ethSrcMac: d2:2c:29:d8:4e:8b, ethProto: 2048, pmtu: 1500, src46: /139.133.1.100, dst46: /10.33.164.75, srcPort: 443, dstPort: 56504, lastUsed: 0): android.system.ErrnoException: nativeWriteToMapEntry failed: E2BIG (Argument list too long)
+01-08 00:26:30.267 I/vendor.rmt_storage( 1192): rmt_storage_client_thread: /boot/modem_fs1: req_h=0x392 msg_id=3: Bytes written = 2621440, wr_count 906
+01-08 00:26:30.267 I/vendor.rmt_storage( 1192): rmt_storage_client_thread: /boot/modem_fs1: req_h=0x392 msg_id=3: Send response: res=0 err=0, wr_count 906
+01-08 00:26:30.268 I/vendor.rmt_storage( 1192): rmt_storage_client_thread: /boot/modem_fs1: About to block rmt_storage client thread (th_id: 492269841584) wakelock released: 1, error no: 0
+01-08 00:26:30.268 I/vendor.rmt_storage( 1192): 
+01-08 00:26:30.271 I/vendor.rmt_storage( 1192): rmt_storage_disconnect_cb: clnt_h=0x392 conn_h=0xb40000751dccf090
+01-08 00:26:30.302 E/Tethering( 2520): [api31.BpfCoordinatorShimImpl] ERROR Could not insert entry (iif: 32, dstMac: d2:2c:29:d8:4e:8b, l4proto: 6, src4: /10.33.164.75, dst4: /139.133.1.100, srcPort: 56504, dstPort: 443, oif: 20, ethDstMac: 00:00:00:00:00:00, ethSrcMac: 00:00:00:00:00:00, ethProto: 2048, pmtu: 1500, src46: /10.192.199.150, dst46: /139.133.1.100, srcPort: 56504, dstPort: 443, lastUsed: 0): android.system.ErrnoException: nativeWriteToMapEntry failed: E2BIG (Argument list too long)
+01-08 00:26:30.304 E/Tethering( 2520): [api31.BpfCoordinatorShimImpl] ERROR Could not insert entry (iif: 20, dstMac: 00:00:00:00:00:00, l4proto: 6, src4: /139.133.1.100, dst4: /10.192.199.150, srcPort: 443, dstPort: 56504, oif: 32, ethDstMac: a8:64:f1:8e:d1:ef, ethSrcMac: d2:2c:29:d8:4e:8b, ethProto: 2048, pmtu: 1500, src46: /139.133.1.100, dst46: /10.33.164.75, srcPort: 443, dstPort: 56504, lastUsed: 0): android.system.ErrnoException: nativeWriteToMapEntry failed: E2BIG (Argument list too long)

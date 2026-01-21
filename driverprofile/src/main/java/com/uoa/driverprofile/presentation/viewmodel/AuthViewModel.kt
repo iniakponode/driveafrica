@@ -83,8 +83,9 @@ class AuthViewModel @Inject constructor(
                 scheduleDataUploadWork(getApplication())
                 handleSuccess(result.data, email)
             }
-            is Resource.Error -> {
-                        _state.update { it.copy(isLoading = false, errorMessage = result.message) }
+                    is Resource.Error -> {
+                        val message = mapAuthErrorMessage(result.message, isRegister = true)
+                        _state.update { it.copy(isLoading = false, errorMessage = message) }
                     }
                     is Resource.Loading -> Unit
                 }
@@ -106,14 +107,20 @@ class AuthViewModel @Inject constructor(
     fun login(email: String, password: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null, successMessage = null) }
-            secureCredentialStorage.saveCredentials(email, password)
+            val isOnline = runCatching { networkMonitor.isOnline.first() }.getOrDefault(false)
+            if (!isOnline) {
+                attemptOfflineLogin(email, password)
+                return@launch
+            }
             when (val result = authRepository.loginDriver(LoginRequest(email, password))) {
                 is Resource.Success -> {
+                    secureCredentialStorage.saveCredentials(email, password)
                     scheduleDataUploadWork(getApplication())
                     handleSuccess(result.data, email)
                 }
                 is Resource.Error -> {
-                    _state.update { it.copy(isLoading = false, errorMessage = result.message) }
+                    val message = mapAuthErrorMessage(result.message, isRegister = false)
+                    _state.update { it.copy(isLoading = false, errorMessage = message) }
                 }
                 is Resource.Loading -> Unit
             }
@@ -176,6 +183,74 @@ class AuthViewModel @Inject constructor(
         _events.emit(AuthEvent.Authenticated(profileId))
     }
 
+    private suspend fun attemptOfflineLogin(email: String, password: String) {
+        val cachedEmail = secureCredentialStorage.getEmail()
+        val cachedPassword = secureCredentialStorage.getPassword()
+        val hasCachedPassword = !cachedPassword.isNullOrBlank()
+        val appContext = getApplication<Application>()
+        val profileIdPref = PreferenceUtils.getDriverProfileId(appContext)
+
+        val localProfile = withContext(Dispatchers.IO) {
+            profileIdPref?.let { driverProfileRepository.getDriverProfileById(it) }
+                ?: driverProfileRepository.getDriverProfileByEmail(email)
+        }
+
+        if (localProfile == null && profileIdPref == null) {
+            _state.update {
+                it.copy(
+                    isLoading = false,
+                    errorMessage = "First login on this device requires an internet connection."
+                )
+            }
+            return
+        }
+
+        if (hasCachedPassword) {
+            val matches = cachedEmail == email && cachedPassword == password
+            if (!matches) {
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "Offline login requires your last saved email and password."
+                    )
+                }
+                return
+            }
+        } else if (!cachedEmail.isNullOrBlank() && cachedEmail != email) {
+            _state.update {
+                it.copy(
+                    isLoading = false,
+                    errorMessage = "Offline login requires the email previously used on this device."
+                )
+            }
+            return
+        }
+
+        val resolvedProfileId = localProfile?.driverProfileId ?: profileIdPref
+        if (resolvedProfileId == null) {
+            _state.update {
+                it.copy(
+                    isLoading = false,
+                    errorMessage = "First login on this device requires an internet connection."
+                )
+            }
+            return
+        }
+
+        val resolvedEmail = localProfile?.email ?: email
+        ensureLocalProfile(resolvedProfileId, resolvedEmail)
+        persistDriverProfile(resolvedProfileId, resolvedEmail)
+
+        _state.update {
+            it.copy(
+                isLoading = false,
+                errorMessage = null,
+                successMessage = "Signed in offline. Some features require internet."
+            )
+        }
+        _events.emit(AuthEvent.Authenticated(resolvedProfileId))
+    }
+
     private suspend fun ensureLocalProfile(profileId: UUID, email: String) {
         withContext(Dispatchers.IO) {
             val existingById = runCatching {
@@ -208,6 +283,23 @@ class AuthViewModel @Inject constructor(
         prefs.edit {
             putString(Constants.DRIVER_PROFILE_ID, driverProfileId.toString())
                 .putString(Constants.DRIVER_EMAIL_ID, email)
+        }
+    }
+
+    private fun mapAuthErrorMessage(rawMessage: String, isRegister: Boolean): String {
+        val normalized = rawMessage.lowercase(Locale.ROOT)
+        return when {
+            normalized.contains("server error") ||
+                normalized.contains("unprocessable") ||
+                normalized.contains("http") -> {
+                if (isRegister) {
+                    "Registration failed. Please check your details and try again."
+                } else {
+                    "Login failed. Please check your credentials and try again."
+                }
+            }
+            normalized.contains("unexpected error") -> "Something went wrong. Please try again."
+            else -> rawMessage
         }
     }
 }

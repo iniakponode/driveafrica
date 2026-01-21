@@ -36,6 +36,12 @@ val MIGRATION_42_43 = object : Migration(42, 43) {
                 harshAccelerationEvents INTEGER NOT NULL,
                 speedingEvents INTEGER NOT NULL,
                 swervingEvents INTEGER NOT NULL,
+                aggressiveTurnEvents INTEGER NOT NULL DEFAULT 0,
+                aggressiveStopGoEvents INTEGER NOT NULL DEFAULT 0,
+                phoneHandlingEvents INTEGER NOT NULL DEFAULT 0,
+                fatigueEvents INTEGER NOT NULL DEFAULT 0,
+                roughRoadSpeedingEvents INTEGER NOT NULL DEFAULT 0,
+                crashEvents INTEGER NOT NULL DEFAULT 0,
                 classificationLabel TEXT NOT NULL,
                 alcoholProbability REAL,
                 PRIMARY KEY(tripId)
@@ -51,12 +57,12 @@ val MIGRATION_42_43 = object : Migration(42, 43) {
 val MIGRATION_43_44 = object : Migration(43, 44) {
     override fun migrate(db: SupportSQLiteDatabase) {
         if (!tableExists(db, "trip_summary")) {
-            createTripSummaryTable(db, "trip_summary")
+            createLegacyTripSummaryTable(db, "trip_summary")
             return
         }
 
         db.execSQL("DROP TABLE IF EXISTS trip_summary_new")
-        createTripSummaryTable(db, "trip_summary_new")
+        createLegacyTripSummaryTable(db, "trip_summary_new")
 
         val cursor = db.query(
             """
@@ -94,9 +100,15 @@ val MIGRATION_43_44 = object : Migration(43, 44) {
                     harshAccelerationEvents,
                     speedingEvents,
                     swervingEvents,
+                    aggressiveTurnEvents,
+                    aggressiveStopGoEvents,
+                    phoneHandlingEvents,
+                    fatigueEvents,
+                    roughRoadSpeedingEvents,
+                    crashEvents,
                     classificationLabel,
                     alcoholProbability
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """.trimIndent()
             )
 
@@ -127,8 +139,14 @@ val MIGRATION_43_44 = object : Migration(43, 44) {
                 insert.bindLong(10, cursor.getLong(harshAccelerationEventsIndex))
                 insert.bindLong(11, cursor.getLong(speedingEventsIndex))
                 insert.bindLong(12, 0L)
-                bindStringOrNull(insert, 13, cursor, classificationLabelIndex)
-                bindDoubleOrNull(insert, 14, cursor, alcoholProbabilityIndex)
+                insert.bindLong(13, 0L)
+                insert.bindLong(14, 0L)
+                insert.bindLong(15, 0L)
+                insert.bindLong(16, 0L)
+                insert.bindLong(17, 0L)
+                insert.bindLong(18, 0L)
+                bindStringOrNull(insert, 19, cursor, classificationLabelIndex)
+                bindDoubleOrNull(insert, 20, cursor, alcoholProbabilityIndex)
                 insert.executeInsert()
                 insert.clearBindings()
             }
@@ -196,7 +214,242 @@ val MIGRATION_46_47 = object : Migration(46, 47) {
     }
 }
 
+val MIGRATION_47_48 = object : Migration(47, 48) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE location ADD COLUMN accuracy REAL")
+    }
+}
+
+val MIGRATION_48_49 = object : Migration(48, 49) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE trip_summary ADD COLUMN aggressiveTurnEvents INTEGER NOT NULL DEFAULT 0"
+        )
+    }
+}
+
+val MIGRATION_49_50 = object : Migration(49, 50) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE trip_summary ADD COLUMN aggressiveStopGoEvents INTEGER NOT NULL DEFAULT 0"
+        )
+        db.execSQL(
+            "ALTER TABLE trip_summary ADD COLUMN phoneHandlingEvents INTEGER NOT NULL DEFAULT 0"
+        )
+        db.execSQL(
+            "ALTER TABLE trip_summary ADD COLUMN fatigueEvents INTEGER NOT NULL DEFAULT 0"
+        )
+        db.execSQL(
+            "ALTER TABLE trip_summary ADD COLUMN roughRoadSpeedingEvents INTEGER NOT NULL DEFAULT 0"
+        )
+        db.execSQL(
+            "ALTER TABLE trip_summary ADD COLUMN crashEvents INTEGER NOT NULL DEFAULT 0"
+        )
+    }
+}
+
+val MIGRATION_50_51 = object : Migration(50, 51) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        createTripSummaryBehaviourTable(db)
+
+        if (tableExists(db, "trip_summary")) {
+            val cursor = db.query(
+                """
+                SELECT
+                    tripId,
+                    harshBrakingEvents,
+                    harshAccelerationEvents,
+                    speedingEvents,
+                    swervingEvents,
+                    aggressiveTurnEvents,
+                    aggressiveStopGoEvents,
+                    phoneHandlingEvents,
+                    fatigueEvents,
+                    roughRoadSpeedingEvents,
+                    crashEvents
+                FROM trip_summary
+                """.trimIndent()
+            )
+
+            try {
+                val insert = db.compileStatement(
+                    """
+                    INSERT OR REPLACE INTO trip_summary_behaviour (
+                        tripId,
+                        behaviourType,
+                        count
+                    ) VALUES (?, ?, ?)
+                    """.trimIndent()
+                )
+
+                val tripIdIndex = cursor.getColumnIndex("tripId")
+                val harshBrakingEventsIndex = cursor.getColumnIndex("harshBrakingEvents")
+                val harshAccelerationEventsIndex = cursor.getColumnIndex("harshAccelerationEvents")
+                val speedingEventsIndex = cursor.getColumnIndex("speedingEvents")
+                val swervingEventsIndex = cursor.getColumnIndex("swervingEvents")
+                val aggressiveTurnEventsIndex = cursor.getColumnIndex("aggressiveTurnEvents")
+                val aggressiveStopGoEventsIndex = cursor.getColumnIndex("aggressiveStopGoEvents")
+                val phoneHandlingEventsIndex = cursor.getColumnIndex("phoneHandlingEvents")
+                val fatigueEventsIndex = cursor.getColumnIndex("fatigueEvents")
+                val roughRoadSpeedingEventsIndex = cursor.getColumnIndex("roughRoadSpeedingEvents")
+                val crashEventsIndex = cursor.getColumnIndex("crashEvents")
+
+                while (cursor.moveToNext()) {
+                    val tripIdBytes = readUuidBytes(cursor, tripIdIndex)
+                    val values = listOf(
+                        "Harsh Braking" to cursor.getInt(harshBrakingEventsIndex),
+                        "Harsh Acceleration" to cursor.getInt(harshAccelerationEventsIndex),
+                        "Speeding" to cursor.getInt(speedingEventsIndex),
+                        "Swerving" to cursor.getInt(swervingEventsIndex),
+                        "Aggressive Turn" to cursor.getInt(aggressiveTurnEventsIndex),
+                        "Aggressive Stop-and-Go" to cursor.getInt(aggressiveStopGoEventsIndex),
+                        "Phone Handling" to cursor.getInt(phoneHandlingEventsIndex),
+                        "Fatigue" to cursor.getInt(fatigueEventsIndex),
+                        "Rough Road Speeding" to cursor.getInt(roughRoadSpeedingEventsIndex),
+                        "Crash Detected" to cursor.getInt(crashEventsIndex)
+                    )
+
+                    values.filter { it.second > 0 }.forEach { (type, count) ->
+                        insert.bindBlob(1, tripIdBytes)
+                        insert.bindString(2, type)
+                        insert.bindLong(3, count.toLong())
+                        insert.executeInsert()
+                        insert.clearBindings()
+                    }
+                }
+            } finally {
+                cursor.close()
+            }
+        }
+
+        db.execSQL("DROP TABLE IF EXISTS trip_summary_new")
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS trip_summary_new (
+                tripId BLOB NOT NULL,
+                driverId BLOB NOT NULL,
+                startTime INTEGER NOT NULL,
+                endTime INTEGER NOT NULL,
+                startDate TEXT NOT NULL,
+                endDate TEXT NOT NULL,
+                distanceMeters REAL NOT NULL,
+                durationSeconds INTEGER NOT NULL,
+                classificationLabel TEXT NOT NULL,
+                alcoholProbability REAL,
+                PRIMARY KEY(tripId)
+            )
+            """.trimIndent()
+        )
+
+        val summaryCursor = db.query(
+            """
+            SELECT
+                tripId,
+                driverId,
+                startTime,
+                endTime,
+                startDate,
+                endDate,
+                distanceMeters,
+                durationSeconds,
+                classificationLabel,
+                alcoholProbability
+            FROM trip_summary
+            """.trimIndent()
+        )
+
+        try {
+            val insert = db.compileStatement(
+                """
+                INSERT INTO trip_summary_new (
+                    tripId,
+                    driverId,
+                    startTime,
+                    endTime,
+                    startDate,
+                    endDate,
+                    distanceMeters,
+                    durationSeconds,
+                    classificationLabel,
+                    alcoholProbability
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """.trimIndent()
+            )
+
+            val tripIdIndex = summaryCursor.getColumnIndex("tripId")
+            val driverIdIndex = summaryCursor.getColumnIndex("driverId")
+            val startTimeIndex = summaryCursor.getColumnIndex("startTime")
+            val endTimeIndex = summaryCursor.getColumnIndex("endTime")
+            val startDateIndex = summaryCursor.getColumnIndex("startDate")
+            val endDateIndex = summaryCursor.getColumnIndex("endDate")
+            val distanceMetersIndex = summaryCursor.getColumnIndex("distanceMeters")
+            val durationSecondsIndex = summaryCursor.getColumnIndex("durationSeconds")
+            val classificationLabelIndex = summaryCursor.getColumnIndex("classificationLabel")
+            val alcoholProbabilityIndex = summaryCursor.getColumnIndex("alcoholProbability")
+
+            while (summaryCursor.moveToNext()) {
+                insert.bindBlob(1, readUuidBytes(summaryCursor, tripIdIndex))
+                insert.bindBlob(2, readUuidBytes(summaryCursor, driverIdIndex))
+                insert.bindLong(3, summaryCursor.getLong(startTimeIndex))
+                insert.bindLong(4, summaryCursor.getLong(endTimeIndex))
+                bindStringOrNull(insert, 5, summaryCursor, startDateIndex)
+                bindStringOrNull(insert, 6, summaryCursor, endDateIndex)
+                insert.bindDouble(7, summaryCursor.getDouble(distanceMetersIndex))
+                insert.bindLong(8, summaryCursor.getLong(durationSecondsIndex))
+                bindStringOrNull(insert, 9, summaryCursor, classificationLabelIndex)
+                bindDoubleOrNull(insert, 10, summaryCursor, alcoholProbabilityIndex)
+                insert.executeInsert()
+                insert.clearBindings()
+            }
+        } finally {
+            summaryCursor.close()
+        }
+
+        db.execSQL("DROP TABLE trip_summary")
+        db.execSQL("ALTER TABLE trip_summary_new RENAME TO trip_summary")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_trip_summary_driverId ON trip_summary(driverId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_trip_summary_startDate ON trip_summary(startDate)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_trip_summary_endDate ON trip_summary(endDate)")
+    }
+}
+
+val MIGRATION_51_52 = object : Migration(51, 52) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE trip_summary ADD COLUMN sync INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+val MIGRATION_52_53 = object : Migration(52, 53) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE trip_feature_state ADD COLUMN sync INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 private fun createTripSummaryTable(db: SupportSQLiteDatabase, tableName: String) {
+    db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS $tableName (
+            tripId BLOB NOT NULL,
+            driverId BLOB NOT NULL,
+            startTime INTEGER NOT NULL,
+            endTime INTEGER NOT NULL,
+            startDate TEXT NOT NULL,
+            endDate TEXT NOT NULL,
+            distanceMeters REAL NOT NULL,
+            durationSeconds INTEGER NOT NULL,
+            classificationLabel TEXT NOT NULL,
+            alcoholProbability REAL,
+            sync INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY(tripId)
+        )
+        """.trimIndent()
+    )
+    db.execSQL("CREATE INDEX IF NOT EXISTS index_trip_summary_driverId ON $tableName(driverId)")
+    db.execSQL("CREATE INDEX IF NOT EXISTS index_trip_summary_startDate ON $tableName(startDate)")
+    db.execSQL("CREATE INDEX IF NOT EXISTS index_trip_summary_endDate ON $tableName(endDate)")
+}
+
+private fun createLegacyTripSummaryTable(db: SupportSQLiteDatabase, tableName: String) {
     db.execSQL(
         """
         CREATE TABLE IF NOT EXISTS $tableName (
@@ -212,6 +465,12 @@ private fun createTripSummaryTable(db: SupportSQLiteDatabase, tableName: String)
             harshAccelerationEvents INTEGER NOT NULL,
             speedingEvents INTEGER NOT NULL,
             swervingEvents INTEGER NOT NULL,
+            aggressiveTurnEvents INTEGER NOT NULL DEFAULT 0,
+            aggressiveStopGoEvents INTEGER NOT NULL DEFAULT 0,
+            phoneHandlingEvents INTEGER NOT NULL DEFAULT 0,
+            fatigueEvents INTEGER NOT NULL DEFAULT 0,
+            roughRoadSpeedingEvents INTEGER NOT NULL DEFAULT 0,
+            crashEvents INTEGER NOT NULL DEFAULT 0,
             classificationLabel TEXT NOT NULL,
             alcoholProbability REAL,
             PRIMARY KEY(tripId)
@@ -221,6 +480,27 @@ private fun createTripSummaryTable(db: SupportSQLiteDatabase, tableName: String)
     db.execSQL("CREATE INDEX IF NOT EXISTS index_trip_summary_driverId ON $tableName(driverId)")
     db.execSQL("CREATE INDEX IF NOT EXISTS index_trip_summary_startDate ON $tableName(startDate)")
     db.execSQL("CREATE INDEX IF NOT EXISTS index_trip_summary_endDate ON $tableName(endDate)")
+}
+
+private fun createTripSummaryBehaviourTable(db: SupportSQLiteDatabase) {
+    db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS trip_summary_behaviour (
+            tripId BLOB NOT NULL,
+            behaviourType TEXT NOT NULL,
+            count INTEGER NOT NULL,
+            PRIMARY KEY(tripId, behaviourType)
+        )
+        """.trimIndent()
+    )
+    db.execSQL(
+        "CREATE INDEX IF NOT EXISTS index_trip_summary_behaviour_tripId " +
+            "ON trip_summary_behaviour(tripId)"
+    )
+    db.execSQL(
+        "CREATE INDEX IF NOT EXISTS index_trip_summary_behaviour_behaviourType " +
+            "ON trip_summary_behaviour(behaviourType)"
+    )
 }
 
 private fun tableExists(db: SupportSQLiteDatabase, tableName: String): Boolean {

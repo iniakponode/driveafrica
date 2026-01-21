@@ -61,7 +61,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -610,7 +609,6 @@ private fun NotificationOnboardingCard(
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun OnboardingInfoRoute(
     onContinue: () -> Unit
@@ -625,9 +623,12 @@ fun OnboardingInfoRoute(
     ) {
         notificationsEnabled = areNotificationsAllowed(context)
     }
+    val canRequestNotifications = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
     val requestNotificationPermission: () -> Unit = {
-        hasRequestedNotificationPermission = true
-        requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        if (canRequestNotifications) {
+            hasRequestedNotificationPermission = true
+            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -640,10 +641,13 @@ fun OnboardingInfoRoute(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val shouldShowRationale = activity?.let {
-        ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.POST_NOTIFICATIONS)
-    } ?: false
-    val canRequestNotifications = true
+    val shouldShowRationale = if (canRequestNotifications) {
+        activity?.let {
+            ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.POST_NOTIFICATIONS)
+        } ?: false
+    } else {
+        false
+    }
     val showRequestPermissionButton = canRequestNotifications &&
         !notificationsEnabled &&
         (!hasRequestedNotificationPermission || shouldShowRationale)
@@ -968,7 +972,6 @@ private fun AuthModeToggleChip(
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun DriverProfileCreationRoute(
     navController: NavController,
@@ -1003,9 +1006,12 @@ fun DriverProfileCreationRoute(
     ) {
         notificationsEnabled = areNotificationsAllowed(context)
     }
+    val canRequestNotifications = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
     val requestNotificationPermission: () -> Unit = {
-        hasRequestedNotificationPermission = true
-        requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        if (canRequestNotifications) {
+            hasRequestedNotificationPermission = true
+            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -1018,10 +1024,13 @@ fun DriverProfileCreationRoute(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val shouldShowRationale = activity?.let {
-        ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.POST_NOTIFICATIONS)
-    } ?: false
-    val canRequestNotifications = true
+    val shouldShowRationale = if (canRequestNotifications) {
+        activity?.let {
+            ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.POST_NOTIFICATIONS)
+        } ?: false
+    } else {
+        false
+    }
     val showRequestPermissionButton = canRequestNotifications &&
         !notificationsEnabled &&
         (!hasRequestedNotificationPermission || shouldShowRationale)

@@ -12,10 +12,8 @@ data class TripSummary(
     val endDate: Date,
     val distanceMeters: Double,
     val durationSeconds: Long,
-    val harshBrakingEvents: Int,
-    val harshAccelerationEvents: Int,
-    val speedingEvents: Int,
-    val swervingEvents: Int,
+    val unsafeBehaviourCounts: Map<String, Int>,
     val classificationLabel: String,
-    val alcoholProbability: Float?
+    val alcoholProbability: Float?,
+    val sync: Boolean = false
 )

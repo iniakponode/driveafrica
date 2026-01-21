@@ -27,6 +27,9 @@ import com.uoa.core.apiServices.services.rawSensorApiService.RawSensorDataApiRep
 import com.uoa.core.apiServices.services.reportStatisticsApiService.ReportStatisticsApiRepository
 import com.uoa.core.apiServices.services.roadApiService.RoadApiRepository
 import com.uoa.core.apiServices.services.tripApiService.TripApiRepository
+import com.uoa.core.apiServices.services.tripFeatureStateApiService.TripFeatureStateApiRepository
+import com.uoa.core.apiServices.services.tripSummaryApiService.TripSummaryApiRepository
+import com.uoa.core.apiServices.services.tripSummaryBehaviourApiService.TripSummaryBehaviourApiRepository
 import com.uoa.core.apiServices.services.unsafeBehaviourApiService.UnsafeBehaviourApiRepository
 import com.uoa.core.database.entities.RoadEntity
 import com.uoa.core.database.entities.UnsafeBehaviourEntity
@@ -39,6 +42,8 @@ import com.uoa.core.database.repository.RawSensorDataRepository
 import com.uoa.core.database.repository.ReportStatisticsRepository
 import com.uoa.core.database.repository.RoadRepository
 import com.uoa.core.database.repository.TripDataRepository
+import com.uoa.core.database.repository.TripFeatureStateRepository
+import com.uoa.core.database.repository.TripSummaryRepository
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
 import com.uoa.core.database.repository.QuestionnaireRepository
 import com.uoa.core.model.Trip
@@ -59,7 +64,10 @@ import com.uoa.core.utils.toDrivingTipCreate
 import com.uoa.core.utils.toEntity
 import com.uoa.core.utils.toNLGReportCreate
 import com.uoa.core.utils.toReportStatisticsCreate
+import com.uoa.core.utils.toTripSummaryCreate
+import com.uoa.core.utils.toTripSummaryBehaviourCreates
 import com.uoa.core.utils.toTrip
+import com.uoa.core.utils.toTripFeatureStateCreate
 import com.uoa.core.network.NetworkMonitor
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -97,6 +105,11 @@ class UploadAllDataWorker @AssistedInject constructor(
     private val driverFleetApiRepository: DriverFleetApiRepository,
     private val tripLocalRepository: TripDataRepository,
     private val tripApiRepository: TripApiRepository,
+    private val tripSummaryRepository: TripSummaryRepository,
+    private val tripSummaryApiRepository: TripSummaryApiRepository,
+    private val tripSummaryBehaviourApiRepository: TripSummaryBehaviourApiRepository,
+    private val tripFeatureStateRepository: TripFeatureStateRepository,
+    private val tripFeatureStateApiRepository: TripFeatureStateApiRepository,
     private val roadLocalRepository: RoadRepository,
     private val roadApiRepository: RoadApiRepository,
     private val questionnaireLocalRepository: QuestionnaireRepository,
@@ -177,6 +190,9 @@ class UploadAllDataWorker @AssistedInject constructor(
                     UploadStage("Locations", ::uploadLocations),
                     UploadStage("Sensor data", ::uploadRawSensorData),
                     UploadStage("Unsafe behaviours", ::uploadUnsafeBehaviours),
+                    UploadStage("Trip summary behaviours", ::uploadTripSummaryBehaviours),
+                    UploadStage("Trip summaries", ::uploadTripSummaries),
+                    UploadStage("Trip feature states", ::uploadTripFeatureStates),
                     UploadStage("Questionnaires", ::uploadQuestionnaires),
                     UploadStage("Driving tips", ::uploadDrivingTips),
                     UploadStage("NLG reports", ::uploadNLGReports),
@@ -896,6 +912,91 @@ class UploadAllDataWorker @AssistedInject constructor(
                         )
                     }
                 }
+            }
+        )
+    }
+
+    /**
+     * Upload Trip Summary Behaviours (normalized)
+     */
+    private suspend fun uploadTripSummaryBehaviours(): Boolean {
+        val summaries = tripSummaryRepository.getUnsyncedTripSummaries()
+        if (summaries.isEmpty()) {
+            Log.d("UploadTripSummaryBehaviours", "No trip summaries pending behaviour upload.")
+            return true
+        }
+
+        val behaviours = summaries.flatMap { summary ->
+            summary.toTripSummaryBehaviourCreates()
+        }.filter { it.count > 0 }
+
+        if (behaviours.isEmpty()) {
+            Log.d("UploadTripSummaryBehaviours", "No behaviour rows to upload.")
+            return true
+        }
+
+        return when (val result =
+            tripSummaryBehaviourApiRepository.batchCreateTripSummaryBehaviours(behaviours)) {
+            is Success -> {
+                Log.d(
+                    "UploadTripSummaryBehaviours",
+                    "Uploaded ${behaviours.size} trip summary behaviour rows."
+                )
+                true
+            }
+            is Resource.Error -> {
+                Log.e(
+                    "UploadTripSummaryBehaviours",
+                    "Failed to upload behaviours: ${result.message}"
+                )
+                false
+            }
+            Resource.Loading -> false
+        }
+    }
+
+    /**
+     * Upload Trip Summaries
+     */
+    private suspend fun uploadTripSummaries(): Boolean {
+        return uploadInBatches(
+            notificationTitle = "Data Upload: Trip Summaries",
+            fetchData = { tripSummaryRepository.getUnsyncedTripSummaries() },
+            mapToCreate = { summary ->
+                summary.toTripSummaryCreate()
+            },
+            batchUploadAction = { summaries ->
+                tripSummaryApiRepository.batchCreateTripSummaries(summaries)
+            },
+            markAsSynced = { batch ->
+                val tripIds = batch.map { it.tripId }
+                tripSummaryRepository.markTripSummariesSynced(tripIds, true)
+                Log.d(
+                    "UploadTripSummaries",
+                    "Trip summaries marked as synced: ${tripIds.size}."
+                )
+            }
+        )
+    }
+
+    /**
+     * Upload Trip Feature State aggregates
+     */
+    private suspend fun uploadTripFeatureStates(): Boolean {
+        return uploadInBatches(
+            notificationTitle = "Data Upload: Trip Feature States",
+            fetchData = { tripFeatureStateRepository.getUnsyncedTripFeatureStates() },
+            mapToCreate = { state -> state.toTripFeatureStateCreate() },
+            batchUploadAction = { states ->
+                tripFeatureStateApiRepository.batchCreateTripFeatureStates(states)
+            },
+            markAsSynced = { batch ->
+                val tripIds = batch.map { it.tripId }
+                tripFeatureStateRepository.markTripFeatureStatesSynced(tripIds, true)
+                Log.d(
+                    "UploadTripFeatureStates",
+                    "Trip feature states marked as synced: ${tripIds.size}."
+                )
             }
         )
     }

@@ -168,19 +168,12 @@ class GetUnsafeBehavioursForTipsUseCase @Inject constructor(
     }
 
     private fun summaryToBehaviours(summary: TripSummary): List<UnsafeBehaviourModel> {
-        val candidates = listOf(
-            "Harsh Braking" to summary.harshBrakingEvents,
-            "Harsh Acceleration" to summary.harshAccelerationEvents,
-            "Speeding" to summary.speedingEvents,
-            "Swerving" to summary.swervingEvents
-        )
-
-        if (candidates.all { it.second <= 0 }) {
+        if (summary.unsafeBehaviourCounts.isEmpty()) {
             return emptyList()
         }
 
-        return candidates
-            .filter { it.second > 0 }
+        return summary.unsafeBehaviourCounts
+            .filterValues { it > 0 }
             .map { (type, count) ->
                 UnsafeBehaviourModel(
                     id = UUID.randomUUID(),

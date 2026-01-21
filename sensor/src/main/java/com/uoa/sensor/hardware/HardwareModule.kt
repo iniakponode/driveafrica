@@ -38,6 +38,7 @@ class HardwareModule @Inject constructor(
         drivingStateManager.startTrip(tripId)
         // Ensure location updates are active for recording
         locationManager.startLocationUpdates()
+        locationManager.setRecordingEnabled(true)
         // Start raw sensor recording
         sensorRecordingManager.startRecording(tripId)
     }
@@ -46,8 +47,19 @@ class HardwareModule @Inject constructor(
         // Delegate to DrivingStateManager
         drivingStateManager.stopTrip()
         locationManager.stopLocationUpdates()
+        locationManager.setRecordingEnabled(false)
         // Stop raw sensor recording
         sensorRecordingManager.stopRecording()
+    }
+
+    fun pauseDataCollection() {
+        locationManager.setRecordingEnabled(false)
+        sensorRecordingManager.pauseRecording()
+    }
+
+    fun resumeDataCollection() {
+        locationManager.setRecordingEnabled(true)
+        sensorRecordingManager.resumeRecording()
     }
 
     fun getDrivingStateManager(): DrivingStateManager {

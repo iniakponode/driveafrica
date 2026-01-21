@@ -77,8 +77,15 @@ private suspend fun createTipPrompt(
     tripRepository: TripDataRepository
 ): String {
     val unsafeBehaviorType = when (unsafeBehavior.behaviorType) {
-        "Speeding" -> "Speed Limit Violation"
-        "Swerving", "Harsh Braking", "Harsh Acceleration" -> "Dangerous or Reckless Driving"
+        "Speeding", "Rough Road Speeding" -> "Speed Limit Violation"
+        "Swerving",
+        "Harsh Braking",
+        "Harsh Acceleration",
+        "Aggressive Turn",
+        "Aggressive Stop-and-Go" -> "Dangerous or Reckless Driving"
+        "Phone Handling" -> "Use your GSM phone while driving"
+        "Fatigue" -> "be asleep while driving"
+        "Crash Detected" -> "Reporting of road crashes"
         else -> unsafeBehavior.behaviorType
     }
 

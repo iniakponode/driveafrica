@@ -15,8 +15,12 @@ import com.uoa.core.apiServices.models.drivingTipModels.*
 import com.uoa.core.apiServices.models.rawSensorModels.*
 import com.uoa.core.apiServices.models.nlgReportModels.*
 import com.uoa.core.apiServices.models.reportStatisticsModels.ReportStatisticsCreate
+import com.uoa.core.apiServices.models.tripSummaryModels.TripSummaryBehaviourCreate
+import com.uoa.core.apiServices.models.tripSummaryModels.TripSummaryCreate
+import com.uoa.core.apiServices.models.tripFeatureModels.TripFeatureStateCreate
 import com.uoa.core.apiServices.models.unsafeBehaviourModels.*
 import com.uoa.core.database.entities.ReportStatisticsEntity
+import com.uoa.core.database.entities.TripFeatureStateEntity
 import okhttp3.internal.format
 import java.time.Instant
 import java.time.LocalDateTime
@@ -51,6 +55,54 @@ fun Trip.toTripCreate(): TripCreate {
         influence = influence,
         userAlcoholResponse = userAlcoholResponse,
         alcoholProbability = alcoholProbability
+    )
+}
+
+fun TripSummary.toTripSummaryCreate(): TripSummaryCreate {
+    return TripSummaryCreate(
+        tripId = tripId,
+        driverProfileId = driverId,
+        startTime = startTime,
+        endTime = endTime,
+        startDate = DateConversionUtils.longToTimestampString(startTime),
+        endDate = DateConversionUtils.longToTimestampString(endTime),
+        distanceMeters = distanceMeters,
+        durationSeconds = durationSeconds,
+        unsafeBehaviourCounts = unsafeBehaviourCounts,
+        classificationLabel = classificationLabel,
+        alcoholProbability = alcoholProbability,
+        sync = true
+    )
+}
+
+fun TripSummary.toTripSummaryBehaviourCreates(): List<TripSummaryBehaviourCreate> {
+    return unsafeBehaviourCounts.map { (behaviourType, count) ->
+        TripSummaryBehaviourCreate(
+            tripId = tripId,
+            behaviourType = behaviourType,
+            count = count
+        )
+    }
+}
+
+fun TripFeatureStateEntity.toTripFeatureStateCreate(): TripFeatureStateCreate {
+    return TripFeatureStateCreate(
+        tripId = tripId,
+        driverProfileId = driverProfileId,
+        accelCount = accelCount,
+        accelMean = accelMean,
+        speedCount = speedCount,
+        speedMean = speedMean,
+        speedM2 = speedM2,
+        courseCount = courseCount,
+        courseMean = courseMean,
+        courseM2 = courseM2,
+        lastLocationId = lastLocationId,
+        lastLatitude = lastLatitude,
+        lastLongitude = lastLongitude,
+        lastLocationTimestamp = lastLocationTimestamp,
+        lastSensorTimestamp = lastSensorTimestamp,
+        sync = true
     )
 }
 

@@ -10,6 +10,12 @@ import com.uoa.core.database.MIGRATION_43_44
 import com.uoa.core.database.MIGRATION_44_45
 import com.uoa.core.database.MIGRATION_45_46
 import com.uoa.core.database.MIGRATION_46_47
+import com.uoa.core.database.MIGRATION_47_48
+import com.uoa.core.database.MIGRATION_48_49
+import com.uoa.core.database.MIGRATION_49_50
+import com.uoa.core.database.MIGRATION_50_51
+import com.uoa.core.database.MIGRATION_51_52
+import com.uoa.core.database.MIGRATION_52_53
 import com.uoa.core.database.daos.TripFeatureStateDao
 import com.uoa.core.database.entities.FFTFeatureDao
 import dagger.Module
@@ -36,7 +42,13 @@ object DatabaseModuleProvider {
                 MIGRATION_43_44,
                 MIGRATION_44_45,
                 MIGRATION_45_46,
-                MIGRATION_46_47
+                MIGRATION_46_47,
+                MIGRATION_47_48,
+                MIGRATION_48_49,
+                MIGRATION_49_50,
+                MIGRATION_50_51,
+                MIGRATION_51_52,
+                MIGRATION_52_53
             )
             .fallbackToDestructiveMigration()
             .build()

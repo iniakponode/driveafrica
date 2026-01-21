@@ -35,6 +35,7 @@ import com.uoa.core.database.entities.RawSensorDataEntity
 import com.uoa.core.database.entities.ReportStatisticsEntity
 import com.uoa.core.database.entities.RoadEntity
 import com.uoa.core.database.entities.TripFeatureStateEntity
+import com.uoa.core.database.entities.TripSummaryBehaviourEntity
 import com.uoa.core.database.entities.TripSummaryEntity
 import com.uoa.core.database.entities.UnsafeBehaviourEntity
 import com.uoa.core.database.daos.TripFeatureStateDao
@@ -56,10 +57,11 @@ import com.uoa.core.database.daos.TripFeatureStateDao
                         EmbeddingEntity::class,
                         ReportStatisticsEntity::class,
                         TripSummaryEntity::class,
+                        TripSummaryBehaviourEntity::class,
                         QuestionnaireEntity::class,
                         FFTFeatureEntity::class,
                         TripFeatureStateEntity::class],
-                        version = 47)
+                        version = 53)
 @TypeConverters(Converters::class)
 abstract class Sdadb : RoomDatabase() {
     abstract fun sensorDataDao(): SensorDataDao

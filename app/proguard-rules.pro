@@ -29,6 +29,15 @@
     @kotlinx.serialization.SerialName <fields>;
 }
 
+# Gson models used via reflection
+-keep class com.uoa.core.apiServices.models.** { *; }
+-keepclassmembers class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+
+# Gson/Moshi network models used by core network APIs
+-keep class com.uoa.core.network.model.** { *; }
+
 # Hilt
 -keep class dagger.hilt.** { *; }
 -keep class javax.inject.** { *; }

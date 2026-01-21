@@ -114,6 +114,52 @@ CN=Android Debug, O=Android, C=US
 Your custom certificate details
 ```
 
+## Recent Fixes and Play Store Prep (Jan 2026)
+
+### 16 KB page size alignment
+Verify alignment for Play Store 16 KB requirement:
+```powershell
+./gradlew :app:bundleRelease :app:check16kAlignment
+```
+Expected output includes:
+```
+"alignment": "PAGE_ALIGNMENT_16K"
+```
+
+### Registration + fleet status fixes
+- Added `@Keep` and `@field:SerializedName` for auth and fleet models.
+- Updated fleet status UI logic to treat assigned if status contains "assigned" or any fleet/vehicle fields are present.
+- Trimmed status before comparisons to avoid whitespace issues.
+
+### R8/ProGuard protections for API models
+To prevent release obfuscation issues with Gson reflection:
+- `com.uoa.core.apiServices.models.**` kept.
+- `com.uoa.core.network.model.**` kept.
+- Network models now have `@Keep` + `@SerializedName` annotations.
+
+### Release APK "code is missing" fix
+If install fails with `INSTALL_FAILED_INVALID_APK`:
+1) Rebuild release: `./gradlew :app:assembleRelease --no-daemon`
+2) Verify dex is present:
+```powershell
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$apk = "app/build/outputs/apk/release/app-release.apk"
+$zip = [System.IO.Compression.ZipFile]::OpenRead($apk)
+$zip.Entries | Where-Object { $_.FullName -like "*.dex" } | Select-Object -First 5 FullName, Length
+$zip.Dispose()
+```
+
+### Screenshot capture automation + locales
+- Script: `scripts/screenshots/capture_screenshot.ps1`
+- Guide: `docs/SCREENSHOT_CAPTURE_GUIDE.md`
+- Locale folders created for Play Store screenshots:
+  - `play-store/assets/screenshots/{phone,7-inch,10-inch}/{en-NG,en-CM,fr-CM,sw-TZ}`
+
+### Device install command
+```powershell
+& "C:\Users\r02it21\OneDrive - University of Aberdeen\Shared Folder\PHD RESEARCH\CODE\platform-tools\adb.exe" -s R5CR403HCJD install -r "C:\Users\r02it21\AndroidStudioProjects\safedriveafrica\app\build\outputs\apk\release\app-release.apk"
+```
+
 ## 🔒 For Production Release
 
 Before uploading to Google Play:
@@ -170,6 +216,15 @@ adb logcat | Select-String -Pattern "safedriveafrica|AndroidRuntime|FATAL"
 - **This Checklist:** `BUILD_CHECKLIST.md`
 - **Verification Guide:** `BUILD_VERIFICATION_GUIDE.md`
 - **PdfBox Details:** `PDFBOX_R8_FIX.md`
+- **Backend Sync Guide:** `docs/BACKEND_API_SYNC_GUIDE.md`
+
+## Backend Change Log
+
+- Added full backend upload contract reference in `docs/BACKEND_API_SYNC_GUIDE.md`.
+- Trip summaries are now uploaded; ensure backend implements `/api/trip_summaries/*`.
+- Trip summary uploads run from `UploadAllDataWorker` and mark local summaries as synced.
+- Trip summary behaviours and trip feature states are now uploaded; ensure backend implements
+  `/api/trip_summary_behaviours/*` and `/api/trip_feature_states/*`.
 
 ## 🆘 If Build Fails
 

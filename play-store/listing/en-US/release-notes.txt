@@ -1,4 +1,4 @@
-Version 1.13
-- Clearer onboarding and sensor-screen copy now spell out why location, activity recognition, and notifications are required before the foreground service starts.
-- Added a sensor info card when creating your profile so the permission flow is transparent for each driver.
-- Improved background sync reliability and stability while trip data uploads.
+Version 1.12
+- Improved trip summaries and reporting accuracy for safer driving insights.
+- More reliable background sync and trip upload stability.
+- Android 15 readiness and performance improvements.

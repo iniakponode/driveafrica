@@ -3,7 +3,6 @@ package com.uoa.core.database.entities
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.google.firebase.crashlytics.buildtools.reloc.com.google.common.base.Objects
 import java.util.Date
 import java.util.UUID
 
@@ -28,6 +27,7 @@ data class LocationEntity(
     val timestamp: Long,
     val date: Date?,
     val altitude: Double,
+    val accuracy: Double? = null,
     val speed: Float,
     val distance: Float,
     val speedLimit: Double,

@@ -1,13 +1,11 @@
 package com.uoa.safedriveafrica.permissions
 
 import android.Manifest
-import android.app.Activity
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
@@ -141,9 +139,9 @@ fun VehicleMonitoringGate() {
             },
             dismissButton = {
                 TextButton(onClick = {
-                    prefs.edit()
-                        .putBoolean(AUTO_TRIP_DETECTION_ENABLED, false)
-                        .apply()
+                    prefs.edit {
+                        putBoolean(AUTO_TRIP_DETECTION_ENABLED, false)
+                    }
                     autoMonitoringEnabled = false
                 }) {
                     Text(text = "Turn off auto monitoring")

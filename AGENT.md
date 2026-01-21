@@ -38,6 +38,35 @@ orient quickly and make safe changes.
 - `app/src/main/java/com/uoa/safedriveafrica/presentation/settings/SettingsScreen.kt`:
   settings UI (scrollable).
 
+## Latest session notes (2026-01-20)
+
+- 16 KB alignment: added `check16kAlignment` Gradle task (bundletool via classpath) and confirmed `PAGE_ALIGNMENT_16K`. File: `app/build.gradle.kts`.
+- Trip summary normalization: added `trip_summary_behaviour` table with relation, moved per-behaviour counts into a map, updated DAO/repository/mappers, and added migration 50->51. Files: `core/src/main/java/com/uoa/core/database/entities/TripSummaryBehaviourEntity.kt`, `core/src/main/java/com/uoa/core/database/entities/TripSummaryWithBehaviours.kt`, `core/src/main/java/com/uoa/core/database/daos/TripSummaryDao.kt`, `sensor/src/main/java/com/uoa/sensor/repository/TripSummaryRepositoryImpl.kt`, `core/src/main/java/com/uoa/core/model/TripSummary.kt`, `core/src/main/java/com/uoa/core/utils/Mapper.kt`, `core/src/main/java/com/uoa/core/database/Migrations.kt`, `core/src/main/java/com/uoa/core/Sdadb.kt`, `core/src/main/java/com/uoa/core/di/DatabaseModuleProvider.kt`.
+
+## Latest session notes (2026-01-21)
+
+- Trip summary uploads expanded: added upload of normalized trip summary behaviours and trip feature states in `UploadAllDataWorker`. New APIs: `/api/trip_summary_behaviours/batch_create` and `/api/trip_feature_states/batch_create`. Files: `core/src/main/java/com/uoa/core/apiServices/workManager/UploadAllDataWorker.kt`, `core/src/main/java/com/uoa/core/apiServices/models/tripSummaryModels/TripSummaryBehaviourCreate.kt`, `core/src/main/java/com/uoa/core/apiServices/models/tripFeatureModels/TripFeatureStateCreate.kt`, `core/src/main/java/com/uoa/core/apiServices/services/tripSummaryBehaviourApiService/*`, `core/src/main/java/com/uoa/core/apiServices/services/tripFeatureStateApiService/*`, `core/src/main/java/com/uoa/core/utils/LocalToRemoteVMappers.kt`.
+- Trip feature state sync: added `sync` flag, DAO methods, repository, Hilt wiring, and migration 52->53. Files: `core/src/main/java/com/uoa/core/database/entities/TripFeatureStateEntity.kt`, `core/src/main/java/com/uoa/core/database/daos/TripFeatureStateDao.kt`, `core/src/main/java/com/uoa/core/database/repository/TripFeatureStateRepository.kt`, `sensor/src/main/java/com/uoa/sensor/repository/TripFeatureStateRepositoryImpl.kt`, `core/src/main/java/com/uoa/core/database/Migrations.kt`, `core/src/main/java/com/uoa/core/Sdadb.kt`, `core/src/main/java/com/uoa/core/di/DatabaseModuleProvider.kt`.
+- Settings UI refresh: switches now update immediately and refresh from prefs on resume. File: `app/src/main/java/com/uoa/safedriveafrica/presentation/settings/SettingsScreen.kt`.
+- Assets move: large `res/raw` files moved to `driverprofile/src/main/assets` to fix AAPT failures.
+- Documentation: added `docs/UNSAFE_BEHAVIOUR_DETECTION.md` and updated `docs/BACKEND_API_SYNC_GUIDE.md` with unsafe behaviour counts and analytics appendix.
+- Tests: added speeding tolerance Android test and speed limit parsing unit tests. Files: `core/src/androidTest/java/com/uoa/core/behaviouranalysis/NewUnsafeDrivingBehaviourAnalyserTest.kt`, `core/src/test/java/com/uoa/core/utils/SpeedLimitParsingTest.kt`.
+- Latest release APK installed on device `R5CR403HCJD`. Core unit tests and connected tests reported passing in the latest run.
+
+## Release plan status (2026-01-21)
+
+- Completed: release APK build/install, 16 KB alignment check, lint pass, expanded trip uploads, updated docs, and tests passing.
+- Pending: generate signed AAB, re-run `:app:check16kAlignment` on the bundle, refresh Play Store screenshots (phone/7-inch/10-inch) for en-NG, fr-CM, sw-TZ, update listing/data-safety details, and final Play Console upload.
+
+## Latest session notes (2026-01-18)
+
+- Login hydration: successful login now inserts/updates the local `driver_profile` row before persisting prefs, so FK-dependent tables can write safely. Files: `driverprofile/src/main/java/com/uoa/driverprofile/presentation/viewmodel/AuthViewModel.kt`.
+- Offline login fallback: login checks connectivity and, when offline, allows a cached-session login if a local profile row exists. Strict if a cached password exists (email+password must match); relaxed if no cached password (email must match cached email or local profile). Fresh installs without a local profile are blocked and told to connect. File: `driverprofile/src/main/java/com/uoa/driverprofile/presentation/viewmodel/AuthViewModel.kt`.
+- Monitoring gate: auto monitoring now blocks until the local profile row exists. A user-facing dialog allows refresh or disabling auto monitoring; service start also checks the local profile row and stops with a notification if missing. Files: `app/src/main/java/com/uoa/safedriveafrica/permissions/MonitoringGateViewModel.kt`, `app/src/main/java/com/uoa/safedriveafrica/permissions/VehicleMonitoringGate.kt`, `sensor/src/main/java/com/uoa/sensor/services/VehicleMovementServiceUpdate.kt`.
+- Overpass resilience: speed-limit queries now use retry/backoff (HTTP 429/5xx + IO) and fall back to cached speed limits when Overpass fails. File: `core/src/main/java/com/uoa/core/utils/UtilFunctions.kt`.
+- Migration fix: DB version bumped to 47 and migration adds missing `index_trip_feature_state_tripId`. Files: `core/src/main/java/com/uoa/core/Sdadb.kt`, `core/src/main/java/com/uoa/core/database/Migrations.kt`, `core/src/main/java/com/uoa/core/di/DatabaseModuleProvider.kt`.
+- Notification permissions: onboarding info screen (Android 13+) prompts and blocks Continue until notifications are allowed; login/register screen shows a status card but does not block. File: `driverprofile/src/main/java/com/uoa/driverprofile/presentation/ui/screens/DriverProfileCreationScreen.kt`.
+
 ## Latest session notes (2026-01-17)
 
 - Onboarding invite codes: added `joinWithCode` call to `/api/driver-join/join-with-code` and wired invite-mode onboarding to call it automatically after registration; normal join-from-settings continues to use `/api/driver/join-fleet` (pending approval path).
@@ -48,7 +77,7 @@ orient quickly and make safe changes.
 - Next steps: confirm the correct join-with-code endpoint with backend, rebuild/install, and re-test invite onboarding. If 404 persists, flip the path to `/driver-join/join-with-code` and retest.
 ## Database and migrations
 
-- Room database: `core/src/main/java/com/uoa/core/Sdadb.kt` (version 45).
+- Room database: `core/src/main/java/com/uoa/core/Sdadb.kt` (version 53).
 - Migrations live in `core/src/main/java/com/uoa/core/database/Migrations.kt`.
 - Schema snapshots are in `core/schemas/`.
 - If a migration error occurs, compare expected vs. actual indices/columns in

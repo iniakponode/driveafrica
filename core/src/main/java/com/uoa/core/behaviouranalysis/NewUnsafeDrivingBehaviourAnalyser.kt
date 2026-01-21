@@ -1,6 +1,7 @@
 package com.uoa.core.behaviouranalysis
 
 import android.content.Context
+import android.hardware.SensorManager
 import android.util.Log
 import com.uoa.core.database.entities.RawSensorDataEntity
 import com.uoa.core.database.repository.LocationRepository
@@ -9,6 +10,7 @@ import com.uoa.core.model.UnsafeBehaviourModel
 import com.uoa.core.utils.PreferenceUtils
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import java.util.Calendar
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
@@ -29,20 +31,41 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
         val accelerometerWindow: ArrayDeque<RawSensorDataEntity> = ArrayDeque(),
         val rotationWindow: ArrayDeque<RawSensorDataEntity> = ArrayDeque(),
         val speedWindow: ArrayDeque<RawSensorDataEntity> = ArrayDeque(),
+        val longRotationWindow: ArrayDeque<RawSensorDataEntity> = ArrayDeque(),
         var hasLinearAcceleration: Boolean = false,
         var lastSpeedAnalysisTimeMs: Long = 0L,
         var accelCandidateStartMs: Long = 0L,
         var brakeCandidateStartMs: Long = 0L,
         var lastAccelerationEventMs: Long = 0L,
         var lastBrakingEventMs: Long = 0L,
+        var corneringCandidateStartMs: Long = 0L,
+        var lastCorneringEventMs: Long = 0L,
+        var lastAggressiveTurnEventMs: Long = 0L,
+        var lastAggressiveStopGoEventMs: Long = 0L,
         var speedingStartMs: Long = 0L,
         var lastSpeedingEventMs: Long = 0L,
-        var lastSwervingEventMs: Long = 0L
+        var lastSwervingEventMs: Long = 0L,
+        var lastPhoneHandlingEventMs: Long = 0L,
+        var lastFatigueEventMs: Long = 0L,
+        var lastRoughRoadEventMs: Long = 0L,
+        var lastCrashEventMs: Long = 0L,
+        val locationCache: MutableMap<UUID, LocationData> = mutableMapOf(),
+        val lastLocationByTrip: MutableMap<UUID, LocationData> = mutableMapOf(),
+        val lastHeadingByTrip: MutableMap<UUID, Double> = mutableMapOf(),
+        val lastRotationMatrixByTrip: MutableMap<UUID, FloatArray> = mutableMapOf(),
+        val lastRotationVectorTimestampByTrip: MutableMap<UUID, Long> = mutableMapOf(),
+        val lastRotationMissingLogMsByTrip: MutableMap<UUID, Long> = mutableMapOf(),
+        val lastHeadingMissingLogMsByTrip: MutableMap<UUID, Long> = mutableMapOf(),
+        val crashCandidatesByTrip: MutableMap<UUID, CrashCandidate> = mutableMapOf(),
+        val lastForwardAccelByTrip: MutableMap<UUID, Pair<Double, Long>> = mutableMapOf(),
+        val tripStartTimestampByTrip: MutableMap<UUID, Long> = mutableMapOf()
     )
 
     // Maximum number of sensor events to hold in each window.
-    private val windowSize = 100
+    private val windowSize = 200
+    private val longRotationWindowSize = 3_000
     private val speedAnalysisIntervalMs = 1_000L
+    private val headingSampleMinDistanceM = 5.0
 
     /**
      * Processes a Flow of raw sensor data in real time and emits unsafe behavior events.
@@ -75,6 +98,11 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
             "NewUnsafeDrivingBehaviourAnalyser",
             "Processing sensor data: sensorType=${data.sensorType}, timestamp=${data.timestamp}"
         )
+        data.tripId?.let { tripId ->
+            if (!window.tripStartTimestampByTrip.containsKey(tripId)) {
+                window.tripStartTimestampByTrip[tripId] = data.timestamp
+            }
+        }
         var behavior: UnsafeBehaviourModel? = when (data.sensorType) {
             LINEAR_ACCELERATION_TYPE -> {
                 window.hasLinearAcceleration = true
@@ -95,6 +123,7 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
             }
             GYROSCOPE_TYPE -> {
                 addToWindow(window.rotationWindow, data)
+                addToWindow(window.longRotationWindow, data, longRotationWindowSize)
                 analyzeRotationData(window, context)
             }
             else -> null
@@ -119,10 +148,29 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
         return behavior
     }
 
-    private fun addToWindow(window: ArrayDeque<RawSensorDataEntity>, data: RawSensorDataEntity) {
+    private fun addToWindow(
+        window: ArrayDeque<RawSensorDataEntity>,
+        data: RawSensorDataEntity,
+        maxSize: Int = windowSize
+    ) {
         window.addLast(data)
-        if (window.size > windowSize) {
+        if (window.size > maxSize) {
             window.removeFirst()
+        }
+    }
+
+    private fun shouldLogRateLimited(
+        map: MutableMap<UUID, Long>,
+        tripId: UUID,
+        now: Long,
+        intervalMs: Long
+    ): Boolean {
+        val last = map[tripId] ?: 0L
+        return if (now - last >= intervalMs) {
+            map[tripId] = now
+            true
+        } else {
+            false
         }
     }
 
@@ -135,25 +183,24 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
         return shouldAnalyze
     }
 
-    private fun estimateSignedAcceleration(accelWindow: ArrayDeque<RawSensorDataEntity>): Double {
-        if (accelWindow.isEmpty()) return 0.0
+    private suspend fun estimateSignedAcceleration(
+        window: AnalysisWindow,
+        accelWindow: ArrayDeque<RawSensorDataEntity>
+    ): Double? {
+        if (accelWindow.isEmpty()) return null
         val sampleCount = minOf(5, accelWindow.size)
-        val samples = accelWindow.takeLast(sampleCount)
-        val sums = DoubleArray(3)
+        val samples = accelWindow.toList().takeLast(sampleCount)
+        var forwardSum = 0.0
         var count = 0
         for (sample in samples) {
-            if (sample.values.size < 3) continue
-            sums[0] += sample.values[0]
-            sums[1] += sample.values[1]
-            sums[2] += sample.values[2]
+            val heading = resolveHeadingDegrees(window, sample) ?: continue
+            val earth = resolveEarthFrameValues(window, sample) ?: continue
+            val vehicle = toVehicleFrame(earth, heading) ?: continue
+            forwardSum += vehicle.first
             count++
         }
-        if (count == 0) return 0.0
-        val avgX = sums[0] / count
-        val avgY = sums[1] / count
-        val absX = abs(avgX)
-        val absY = abs(avgY)
-        return if (absX >= absY) avgX else avgY
+        if (count == 0) return null
+        return forwardSum / count
     }
 
     private fun recentSamples(
@@ -177,6 +224,85 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
         val mean = values.average()
         val variance = values.map { (it - mean).pow(2) }.average()
         return sqrt(variance)
+    }
+
+    private fun computeVariance(values: List<Double>): Double {
+        if (values.size < 2) return 0.0
+        val mean = values.average()
+        return values.map { (it - mean).pow(2) }.average()
+    }
+
+    private fun computeGyroMagnitudeVariance(samples: List<RawSensorDataEntity>): Double {
+        val magnitudes = samples.map { calculateRotationMagnitude(it.values).toDouble() }
+        return computeVariance(magnitudes)
+    }
+
+    private fun isCircadianDip(timestampMs: Long): Boolean {
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = timestampMs
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        return hour in 2..6 || hour in 14..16
+    }
+
+    private fun resolveAccelerationVector(
+        window: AnalysisWindow,
+        sample: RawSensorDataEntity
+    ): Triple<Double, Double, Double>? {
+        if (sample.values.size < 3) return null
+        return resolveEarthFrameValues(window, sample) ?: Triple(
+            sample.values[0].toDouble(),
+            sample.values[1].toDouble(),
+            sample.values[2].toDouble()
+        )
+    }
+
+    private fun calculateVectorMagnitude(vector: Triple<Double, Double, Double>): Double {
+        return sqrt(vector.first * vector.first + vector.second * vector.second + vector.third * vector.third)
+    }
+
+    private fun integrateDeltaV(
+        window: AnalysisWindow,
+        samples: List<RawSensorDataEntity>
+    ): Double? {
+        if (samples.size < 2) return null
+        val sortedSamples = samples.sortedBy { it.timestamp }
+        var deltaV = 0.0
+        var prev = sortedSamples.first()
+        for (index in 1 until sortedSamples.size) {
+            val current = sortedSamples[index]
+            val dt = (current.timestamp - prev.timestamp) / 1000.0
+            if (dt <= 0.0) {
+                prev = current
+                continue
+            }
+            val vector = resolveAccelerationVector(window, current)
+            if (vector == null) {
+                prev = current
+                continue
+            }
+            deltaV += calculateVectorMagnitude(vector) * dt
+            prev = current
+        }
+        return deltaV
+    }
+
+    private fun detectFreeFall(samples: List<RawSensorDataEntity>): Boolean {
+        if (samples.size < 2) return false
+        var durationMs = 0L
+        var lastTimestamp = samples.first().timestamp
+        for (sample in samples) {
+            val magnitude = calculateAccelerationMagnitude(sample.values)
+            if (magnitude <= CRASH_FREEFALL_THRESHOLD_MPS2) {
+                durationMs += (sample.timestamp - lastTimestamp).coerceAtLeast(0L)
+            } else {
+                durationMs = 0L
+            }
+            lastTimestamp = sample.timestamp
+            if (durationMs >= CRASH_FREEFALL_MIN_DURATION_MS) {
+                return true
+            }
+        }
+        return false
     }
 
     private fun computeZStdDev(samples: List<RawSensorDataEntity>): Double {
@@ -203,9 +329,459 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
         return samples.last().timestamp - samples.first().timestamp
     }
 
-    private fun computeMaxYawRate(samples: List<RawSensorDataEntity>): Double {
-        val rates = samples.mapNotNull { it.values.getOrNull(2)?.let { value -> abs(value).toDouble() } }
-        return rates.maxOrNull() ?: 0.0
+    private suspend fun computeMaxYawRate(
+        window: AnalysisWindow,
+        samples: List<RawSensorDataEntity>
+    ): Double {
+        var maxRate = 0.0
+        for (sample in samples) {
+            val earth = resolveEarthFrameValues(window, sample) ?: continue
+            val yaw = abs(earth.third)
+            if (yaw > maxRate) {
+                maxRate = yaw
+            }
+        }
+        return maxRate
+    }
+
+    private fun lowPassYawSeries(
+        yawSeries: List<Pair<Long, Double>>,
+        cutoffHz: Double
+    ): List<Pair<Long, Double>> {
+        if (yawSeries.isEmpty()) return yawSeries
+        val rc = 1.0 / (2.0 * Math.PI * cutoffHz)
+        val output = ArrayList<Pair<Long, Double>>(yawSeries.size)
+        var lastValue = yawSeries.first().second
+        var lastTimestamp = yawSeries.first().first
+        output.add(yawSeries.first())
+        for (index in 1 until yawSeries.size) {
+            val (timestamp, value) = yawSeries[index]
+            val dt = ((timestamp - lastTimestamp).coerceAtLeast(1L) / 1000.0)
+            val alpha = (dt / (rc + dt)).coerceIn(0.0, 1.0)
+            lastValue = lastValue + alpha * (value - lastValue)
+            output.add(timestamp to lastValue)
+            lastTimestamp = timestamp
+        }
+        return output
+    }
+
+    private fun computeYawReversalRate(yawSeries: List<Pair<Long, Double>>): Double {
+        if (yawSeries.size < 2) return 0.0
+        var reversals = 0
+        var lastSign = 0
+        for ((_, yaw) in yawSeries) {
+            val sign = when {
+                yaw > SWERVE_SIGN_EPS -> 1
+                yaw < -SWERVE_SIGN_EPS -> -1
+                else -> 0
+            }
+            if (sign != 0 && lastSign != 0 && sign != lastSign) {
+                reversals++
+            }
+            if (sign != 0) {
+                lastSign = sign
+            }
+        }
+        val durationSeconds = (yawSeries.last().first - yawSeries.first().first) / 1000.0
+        if (durationSeconds <= 0.0) return 0.0
+        return reversals / durationSeconds
+    }
+
+    private fun computeMaxAbsYaw(yawSeries: List<Pair<Long, Double>>): Double {
+        var maxAbs = 0.0
+        for ((_, yaw) in yawSeries) {
+            val absYaw = kotlin.math.abs(yaw)
+            if (absYaw > maxAbs) {
+                maxAbs = absYaw
+            }
+        }
+        return maxAbs
+    }
+
+    private fun computeRqi(
+        window: AnalysisWindow,
+        samples: List<RawSensorDataEntity>
+    ): Double? {
+        val vertical = samples.mapNotNull { resolveEarthFrameValues(window, it)?.third }
+        if (vertical.isEmpty()) return null
+        val meanSquare = vertical.map { it * it }.average()
+        return kotlin.math.sqrt(meanSquare)
+    }
+
+    private suspend fun buildYawSeries(
+        window: AnalysisWindow,
+        samples: List<RawSensorDataEntity>
+    ): List<Pair<Long, Double>> {
+        val series = mutableListOf<Pair<Long, Double>>()
+        for (sample in samples) {
+            val earth = resolveEarthFrameValues(window, sample) ?: continue
+            series.add(sample.timestamp to earth.third)
+        }
+        return series
+    }
+
+    private fun hasSwerveSignature(yawSeries: List<Pair<Long, Double>>): Boolean {
+        if (yawSeries.size < 3) return false
+        var maxPositive = 0.0
+        var maxNegative = 0.0
+        var lastSign = 0
+        var signChanges = 0
+
+        for ((_, yaw) in yawSeries) {
+            if (yaw > maxPositive) {
+                maxPositive = yaw
+            }
+            if (yaw < maxNegative) {
+                maxNegative = yaw
+            }
+            val sign = when {
+                yaw > SWERVE_SIGN_EPS -> 1
+                yaw < -SWERVE_SIGN_EPS -> -1
+                else -> 0
+            }
+            if (sign != 0 && lastSign != 0 && sign != lastSign) {
+                signChanges++
+            }
+            if (sign != 0) {
+                lastSign = sign
+            }
+        }
+
+        return maxPositive >= SWERVING_THRESHOLD &&
+            kotlin.math.abs(maxNegative) >= SWERVING_THRESHOLD &&
+            signChanges >= 1
+    }
+
+    private data class VehicleAccelSummary(
+        val forwardMean: Double,
+        val lateralMeanAbs: Double,
+        val sampleCount: Int
+    )
+
+    private data class CrashCandidate(
+        val timestampMs: Long,
+        val deltaVMps: Double,
+        val sample: RawSensorDataEntity
+    )
+
+    private enum class GpsQuality {
+        PRECISE,
+        APPROXIMATE,
+        POOR,
+        UNKNOWN
+    }
+
+    private fun resolveRotationMatrix(
+        window: AnalysisWindow,
+        sample: RawSensorDataEntity
+    ): FloatArray? {
+        val tripId = sample.tripId ?: return null
+        val rotationSample = window.rotationWindow.toList()
+            .asReversed()
+            .firstOrNull {
+                it.sensorType == ROTATION_VECTOR_TYPE &&
+                    it.values.size >= 3 &&
+                    kotlin.math.abs(sample.timestamp - it.timestamp) <= ROTATION_VECTOR_MAX_AGE_MS
+            }
+        if (rotationSample != null) {
+            val matrix = FloatArray(9)
+            SensorManager.getRotationMatrixFromVector(matrix, rotationSample.values.toFloatArray())
+            window.lastRotationMatrixByTrip[tripId] = matrix
+            window.lastRotationVectorTimestampByTrip[tripId] = rotationSample.timestamp
+            Log.d(
+                "NewUnsafeDrivingBehaviourAnalyser",
+                "Rotation matrix refreshed tripId=$tripId ageMs=${kotlin.math.abs(sample.timestamp - rotationSample.timestamp)}"
+            )
+            return matrix
+        }
+        val cached = window.lastRotationMatrixByTrip[tripId]
+        if (cached != null && shouldLogRateLimited(
+                window.lastRotationMissingLogMsByTrip,
+                tripId,
+                sample.timestamp,
+                LOG_RATE_LIMIT_MS
+            )
+        ) {
+            val lastTs = window.lastRotationVectorTimestampByTrip[tripId]
+            Log.d(
+                "NewUnsafeDrivingBehaviourAnalyser",
+                "Using cached rotation matrix tripId=$tripId lastAgeMs=${lastTs?.let { sample.timestamp - it }}"
+            )
+        }
+        return cached
+    }
+
+    private fun transformDeviceToWorld(
+        values: List<Float>,
+        rotationMatrix: FloatArray
+    ): Triple<Double, Double, Double>? {
+        if (values.size < 3 || rotationMatrix.size < 9) return null
+        val x = rotationMatrix[0] * values[0] + rotationMatrix[1] * values[1] + rotationMatrix[2] * values[2]
+        val y = rotationMatrix[3] * values[0] + rotationMatrix[4] * values[1] + rotationMatrix[5] * values[2]
+        val z = rotationMatrix[6] * values[0] + rotationMatrix[7] * values[1] + rotationMatrix[8] * values[2]
+        return Triple(x.toDouble(), y.toDouble(), z.toDouble())
+    }
+
+    private fun resolveEarthFrameValues(
+        window: AnalysisWindow,
+        sample: RawSensorDataEntity
+    ): Triple<Double, Double, Double>? {
+        if (sample.values.size < 3) return null
+        return when (sample.sensorType) {
+            LINEAR_ACCELERATION_TYPE,
+            GYROSCOPE_TYPE -> Triple(
+                sample.values[0].toDouble(),
+                sample.values[1].toDouble(),
+                sample.values[2].toDouble()
+            )
+            ACCELEROMETER_TYPE -> {
+                val rotationMatrix = resolveRotationMatrix(window, sample) ?: run {
+                    val tripId = sample.tripId
+                    if (tripId != null && shouldLogRateLimited(
+                            window.lastRotationMissingLogMsByTrip,
+                            tripId,
+                            sample.timestamp,
+                            LOG_RATE_LIMIT_MS
+                        )
+                    ) {
+                        Log.d(
+                            "NewUnsafeDrivingBehaviourAnalyser",
+                            "Rotation matrix unavailable tripId=$tripId; cannot align accelerometer"
+                        )
+                    }
+                    return null
+                }
+                val earth = transformDeviceToWorld(sample.values, rotationMatrix) ?: return null
+                Triple(earth.first, earth.second, earth.third - GRAVITY_MPS2)
+            }
+            else -> null
+        }
+    }
+
+    private suspend fun resolveLocationData(
+        window: AnalysisWindow,
+        locationId: UUID
+    ): LocationData? {
+        return window.locationCache[locationId] ?: fetchLocationDataById(locationId)?.also {
+            window.locationCache[locationId] = it
+        }
+    }
+
+    private suspend fun resolveHeadingDegrees(
+        window: AnalysisWindow,
+        sample: RawSensorDataEntity
+    ): Double? {
+        val tripId = sample.tripId ?: return null
+        val locationId = sample.locationId
+        if (locationId == null) {
+            val cached = window.lastHeadingByTrip[tripId]
+            if (cached == null && shouldLogRateLimited(
+                    window.lastHeadingMissingLogMsByTrip,
+                    tripId,
+                    sample.timestamp,
+                    LOG_RATE_LIMIT_MS
+                )
+            ) {
+                Log.d("NewUnsafeDrivingBehaviourAnalyser", "Heading unavailable tripId=$tripId (no locationId)")
+            }
+            return cached
+        }
+        val location = resolveLocationData(window, locationId)
+        if (location == null) {
+            val cached = window.lastHeadingByTrip[tripId]
+            if (cached == null && shouldLogRateLimited(
+                    window.lastHeadingMissingLogMsByTrip,
+                    tripId,
+                    sample.timestamp,
+                    LOG_RATE_LIMIT_MS
+                )
+            ) {
+                Log.d("NewUnsafeDrivingBehaviourAnalyser", "Heading unavailable tripId=$tripId (no location data)")
+            }
+            return cached
+        }
+
+        val cachedHeading = window.lastHeadingByTrip[tripId]
+        val accuracy = location.accuracy
+        if (accuracy != null && accuracy > MAX_HEADING_ACCURACY_M) {
+            if (shouldLogRateLimited(
+                    window.lastHeadingMissingLogMsByTrip,
+                    tripId,
+                    sample.timestamp,
+                    LOG_RATE_LIMIT_MS
+                )
+            ) {
+                Log.d(
+                    "NewUnsafeDrivingBehaviourAnalyser",
+                    "Heading suppressed tripId=$tripId accuracy=$accuracy"
+                )
+            }
+            return cachedHeading
+        }
+        val speed = location.speed
+        if (speed != null && speed < MIN_HEADING_SPEED_MPS) {
+            if (shouldLogRateLimited(
+                    window.lastHeadingMissingLogMsByTrip,
+                    tripId,
+                    sample.timestamp,
+                    LOG_RATE_LIMIT_MS
+                )
+            ) {
+                Log.d(
+                    "NewUnsafeDrivingBehaviourAnalyser",
+                    "Heading suppressed tripId=$tripId speed=$speed"
+                )
+            }
+            return cachedHeading
+        }
+
+        val previous = window.lastLocationByTrip[tripId]
+        window.lastLocationByTrip[tripId] = location
+
+        if (previous == null) {
+            Log.d("NewUnsafeDrivingBehaviourAnalyser", "Heading pending tripId=$tripId (awaiting next fix)")
+            return cachedHeading
+        }
+
+        val distance = location.distance ?: 0.0
+        if (distance < headingSampleMinDistanceM) {
+            return cachedHeading
+        }
+
+        val heading = calculateBearing(previous.latitude, previous.longitude, location.latitude, location.longitude)
+        if (heading.isFinite()) {
+            window.lastHeadingByTrip[tripId] = heading
+            Log.d("NewUnsafeDrivingBehaviourAnalyser", "Heading updated tripId=$tripId heading=$heading")
+        }
+        return window.lastHeadingByTrip[tripId]
+    }
+
+    private fun toVehicleFrame(
+        earthValues: Triple<Double, Double, Double>,
+        headingDegrees: Double
+    ): Triple<Double, Double, Double>? {
+        val headingRad = Math.toRadians(headingDegrees)
+        val xEast = earthValues.first
+        val yNorth = earthValues.second
+        val zUp = earthValues.third
+
+        val forward = yNorth * kotlin.math.cos(headingRad) + xEast * kotlin.math.sin(headingRad)
+        val lateral = -yNorth * kotlin.math.sin(headingRad) + xEast * kotlin.math.cos(headingRad)
+        return Triple(forward, lateral, zUp)
+    }
+
+    private suspend fun computeVehicleAccelSummary(
+        window: AnalysisWindow,
+        samples: List<RawSensorDataEntity>
+    ): VehicleAccelSummary? {
+        var forwardSum = 0.0
+        var lateralSum = 0.0
+        var count = 0
+
+        for (sample in samples) {
+            val heading = resolveHeadingDegrees(window, sample) ?: continue
+            val earth = resolveEarthFrameValues(window, sample) ?: continue
+            val vehicle = toVehicleFrame(earth, heading) ?: continue
+            forwardSum += vehicle.first
+            lateralSum += abs(vehicle.second)
+            count++
+        }
+
+        if (count == 0) return null
+        return VehicleAccelSummary(
+            forwardMean = forwardSum / count,
+            lateralMeanAbs = lateralSum / count,
+            sampleCount = count
+        )
+    }
+
+    private suspend fun resolveForwardAcceleration(
+        window: AnalysisWindow,
+        sample: RawSensorDataEntity
+    ): Double? {
+        val heading = resolveHeadingDegrees(window, sample) ?: return null
+        val earth = resolveEarthFrameValues(window, sample) ?: return null
+        val vehicle = toVehicleFrame(earth, heading) ?: return null
+        return vehicle.first
+    }
+
+    private suspend fun computeHeadingDeltaDegrees(
+        window: AnalysisWindow,
+        samples: List<RawSensorDataEntity>
+    ): Double? {
+        var firstHeading: Double? = null
+        var lastHeading: Double? = null
+        for (sample in samples) {
+            val heading = resolveHeadingDegrees(window, sample) ?: continue
+            if (firstHeading == null) {
+                firstHeading = heading
+            }
+            lastHeading = heading
+        }
+        if (firstHeading == null || lastHeading == null) return null
+        return angularDifferenceDegrees(firstHeading, lastHeading)
+    }
+
+    private fun angularDifferenceDegrees(start: Double, end: Double): Double {
+        var diff = kotlin.math.abs(end - start) % 360.0
+        if (diff > 180.0) {
+            diff = 360.0 - diff
+        }
+        return diff
+    }
+
+    private fun resolveGpsQuality(locationData: LocationData): GpsQuality {
+        val accuracy = locationData.accuracy?.takeIf { it > 0.0 }
+        return when {
+            accuracy == null -> GpsQuality.UNKNOWN
+            accuracy <= GPS_ACCURACY_PRECISE_M -> GpsQuality.PRECISE
+            accuracy <= GPS_ACCURACY_APPROX_M -> GpsQuality.APPROXIMATE
+            else -> GpsQuality.POOR
+        }
+    }
+
+    private fun qualityWeight(quality: GpsQuality): Double {
+        // Favor precise fixes but keep approximate/unknown readings in the mix.
+        return when (quality) {
+            GpsQuality.PRECISE -> 1.0
+            GpsQuality.APPROXIMATE -> 0.7
+            GpsQuality.POOR -> 0.4
+            GpsQuality.UNKNOWN -> 0.6
+        }
+    }
+
+    private fun inferContextualSpeedLimit(
+        avgSpeed: Double,
+        locationData: LocationData?
+    ): Double {
+        val speed = locationData?.speed ?: avgSpeed
+        return if (speed >= HIGHWAY_SPEED_THRESHOLD_MPS) {
+            DEFAULT_HIGHWAY_SPEED_LIMIT_MPS
+        } else {
+            DEFAULT_URBAN_SPEED_LIMIT_MPS
+        }
+    }
+
+    private fun calculateBearing(
+        prevLat: Double,
+        prevLon: Double,
+        currLat: Double,
+        currLon: Double
+    ): Double {
+        val lat1 = Math.toRadians(prevLat)
+        val lon1 = Math.toRadians(prevLon)
+        val lat2 = Math.toRadians(currLat)
+        val lon2 = Math.toRadians(currLon)
+
+        val dLon = lon2 - lon1
+        val x = kotlin.math.sin(dLon) * kotlin.math.cos(lat2)
+        val y = kotlin.math.cos(lat1) * kotlin.math.sin(lat2) -
+            kotlin.math.sin(lat1) * kotlin.math.cos(lat2) * kotlin.math.cos(dLon)
+
+        var bearing = kotlin.math.atan2(x, y)
+        bearing = Math.toDegrees(bearing)
+        bearing = (bearing + 360) % 360
+        return bearing
     }
 
     // -------------------------------------------------------------------------------
@@ -221,9 +797,78 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
             return null
         }
         val rms = sqrt(accelWindow.map { calculateAccelerationMagnitude(it.values).pow(2) }.average())
-        val now = accelWindow.last().timestamp
+        val eventSample = accelWindow.last()
+        val now = eventSample.timestamp
         val currentSpeedMps = estimateCurrentSpeedMps(window)
         Log.d("NewUnsafeDrivingBehaviourAnalyser", "Current speed (m/s): $currentSpeedMps")
+        val tripId = eventSample.tripId
+        if (tripId != null) {
+            val existingCandidate = window.crashCandidatesByTrip[tripId]
+            if (existingCandidate != null && now - existingCandidate.timestampMs >= CRASH_CANDIDATE_TTL_MS) {
+                window.crashCandidatesByTrip.remove(tripId)
+            }
+        }
+        if (tripId != null &&
+            now - window.lastCrashEventMs >= CRASH_COOLDOWN_MS &&
+            !window.crashCandidatesByTrip.containsKey(tripId)
+        ) {
+            val magnitude = calculateAccelerationMagnitude(eventSample.values).toDouble()
+            if (magnitude >= CRASH_ACCEL_THRESHOLD_MPS2) {
+                val crashSamples = recentSamples(accelWindow, CRASH_INTEGRATION_WINDOW_MS)
+                val deltaV = integrateDeltaV(window, crashSamples)
+                val freeFallSamples = recentSamples(accelWindow, CRASH_FREEFALL_WINDOW_MS)
+                val isFreeFall = !window.hasLinearAcceleration && detectFreeFall(freeFallSamples)
+                if (!isFreeFall && deltaV != null && deltaV >= CRASH_DELTA_V_THRESHOLD_MPS) {
+                    window.crashCandidatesByTrip[tripId] = CrashCandidate(
+                        timestampMs = now,
+                        deltaVMps = deltaV,
+                        sample = eventSample
+                    )
+                    Log.d(
+                        "NewUnsafeDrivingBehaviourAnalyser",
+                        "Crash candidate tripId=$tripId magnitude=$magnitude deltaV=$deltaV"
+                    )
+                } else {
+                    Log.d(
+                        "NewUnsafeDrivingBehaviourAnalyser",
+                        "Crash candidate rejected freeFall=$isFreeFall deltaV=$deltaV magnitude=$magnitude"
+                    )
+                }
+            }
+        }
+
+        val forwardAcceleration = if (tripId != null) {
+            resolveForwardAcceleration(window, eventSample)
+        } else {
+            null
+        }
+        val lastForward = if (tripId != null) window.lastForwardAccelByTrip[tripId] else null
+        if (forwardAcceleration != null && tripId != null) {
+            window.lastForwardAccelByTrip[tripId] = forwardAcceleration to now
+        }
+        if (forwardAcceleration != null && lastForward != null) {
+            val dt = (now - lastForward.second) / 1000.0
+            if (dt > 0.0) {
+                val jerk = (forwardAcceleration - lastForward.first) / dt
+                if (kotlin.math.abs(jerk) >= AGGRESSIVE_STOP_GO_JERK_THRESHOLD &&
+                    currentSpeedMps >= MIN_AGGRESSIVE_STOP_GO_SPEED_MPS &&
+                    now - window.lastAggressiveStopGoEventMs >= AGGRESSIVE_STOP_GO_COOLDOWN_MS
+                ) {
+                    window.lastAggressiveStopGoEventMs = now
+                    Log.d(
+                        "NewUnsafeDrivingBehaviourAnalyser",
+                        "Aggressive stop-and-go detected jerk=$jerk speed=$currentSpeedMps"
+                    )
+                    return createUnsafeBehavior(
+                        "Aggressive Stop-and-Go",
+                        eventSample,
+                        kotlin.math.abs(jerk).toFloat(),
+                        context
+                    )
+                }
+            }
+        }
+
         if (currentSpeedMps < MIN_ACCELERATION_SPEED_MPS) {
             Log.d("NewUnsafeDrivingBehaviourAnalyser", "Speed under threshold. Skipping harsh accel/braking detection.")
             window.accelCandidateStartMs = 0L
@@ -239,10 +884,22 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
             .coerceAtLeast(MIN_ACCELERATION_THRESHOLD)
         val dynamicBrakeThreshold = (kotlin.math.abs(BRAKING_THRESHOLD) - speedAdjustment + roughnessAdjustment)
             .coerceAtLeast(MIN_BRAKING_THRESHOLD)
-        val signedAccel = estimateSignedAcceleration(accelWindow)
+        val recentAccelSamples = recentSamples(accelWindow, POTHOLE_WINDOW_MS).ifEmpty {
+            accelWindow.toList().takeLast(5)
+        }
+        val vehicleSummary = computeVehicleAccelSummary(window, recentAccelSamples)
+        val signedAccel = vehicleSummary?.forwardMean ?: estimateSignedAcceleration(window, accelWindow)
+        if (signedAccel == null) {
+            Log.d(
+                "NewUnsafeDrivingBehaviourAnalyser",
+                "Unable to resolve vehicle-frame acceleration; missing heading or rotation alignment."
+            )
+            window.accelCandidateStartMs = 0L
+            window.brakeCandidateStartMs = 0L
+            return null
+        }
         val supportsBraking = window.hasLinearAcceleration
-
-        return when {
+        var behavior: UnsafeBehaviourModel? = when {
             signedAccel > dynamicAccThreshold -> {
                 if (window.accelCandidateStartMs == 0L) {
                     window.accelCandidateStartMs = now
@@ -297,12 +954,78 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
                     null
                 }
             }
-            else -> {
-                window.accelCandidateStartMs = 0L
-                window.brakeCandidateStartMs = 0L
-                Log.d("NewUnsafeDrivingBehaviourAnalyser", "Acceleration within safe limits")
+            else -> null
+        }
+
+        if (behavior != null) {
+            return behavior
+        }
+
+        behavior = if (
+            vehicleSummary != null &&
+            vehicleSummary.lateralMeanAbs > CORNERING_THRESHOLD &&
+            currentSpeedMps >= MIN_CORNERING_SPEED_MPS
+        ) {
+            if (window.corneringCandidateStartMs == 0L) {
+                window.corneringCandidateStartMs = now
+            }
+            val elapsed = now - window.corneringCandidateStartMs
+            if (elapsed >= CORNERING_MIN_DURATION_MS &&
+                now - window.lastCorneringEventMs >= CORNERING_COOLDOWN_MS
+            ) {
+                window.corneringCandidateStartMs = 0L
+                window.lastCorneringEventMs = now
+                Log.d(
+                    "NewUnsafeDrivingBehaviourAnalyser",
+                    "Lateral accel ${vehicleSummary.lateralMeanAbs} > $CORNERING_THRESHOLD => Harsh Cornering"
+                )
+                createUnsafeBehavior(
+                    "Harsh Cornering",
+                    accelWindow.last(),
+                    vehicleSummary.lateralMeanAbs.toFloat(),
+                    context
+                )
+            } else {
                 null
             }
+        } else {
+            window.corneringCandidateStartMs = 0L
+            null
+        }
+
+        if (behavior == null) {
+            window.accelCandidateStartMs = 0L
+            window.brakeCandidateStartMs = 0L
+            Log.d("NewUnsafeDrivingBehaviourAnalyser", "Acceleration within safe limits")
+        }
+
+        if (behavior != null) {
+            return behavior
+        }
+
+        val turnSamples = recentSamples(accelWindow, AGGRESSIVE_TURN_WINDOW_MS)
+        val headingDelta = computeHeadingDeltaDegrees(window, turnSamples)
+        val isAggressiveTurn = headingDelta != null &&
+            headingDelta >= AGGRESSIVE_TURN_HEADING_DEG &&
+            vehicleSummary != null &&
+            vehicleSummary.lateralMeanAbs >= AGGRESSIVE_TURN_LATERAL_THRESHOLD &&
+            currentSpeedMps >= MIN_AGGRESSIVE_TURN_SPEED_MPS &&
+            now - window.lastAggressiveTurnEventMs >= AGGRESSIVE_TURN_COOLDOWN_MS
+
+        return if (isAggressiveTurn) {
+            window.lastAggressiveTurnEventMs = now
+            Log.d(
+                "NewUnsafeDrivingBehaviourAnalyser",
+                "Aggressive turn detected headingDelta=$headingDelta lateral=${vehicleSummary?.lateralMeanAbs} speed=$currentSpeedMps"
+            )
+            createUnsafeBehavior(
+                "Aggressive Turn",
+                accelWindow.last(),
+                vehicleSummary!!.lateralMeanAbs.toFloat(),
+                context
+            )
+        } else {
+            null
         }
     }
 
@@ -319,29 +1042,95 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
             return null
         }
         val currentSpeedMps = estimateCurrentSpeedMps(window)
+        val now = rotationWindow.last().timestamp
+        val gyroSamples = rotationWindow.filter { it.sensorType == GYROSCOPE_TYPE }
+        if (gyroSamples.isEmpty()) {
+            Log.d("NewUnsafeDrivingBehaviourAnalyser", "No gyroscope samples; skipping rotation analysis.")
+            return null
+        }
+
+        if (currentSpeedMps >= PHONE_HANDLING_MIN_SPEED_MPS &&
+            now - window.lastPhoneHandlingEventMs >= PHONE_HANDLING_COOLDOWN_MS
+        ) {
+            val handlingSamples = recentSamples(gyroSamples, PHONE_HANDLING_WINDOW_MS)
+            if (handlingSamples.size >= PHONE_HANDLING_MIN_SAMPLES) {
+                val variance = computeGyroMagnitudeVariance(handlingSamples)
+                Log.d(
+                    "NewUnsafeDrivingBehaviourAnalyser",
+                    "Phone handling variance=$variance speed=$currentSpeedMps"
+                )
+                if (variance >= PHONE_HANDLING_VARIANCE_THRESHOLD) {
+                    window.lastPhoneHandlingEventMs = now
+                    return createUnsafeBehavior(
+                        "Phone Handling",
+                        handlingSamples.last(),
+                        variance.toFloat(),
+                        context
+                    )
+                }
+            }
+        }
+
+        if (currentSpeedMps >= FATIGUE_MIN_SPEED_MPS &&
+            now - window.lastFatigueEventMs >= FATIGUE_COOLDOWN_MS
+        ) {
+            val longGyroSamples = window.longRotationWindow.filter { it.sensorType == GYROSCOPE_TYPE }
+            val fatigueSamples = recentSamples(longGyroSamples, FATIGUE_WINDOW_MS)
+            val durationMs = computeWindowDurationMs(fatigueSamples)
+            if (durationMs >= FATIGUE_MIN_WINDOW_MS) {
+                val yawSeries = lowPassYawSeries(buildYawSeries(window, fatigueSamples), FATIGUE_YAW_CUTOFF_HZ)
+                val reversalRate = computeYawReversalRate(yawSeries)
+                val maxAbsYaw = computeMaxAbsYaw(yawSeries)
+                val roughnessSamples = recentSamples(window.accelerometerWindow, ROUGHNESS_WINDOW_MS)
+                val rqi = computeRqi(window, roughnessSamples) ?: 0.0
+                val tripId = rotationWindow.last().tripId
+                val tripStart = tripId?.let { window.tripStartTimestampByTrip[it] }
+                val continuousMs = tripStart?.let { now - it } ?: 0L
+                val fatigueTimeGate =
+                    isCircadianDip(now) || continuousMs >= FATIGUE_CONTINUOUS_DRIVING_MS
+                Log.d(
+                    "NewUnsafeDrivingBehaviourAnalyser",
+                    "Fatigue check reversalRate=$reversalRate maxYaw=$maxAbsYaw rqi=$rqi durationMs=$durationMs timeGate=$fatigueTimeGate"
+                )
+                if (fatigueTimeGate &&
+                    rqi <= ROUGH_ROAD_RQI_THRESHOLD &&
+                    reversalRate <= FATIGUE_REVERSAL_RATE_THRESHOLD_HZ &&
+                    maxAbsYaw >= FATIGUE_YAW_MAG_THRESHOLD
+                ) {
+                    window.lastFatigueEventMs = now
+                    return createUnsafeBehavior(
+                        "Fatigue",
+                        rotationWindow.last(),
+                        maxAbsYaw.toFloat(),
+                        context
+                    )
+                }
+            }
+        }
+
         if (currentSpeedMps < MIN_SWERVE_SPEED_MPS) {
             return null
         }
-        val now = rotationWindow.last().timestamp
         if (now - window.lastSwervingEventMs < SWERVE_COOLDOWN_MS) {
             return null
         }
-        val gyroSamples = rotationWindow.filter { it.sensorType == GYROSCOPE_TYPE }
-        val recentSamples = if (gyroSamples.isNotEmpty()) {
-            recentSamples(gyroSamples, SWERVE_MAX_DURATION_MS)
-        } else {
-            recentSamples(rotationWindow, SWERVE_MAX_DURATION_MS)
-        }
+        val recentSamples = recentSamples(gyroSamples, SWERVE_MAX_DURATION_MS)
         val durationMs = computeWindowDurationMs(recentSamples)
-        val yawRate = if (gyroSamples.isNotEmpty()) {
-            computeMaxYawRate(recentSamples)
-        } else {
-            sqrt(recentSamples.map { calculateRotationMagnitude(it.values).pow(2) }.average())
-        }
-        return if (yawRate > SWERVING_THRESHOLD && durationMs <= SWERVE_MAX_DURATION_MS) {
+        val yawRate = computeMaxYawRate(window, recentSamples)
+        val yawSeries = buildYawSeries(window, recentSamples)
+        val hasSwervePattern = hasSwerveSignature(yawSeries)
+        Log.d(
+            "NewUnsafeDrivingBehaviourAnalyser",
+            "Swerving check yawRate=$yawRate durationMs=$durationMs pattern=$hasSwervePattern"
+        )
+        return if (yawRate > SWERVING_THRESHOLD &&
+            durationMs <= SWERVE_MAX_DURATION_MS &&
+            hasSwervePattern
+        ) {
             window.lastSwervingEventMs = now
             Log.d("NewUnsafeDrivingBehaviourAnalyser", "Yaw rate $yawRate > $SWERVING_THRESHOLD => Swerving")
-            createUnsafeBehavior("Swerving", rotationWindow.last(), yawRate.toFloat(), context)
+            val eventSample = recentSamples.lastOrNull() ?: rotationWindow.last()
+            createUnsafeBehavior("Swerving", eventSample, yawRate.toFloat(), context)
         } else {
             Log.d("NewUnsafeDrivingBehaviourAnalyser", "Rotation within safe limits")
             null
@@ -365,11 +1154,66 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
             Log.d("NewUnsafeDrivingBehaviourAnalyser", "Computed average speed is 0.0; skipping analysis")
             return null
         }
-        val effectiveSpeedLimit: Double = locationData?.speedLimit?.takeIf { it.toInt() != 0 }
-            ?.toDouble() ?: SPEED_LIMIT.toDouble()
+        val limitFromMap = locationData?.speedLimit?.takeIf { it > 0.0 }
+        val effectiveSpeedLimit = limitFromMap ?: inferContextualSpeedLimit(avgSpeed, locationData)
+        if (limitFromMap == null) {
+            Log.d(
+                "NewUnsafeDrivingBehaviourAnalyser",
+                "Speed limit missing; using contextual cap=$effectiveSpeedLimit"
+            )
+        }
         val overspeedThreshold = effectiveSpeedLimit * SPEED_TOLERANCE_RATIO
         Log.d("NewUnsafeDrivingBehaviourAnalyser", "Effective speed limit: $effectiveSpeedLimit, avgSpeed=$avgSpeed")
         val now = speedWindow.last().timestamp
+        val tripId = speedWindow.last().tripId
+        if (tripId != null) {
+            val crashCandidate = window.crashCandidatesByTrip[tripId]
+            if (crashCandidate != null) {
+                val elapsed = now - crashCandidate.timestampMs
+                if (elapsed >= CRASH_CONFIRMATION_DELAY_MS) {
+                    if (avgSpeed <= CRASH_CONFIRM_SPEED_THRESHOLD_MPS) {
+                        window.lastCrashEventMs = now
+                        window.crashCandidatesByTrip.remove(tripId)
+                        Log.d(
+                            "NewUnsafeDrivingBehaviourAnalyser",
+                            "Crash confirmed tripId=$tripId deltaV=${crashCandidate.deltaVMps}"
+                        )
+                        return createUnsafeBehavior(
+                            "Crash Detected",
+                            crashCandidate.sample,
+                            crashCandidate.deltaVMps.toFloat(),
+                            context
+                        )
+                    } else if (elapsed >= CRASH_CANDIDATE_TTL_MS) {
+                        window.crashCandidatesByTrip.remove(tripId)
+                        Log.d(
+                            "NewUnsafeDrivingBehaviourAnalyser",
+                            "Crash candidate expired tripId=$tripId speed=$avgSpeed"
+                        )
+                    }
+                }
+            }
+        }
+
+        val roughnessSamples = recentSamples(window.accelerometerWindow, ROUGHNESS_WINDOW_MS)
+        val rqi = computeRqi(window, roughnessSamples)
+        if (rqi != null &&
+            rqi >= ROUGH_ROAD_RQI_THRESHOLD &&
+            avgSpeed >= ROUGH_ROAD_SPEED_THRESHOLD_MPS &&
+            now - window.lastRoughRoadEventMs >= ROUGH_ROAD_COOLDOWN_MS
+        ) {
+            window.lastRoughRoadEventMs = now
+            Log.d(
+                "NewUnsafeDrivingBehaviourAnalyser",
+                "Rough road speeding detected rqi=$rqi speed=$avgSpeed"
+            )
+            return createUnsafeBehavior(
+                "Rough Road Speeding",
+                speedWindow.last(),
+                avgSpeed.toFloat(),
+                context
+            )
+        }
         return if (avgSpeed > overspeedThreshold) {
             if (window.speedingStartMs == 0L) {
                 window.speedingStartMs = now
@@ -412,39 +1256,47 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
     ): Pair<Double, LocationData?> {
         Log.d("SpeedCalculation", "Speed window size: ${speedWindow.size}")
 
-        val locationCache = mutableMapOf<UUID, LocationData>()
-        val locationSpeeds = mutableListOf<Double>()
-        for (data in speedWindow) {
-            val locationId = data.locationId ?: continue
-            val locationData = locationCache[locationId] ?: fetchLocationDataById(locationId)?.also {
-                locationCache[locationId] = it
+        data class SpeedSample(val speed: Double, val weight: Double, val location: LocationData)
+
+        val samples = mutableListOf<SpeedSample>()
+        val locationIds = speedWindow.mapNotNull { it.locationId }.distinct()
+        for (locationId in locationIds) {
+            val locationData = fetchLocationDataById(locationId) ?: continue
+            val speed = locationData.speed ?: continue
+            if (speed <= 0.0) continue
+            val accuracy = locationData.accuracy
+            if (accuracy != null && accuracy > GPS_ACCURACY_REJECT_M) {
+                continue
             }
-            val speed = locationData?.speed
-            if (speed != null && speed > 0) {
-                locationSpeeds.add(speed)
-            }
+            val quality = resolveGpsQuality(locationData)
+            val weight = qualityWeight(quality)
+            samples.add(SpeedSample(speed = speed, weight = weight, location = locationData))
         }
 
-        val accelSpeeds = if (locationSpeeds.isEmpty()) {
+        val accelSpeeds = if (samples.isEmpty()) {
             accelWindow.mapNotNull { calculateSpeedFromAccelerometer(it.values) }
         } else {
-            emptyList<Double>()
+            emptyList()
         }
 
-        var averageSpeed = 0.0
-        if (locationSpeeds.isNotEmpty()) {
-            val avgLocSpeed = locationSpeeds.average()
-            if (avgLocSpeed > 0) {
-                averageSpeed = avgLocSpeed
-            }
+        val averageSpeed = if (samples.isNotEmpty()) {
+            val totalWeight = samples.sumOf { it.weight }.coerceAtLeast(1.0)
+            val weightedSum = samples.sumOf { it.speed * it.weight }
+            (weightedSum / totalWeight).coerceAtLeast(0.0)
+        } else if (accelSpeeds.isNotEmpty()) {
+            accelSpeeds.average()
+        } else {
+            0.0
         }
 
-        if (averageSpeed == 0.0 && accelSpeeds.isNotEmpty()) {
-            averageSpeed = accelSpeeds.average()
-        }
-
-        val firstLocationId = speedWindow.firstNotNullOfOrNull { it.locationId }
-        val locationData = firstLocationId?.let { locationCache[it] ?: fetchLocationDataById(it) }
+        val locationData = samples
+            .filter { it.location.speedLimit > 0.0 }
+            .sortedWith(
+                compareByDescending<SpeedSample> { it.weight }
+                    .thenByDescending { it.location.timestamp }
+            )
+            .firstOrNull()
+            ?.location
 
         return Pair(averageSpeed, locationData)
     }
@@ -503,6 +1355,7 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
                 altitude = it.altitude,
                 speed = it.speed.toDouble(),
                 distance = it.distance.toDouble(),
+                accuracy = it.accuracy,
                 timestamp = it.timestamp,
                 date = it.date,
                 speedLimit = it.speedLimit,
@@ -578,10 +1431,41 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
                 val excess = measuredValue - SWERVING_THRESHOLD
                 (excess / MAX_SWERVING_EXCESS).coerceIn(0f, 1f)
             }
+            "Harsh Cornering" -> {
+                val excess = measuredValue - CORNERING_THRESHOLD
+                (excess / MAX_CORNERING_EXCESS).coerceIn(0f, 1f)
+            }
+            "Aggressive Turn" -> {
+                val excess = measuredValue - AGGRESSIVE_TURN_LATERAL_THRESHOLD
+                (excess / MAX_AGGRESSIVE_TURN_EXCESS).coerceIn(0f, 1f)
+            }
+            "Aggressive Stop-and-Go" -> {
+                val excess = measuredValue - AGGRESSIVE_STOP_GO_JERK_THRESHOLD.toFloat()
+                (excess / MAX_AGGRESSIVE_STOP_GO_EXCESS).coerceIn(0f, 1f)
+            }
+            "Phone Handling" -> {
+                val excess = measuredValue - PHONE_HANDLING_VARIANCE_THRESHOLD.toFloat()
+                (excess / MAX_PHONE_HANDLING_EXCESS).coerceIn(0f, 1f)
+            }
+            "Fatigue" -> {
+                val excess = measuredValue - FATIGUE_YAW_MAG_THRESHOLD.toFloat()
+                (excess / MAX_FATIGUE_YAW_EXCESS).coerceIn(0f, 1f)
+            }
+            "Rough Road Speeding" -> {
+                val excess = measuredValue - ROUGH_ROAD_SPEED_THRESHOLD_MPS.toFloat()
+                (excess / MAX_ROUGH_ROAD_SPEED_EXCESS).coerceIn(0f, 1f)
+            }
+            "Crash Detected" -> {
+                val excess = measuredValue - CRASH_DELTA_V_THRESHOLD_MPS.toFloat()
+                (excess / MAX_CRASH_DELTA_V_EXCESS).coerceIn(0f, 1f)
+            }
             "Speeding" -> {
-                val effectiveLimit = speedLimit ?: SPEED_LIMIT
-                val excess = measuredValue - effectiveLimit
-                (excess / MAX_SPEED_EXCESS).coerceIn(0f, 1f)
+                if (speedLimit == null || speedLimit <= 0f) {
+                    0f
+                } else {
+                    val excess = measuredValue - speedLimit
+                    (excess / MAX_SPEED_EXCESS).coerceIn(0f, 1f)
+                }
             }
             else -> 0f
         }
@@ -612,7 +1496,7 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
             return null
         }
         val magnitude = calculateAccelerationMagnitude(values)
-        val timeInterval = 0.1 // seconds; adjust if your sampling rate differs
+        val timeInterval = SENSOR_SAMPLE_INTERVAL_S
         val speed = magnitude * timeInterval
         Log.d(
             "NewUnsafeDrivingBehaviourAnalyser",
@@ -631,13 +1515,18 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
         const val ACCELERATION_THRESHOLD = 4.0f // m/s^2
         const val BRAKING_THRESHOLD = -4.5f // m/s^2
         const val SWERVING_THRESHOLD = 0.14f // rad/s
-        const val SPEED_LIMIT = 27.78f // m/s (~100 km/h)
         const val SPEED_TOLERANCE_RATIO = 1.10
+        const val CORNERING_THRESHOLD = 4.9f // ~0.5g
+        const val CORNERING_MIN_DURATION_MS = 1_000L
+        const val CORNERING_COOLDOWN_MS = 3_000L
 
         const val SPEEDING_MIN_DURATION_MS = 20_000L
         const val SPEEDING_COOLDOWN_MS = 10_000L
         const val MIN_ACCELERATION_SPEED_MPS = 1.4
         const val MIN_SWERVE_SPEED_MPS = 5.56
+        const val MIN_CORNERING_SPEED_MPS = 5.56
+        const val MIN_AGGRESSIVE_TURN_SPEED_MPS = 5.56
+        const val MIN_AGGRESSIVE_STOP_GO_SPEED_MPS = 4.17
 
         const val ACCELERATION_MIN_DURATION_MS = 300L
         const val EVENT_COOLDOWN_MS = 1_500L
@@ -652,6 +1541,29 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
 
         const val SWERVE_MAX_DURATION_MS = 1_500L
         const val SWERVE_COOLDOWN_MS = 2_000L
+        const val SWERVE_SIGN_EPS = 0.02
+
+        const val AGGRESSIVE_TURN_LATERAL_THRESHOLD = 3.5f
+        const val AGGRESSIVE_TURN_HEADING_DEG = 60.0
+        const val AGGRESSIVE_TURN_WINDOW_MS = 2_000L
+        const val AGGRESSIVE_TURN_COOLDOWN_MS = 5_000L
+        const val AGGRESSIVE_STOP_GO_JERK_THRESHOLD = 10.0
+        const val AGGRESSIVE_STOP_GO_COOLDOWN_MS = 5_000L
+
+        const val PHONE_HANDLING_MIN_SPEED_MPS = 2.78
+        const val PHONE_HANDLING_WINDOW_MS = 2_500L
+        const val PHONE_HANDLING_MIN_SAMPLES = 20
+        const val PHONE_HANDLING_VARIANCE_THRESHOLD = 0.15
+        const val PHONE_HANDLING_COOLDOWN_MS = 10_000L
+
+        const val FATIGUE_WINDOW_MS = 60_000L
+        const val FATIGUE_MIN_WINDOW_MS = 30_000L
+        const val FATIGUE_YAW_CUTOFF_HZ = 2.0
+        const val FATIGUE_REVERSAL_RATE_THRESHOLD_HZ = 0.5
+        const val FATIGUE_YAW_MAG_THRESHOLD = 0.15
+        const val FATIGUE_MIN_SPEED_MPS = 11.11
+        const val FATIGUE_COOLDOWN_MS = 600_000L
+        const val FATIGUE_CONTINUOUS_DRIVING_MS = 16_200_000L
 
         const val MIN_ACCELERATION_THRESHOLD = 1.5f
         const val MIN_BRAKING_THRESHOLD = 1.5f
@@ -660,6 +1572,42 @@ class NewUnsafeDrivingBehaviourAnalyser @Inject constructor(
         const val MAX_BRAKING_EXCESS = 5.5f
         const val MAX_SWERVING_EXCESS = 0.5f
         const val MAX_SPEED_EXCESS = 2.778f
+        const val MAX_CORNERING_EXCESS = 4.0f
+        const val MAX_AGGRESSIVE_TURN_EXCESS = 4.0f
+        const val MAX_AGGRESSIVE_STOP_GO_EXCESS = 15.0f
+        const val MAX_PHONE_HANDLING_EXCESS = 0.35f
+        const val MAX_FATIGUE_YAW_EXCESS = 0.4f
+        const val MAX_ROUGH_ROAD_SPEED_EXCESS = 8.33f
+        const val MAX_CRASH_DELTA_V_EXCESS = 5.0f
+
+        const val SENSOR_SAMPLE_INTERVAL_S = 0.02
+        const val GRAVITY_MPS2 = 9.81
+        const val GPS_ACCURACY_PRECISE_M = 50.0
+        const val GPS_ACCURACY_APPROX_M = 100.0
+        const val GPS_ACCURACY_REJECT_M = 200.0
+        const val MIN_HEADING_SPEED_MPS = 2.78
+        const val MAX_HEADING_ACCURACY_M = 100.0
+        const val ROTATION_VECTOR_MAX_AGE_MS = 750L
+        const val LOG_RATE_LIMIT_MS = 5_000L
+
+        const val DEFAULT_URBAN_SPEED_LIMIT_MPS = 16.67
+        const val DEFAULT_HIGHWAY_SPEED_LIMIT_MPS = 30.56
+        const val HIGHWAY_SPEED_THRESHOLD_MPS = 22.22
+
+        const val ROUGH_ROAD_RQI_THRESHOLD = 2.0
+        const val ROUGH_ROAD_SPEED_THRESHOLD_MPS = 22.22
+        const val ROUGH_ROAD_COOLDOWN_MS = 10_000L
+
+        const val CRASH_ACCEL_THRESHOLD_MPS2 = 39.24
+        const val CRASH_INTEGRATION_WINDOW_MS = 120L
+        const val CRASH_FREEFALL_WINDOW_MS = 600L
+        const val CRASH_FREEFALL_THRESHOLD_MPS2 = 1.0f
+        const val CRASH_FREEFALL_MIN_DURATION_MS = 300L
+        const val CRASH_DELTA_V_THRESHOLD_MPS = 1.94
+        const val CRASH_CONFIRMATION_DELAY_MS = 30_000L
+        const val CRASH_CONFIRM_SPEED_THRESHOLD_MPS = 1.39
+        const val CRASH_CANDIDATE_TTL_MS = 60_000L
+        const val CRASH_COOLDOWN_MS = 60_000L
 
         // Testing thresholds (very low values for emulator testing).
 //        const val ACCELERATION_THRESHOLD = 0.2f // m/s^2

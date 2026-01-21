@@ -10,9 +10,10 @@ To resolve this data starvation issue, we will implement a new architecture base
 
 - **Hybrid Storage Model:** Separate data into two categories:
   - **Heavy Data:** Raw sensor readings (`RawSensorDataEntity`), locations, and AI model inputs. This data is bulky and will be stored temporarily on the device.
-  - **Lightweight Data:** Keep two lightweight stores:
+  - **Lightweight Data:** Keep lightweight stores:
     - **`TripSummaryEntity`** for per-trip summaries (trip scoped cache).
-    - **`ReportStatisticsEntity`** for period summaries (daily/weekly/monthly/custom caches), built from trip summaries and unsafe behaviour summaries.
+    - **`TripSummaryBehaviourEntity`** for per-trip unsafe behaviour counts (normalized).
+    - **`ReportStatisticsEntity`** for period summaries (daily/weekly/monthly/custom caches), built from trip summaries and behaviour counts.
 
 - **Staged Data Lifecycle:** Replace the simple `sync: Boolean` flag with a `SyncState` enum to track the precise lifecycle of each trip. Heavy data deletion is gated by **summary readiness + upload success**, while LLM output completion is tracked separately so long-running generations do not block cleanup.
 
@@ -28,7 +29,7 @@ package com.uoa.core.model
 
 enum class SyncState {
     /**
-     * Trip completed, classification done, summaries computed (TripSummaryEntity + trip-scoped ReportStatisticsEntity).
+     * Trip completed, classification done, summaries computed (TripSummaryEntity + TripSummaryBehaviourEntity + trip-scoped ReportStatisticsEntity).
      */
     SUMMARY_READY,
 
@@ -74,17 +75,41 @@ data class TripSummaryEntity(
     val endDate: Date,
     val distanceMeters: Double,
     val durationSeconds: Long,
-    val harshBrakingEvents: Int,
-    val harshAccelerationEvents: Int,
-    val speedingEvents: Int,
     val classificationLabel: String,
     val alcoholProbability: Float?
 )
 ```
 
+### TripSummaryBehaviourEntity (Per-Trip Behaviour Counts)
+
+This Room entity stores normalized unsafe behaviour counts per trip.
+
+```kotlin
+// In: core/src/main/java/com/uoa/core/database/entities/TripSummaryBehaviourEntity.kt
+package com.uoa.core.database.entities
+
+import androidx.room.Entity
+import androidx.room.Index
+import java.util.UUID
+
+@Entity(
+    tableName = "trip_summary_behaviour",
+    primaryKeys = ["tripId", "behaviourType"],
+    indices = [
+        Index(value = ["tripId"]),
+        Index(value = ["behaviourType"])
+    ]
+)
+data class TripSummaryBehaviourEntity(
+    val tripId: UUID,
+    val behaviourType: String,
+    val count: Int
+)
+```
+
 ### ReportStatisticsEntity (Period Cache)
 
-Keep `ReportStatisticsEntity` as the lightweight cache for period summaries (day/week/month/custom). These records are derived from `TripSummaryEntity` plus summarized unsafe behaviour data. For last-trip reports, a `ReportStatisticsEntity` row can optionally be created with `tripId` set for fast retrieval.
+Keep `ReportStatisticsEntity` as the lightweight cache for period summaries (day/week/month/custom). These records are derived from `TripSummaryEntity` plus per-trip behaviour counts. For last-trip reports, a `ReportStatisticsEntity` row can optionally be created with `tripId` set for fast retrieval.
 
 ## 4. The New End-to-End Workflow
 
@@ -94,9 +119,10 @@ Occurs inside `VehicleMovementServiceUpdate.safeAutoStop` when a trip ends.
 
 1. Stop data collection.
 2. Run local classification (requires AI model inputs created during the trip).
-3. Generate `TripSummaryEntity` and a trip-scoped `ReportStatisticsEntity` (or equivalent prompt summary payload).
+3. Generate `TripSummaryEntity` and `TripSummaryBehaviourEntity` rows plus a trip-scoped `ReportStatisticsEntity` (or equivalent prompt summary payload).
 4. Update the database transactionally:
    - Insert `TripSummaryEntity`.
+   - Insert `TripSummaryBehaviourEntity` rows.
    - Insert trip-scoped `ReportStatisticsEntity` (if available).
    - Update `TripEntity` classification fields and set state to `SyncState.SUMMARY_READY`.
 5. Enqueue a `WorkManager` chain:
@@ -112,7 +138,7 @@ Occurs inside `VehicleMovementServiceUpdate.safeAutoStop` when a trip ends.
 
 - Trigger: Trips with summaries available.
 - Action:
-  - Use `TripSummaryEntity` and recent unsafe behaviours to generate per-trip reports and tips.
+  - Use `TripSummaryEntity`, `TripSummaryBehaviourEntity`, and recent unsafe behaviours to generate per-trip reports and tips.
   - Build or refresh `ReportStatisticsEntity` for requested periods (day/week/month/custom).
 - On Success: Update trip state to `LLM_OUTPUT_READY`.
 
@@ -124,12 +150,12 @@ Occurs inside `VehicleMovementServiceUpdate.safeAutoStop` when a trip ends.
   - upload succeeds (`RAW_DATA_UPLOADED`).
 - Do **not** wait for LLM outputs to finish before cleaning heavy data.
 - Keep unsafe behaviours for a rolling **14-day** retention window (regardless of sync) so tips and reports can be generated reliably.
-- Preserve `TripSummaryEntity` and `ReportStatisticsEntity` indefinitely (or with a much longer retention policy).
+- Preserve `TripSummaryEntity`, `TripSummaryBehaviourEntity`, and `ReportStatisticsEntity` indefinitely (or with a much longer retention policy).
 
 ## 5. Generating Long-Term Reports
 
 - **Per-trip reports:** Read from `TripSummaryEntity` and (optionally) a trip-scoped `ReportStatisticsEntity` record.
-- **Daily/weekly/monthly/custom reports:** Aggregate from `TripSummaryEntity` and recent unsafe behaviour summaries to produce or refresh a `ReportStatisticsEntity` cache for that period.
+- **Daily/weekly/monthly/custom reports:** Aggregate from `TripSummaryEntity` joined to `TripSummaryBehaviourEntity` (plus recent unsafe behaviours if needed) to produce or refresh a `ReportStatisticsEntity` cache for that period.
 - This keeps long-term reporting fast and avoids loading raw sensor data.
 
 ## 6. Tips Generation Considerations
@@ -137,7 +163,7 @@ Occurs inside `VehicleMovementServiceUpdate.safeAutoStop` when a trip ends.
 Driving tips currently depend on recent unsafe behaviours. To avoid starvation:
 
 - Keep unsafe behaviour records for a rolling **14-day** retention window.
-- Optionally persist a small "recent behaviours" summary in `TripSummaryEntity` or `ReportStatisticsEntity` (type, severity, timestamp, road name) so tips can be generated without raw data.
+- Optionally persist a small "recent behaviours" summary in `TripSummaryBehaviourEntity` or `ReportStatisticsEntity` (type, severity, timestamp, road name) so tips can be generated without raw data.
 
 ## 7. The Revised Role of `UploadAllDataWorker.kt`
 

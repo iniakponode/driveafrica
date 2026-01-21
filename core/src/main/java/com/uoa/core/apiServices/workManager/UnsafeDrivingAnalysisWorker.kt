@@ -92,6 +92,7 @@ class UnsafeDrivingAnalysisWorker @AssistedInject constructor(
                     }
 
                     val validItems = chunk.filter { it.locationId != null && it.tripId != null }
+                        .sortedBy { it.timestamp }
 
                     // b) Convert valid items to a Flow and analyze unsafe behaviors
                     val sensorDataFlow = validItems.asFlow().map { it }

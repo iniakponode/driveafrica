@@ -13,7 +13,9 @@ import com.uoa.core.database.entities.RawSensorDataEntity
 import com.uoa.core.database.entities.ReportStatisticsEntity
 import com.uoa.core.database.entities.RoadEntity
 import com.uoa.core.database.entities.TripEntity
+import com.uoa.core.database.entities.TripSummaryBehaviourEntity
 import com.uoa.core.database.entities.TripSummaryEntity
+import com.uoa.core.database.entities.TripSummaryWithBehaviours
 import com.uoa.core.database.entities.UnsafeBehaviourEntity
 import com.uoa.core.model.AIModelInputs
 import com.uoa.core.model.BehaviourOccurrence
@@ -176,7 +178,12 @@ fun TripEntity.toDomainModel(): Trip {
     )
 }
 
-fun TripSummaryEntity.toDomainModel(): TripSummary {
+fun TripSummaryWithBehaviours.toDomainModel(): TripSummary {
+    val behaviourCounts = behaviours.associate { it.behaviourType to it.count }
+    return summary.toDomainModel(behaviourCounts)
+}
+
+fun TripSummaryEntity.toDomainModel(unsafeBehaviourCounts: Map<String, Int>): TripSummary {
     return TripSummary(
         tripId = this.tripId,
         driverId = this.driverId,
@@ -186,12 +193,10 @@ fun TripSummaryEntity.toDomainModel(): TripSummary {
         endDate = this.endDate,
         distanceMeters = this.distanceMeters,
         durationSeconds = this.durationSeconds,
-        harshBrakingEvents = this.harshBrakingEvents,
-        harshAccelerationEvents = this.harshAccelerationEvents,
-        speedingEvents = this.speedingEvents,
-        swervingEvents = this.swervingEvents,
+        unsafeBehaviourCounts = unsafeBehaviourCounts,
         classificationLabel = this.classificationLabel,
-        alcoholProbability = this.alcoholProbability
+        alcoholProbability = this.alcoholProbability,
+        sync = this.sync
     )
 }
 
@@ -205,13 +210,22 @@ fun TripSummary.toEntity(): TripSummaryEntity {
         endDate = this.endDate,
         distanceMeters = this.distanceMeters,
         durationSeconds = this.durationSeconds,
-        harshBrakingEvents = this.harshBrakingEvents,
-        harshAccelerationEvents = this.harshAccelerationEvents,
-        speedingEvents = this.speedingEvents,
-        swervingEvents = this.swervingEvents,
         classificationLabel = this.classificationLabel,
-        alcoholProbability = this.alcoholProbability
+        alcoholProbability = this.alcoholProbability,
+        sync = this.sync
     )
+}
+
+fun TripSummary.toBehaviourEntities(): List<TripSummaryBehaviourEntity> {
+    return unsafeBehaviourCounts
+        .filterValues { it > 0 }
+        .map { (behaviourType, count) ->
+            TripSummaryBehaviourEntity(
+                tripId = tripId,
+                behaviourType = behaviourType,
+                count = count
+            )
+        }
 }
 
 fun DriverProfileEntity.toDomainModel(): DriverProfile {
@@ -305,6 +319,7 @@ fun LocationEntity.toDomainModel(): LocationData {
         date = this.date,
         speed = this.speed.toDouble(),
         distance = this.distance.toDouble(),
+        accuracy = this.accuracy,
         speedLimit = this.speedLimit,
         processed = this.processed,
         sync = this.sync
@@ -318,6 +333,7 @@ fun LocationData.toEntity(): LocationEntity {
         latitude = this.latitude,
         longitude = this.longitude,
         altitude = this.altitude!!.toDouble(),
+        accuracy = this.accuracy,
         timestamp = this.timestamp,
         date = this.date!!,
         speed = this.speed!!.toFloat(),

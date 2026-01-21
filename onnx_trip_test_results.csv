@@ -1,0 +1,6 @@
+test_case,features,description,prediction,prob_no_alcohol,prob_alcohol
+Trip 1 - Typical weekday morning,"[1, 6, -0.6, 20.87, 18.96]","Monday morning, low acceleration, moderate variation",0,0.60928607,0.39071396
+Trip 2 - Weekend late night,"[5, 0, 0.71, 36.52, 25.78]","Friday midnight, positive accel, higher variation",0,0.9221899,0.07780997
+Trip 3 - Weekend night high variation,"[0, 23, 2.15, 95.31, 87.14]","Sunday 11pm, high accel, very high variation (erratic)",0,0.9971721,0.0028278774
+Trip 4 - Midweek afternoon,"[3, 12, -1.5, 15.2, 10.5]","Wednesday noon, negative accel, low variation (smooth)",0,0.98829645,0.011703624
+Trip 5 - Weekend evening,"[6, 18, 0.25, 45.6, 30.25]","Saturday 6pm, small accel, moderate-high variation",0,0.9831251,0.016874934

@@ -1,6 +1,8 @@
 package com.uoa.core.network.model.chatGPT
 
 import android.location.Address
+import androidx.annotation.Keep
+import com.google.gson.annotations.SerializedName
 
 //data class OSMResponse(
 //    val attribution: String,
@@ -14,10 +16,14 @@ import android.location.Address
 //    val boundingbox: List<String>
 //)
 
+@Keep
 data class OSMResponse(
+    @field:SerializedName("address")
     val address: Address
 )
 
+@Keep
 data class Address(
+    @field:SerializedName("road")
     val road: String?
 )

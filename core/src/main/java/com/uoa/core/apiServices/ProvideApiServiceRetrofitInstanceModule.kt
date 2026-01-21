@@ -29,6 +29,12 @@ import com.uoa.core.apiServices.services.roadApiService.RoadApiRepository
 import com.uoa.core.apiServices.services.roadApiService.RoadApiService
 import com.uoa.core.apiServices.services.tripApiService.TripApiRepository
 import com.uoa.core.apiServices.services.tripApiService.TripApiService
+import com.uoa.core.apiServices.services.tripFeatureStateApiService.TripFeatureStateApiRepository
+import com.uoa.core.apiServices.services.tripFeatureStateApiService.TripFeatureStateApiService
+import com.uoa.core.apiServices.services.tripSummaryApiService.TripSummaryApiRepository
+import com.uoa.core.apiServices.services.tripSummaryApiService.TripSummaryApiService
+import com.uoa.core.apiServices.services.tripSummaryBehaviourApiService.TripSummaryBehaviourApiRepository
+import com.uoa.core.apiServices.services.tripSummaryBehaviourApiService.TripSummaryBehaviourApiService
 import com.uoa.core.apiServices.services.unsafeBehaviourApiService.UnsafeBehaviourApiRepository
 import com.uoa.core.apiServices.services.unsafeBehaviourApiService.UnsafeBehaviourApiService
 import com.uoa.core.apiServices.services.fleetApiService.DriverFleetApiRepository
@@ -229,6 +235,48 @@ object ProvideApiServiceRetrofitInstanceModule {
     @Singleton
     fun provideTripApiRepository(tripApiService: TripApiService): TripApiRepository {
         return TripApiRepository(tripApiService)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTripSummaryApiService(retrofit: Retrofit): TripSummaryApiService {
+        return retrofit.create(TripSummaryApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTripSummaryApiRepository(
+        tripSummaryApiService: TripSummaryApiService
+    ): TripSummaryApiRepository {
+        return TripSummaryApiRepository(tripSummaryApiService)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTripSummaryBehaviourApiService(retrofit: Retrofit): TripSummaryBehaviourApiService {
+        return retrofit.create(TripSummaryBehaviourApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTripSummaryBehaviourApiRepository(
+        tripSummaryBehaviourApiService: TripSummaryBehaviourApiService
+    ): TripSummaryBehaviourApiRepository {
+        return TripSummaryBehaviourApiRepository(tripSummaryBehaviourApiService)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTripFeatureStateApiService(retrofit: Retrofit): TripFeatureStateApiService {
+        return retrofit.create(TripFeatureStateApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTripFeatureStateApiRepository(
+        tripFeatureStateApiService: TripFeatureStateApiService
+    ): TripFeatureStateApiRepository {
+        return TripFeatureStateApiRepository(tripFeatureStateApiService)
     }
 
     @Provides

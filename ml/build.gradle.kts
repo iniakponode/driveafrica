@@ -51,7 +51,6 @@ dependencies {
     implementation(libs.material)
 
     implementation(libs.androidx.test.ext)
-    implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.androidx.navigation.runtime.ktx)
     implementation(libs.androidx.metrics)
 //    implementation(libs.androidx.ui.desktop)

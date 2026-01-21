@@ -18,10 +18,25 @@ fun buildTripSummary(
     val distanceMeters = locations.sumOf { it.distance ?: 0.0 }
     val durationSeconds = max(0L, (endTime - trip.startTime) / 1000L)
 
-    val harshBraking = unsafeBehaviours.count { it.behaviorType.equals("Harsh Braking", ignoreCase = true) }
-    val harshAcceleration = unsafeBehaviours.count { it.behaviorType.equals("Harsh Acceleration", ignoreCase = true) }
-    val speeding = unsafeBehaviours.count { it.behaviorType.equals("Speeding", ignoreCase = true) }
-    val swerving = unsafeBehaviours.count { it.behaviorType.equals("Swerving", ignoreCase = true) }
+    val canonicalTypes = mapOf(
+        "harsh braking" to "Harsh Braking",
+        "harsh acceleration" to "Harsh Acceleration",
+        "speeding" to "Speeding",
+        "swerving" to "Swerving",
+        "aggressive turn" to "Aggressive Turn",
+        "aggressive stop-and-go" to "Aggressive Stop-and-Go",
+        "phone handling" to "Phone Handling",
+        "fatigue" to "Fatigue",
+        "rough road speeding" to "Rough Road Speeding",
+        "crash detected" to "Crash Detected"
+    )
+
+    val behaviourCounts = mutableMapOf<String, Int>()
+    unsafeBehaviours.forEach { behaviour ->
+        val rawType = behaviour.behaviorType.trim()
+        val normalizedKey = canonicalTypes[rawType.lowercase()] ?: rawType
+        behaviourCounts[normalizedKey] = (behaviourCounts[normalizedKey] ?: 0) + 1
+    }
 
     return TripSummary(
         tripId = trip.id,
@@ -32,10 +47,7 @@ fun buildTripSummary(
         endDate = endDate,
         distanceMeters = distanceMeters,
         durationSeconds = durationSeconds,
-        harshBrakingEvents = harshBraking,
-        harshAccelerationEvents = harshAcceleration,
-        speedingEvents = speeding,
-        swervingEvents = swerving,
+        unsafeBehaviourCounts = behaviourCounts,
         classificationLabel = trip.influence ?: "Unknown",
         alcoholProbability = trip.alcoholProbability
     )

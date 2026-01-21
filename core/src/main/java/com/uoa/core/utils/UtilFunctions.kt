@@ -79,23 +79,21 @@ suspend fun computeReportStatistics(
     }
 
     fun totalIncidencesFromSummary(summary: TripSummary): Int {
-        return summary.harshBrakingEvents +
-            summary.harshAccelerationEvents +
-            summary.speedingEvents +
-            summary.swervingEvents
+        return summary.unsafeBehaviourCounts.values.sum()
     }
 
     fun computeMostFrequentBehaviourFromSummaries(summaries: List<TripSummary>): Pair<String?, Int> {
         if (summaries.isEmpty()) {
             return null to 0
         }
-        val counts = mapOf(
-            "Harsh Braking" to summaries.sumOf { it.harshBrakingEvents },
-            "Harsh Acceleration" to summaries.sumOf { it.harshAccelerationEvents },
-            "Speeding" to summaries.sumOf { it.speedingEvents },
-            "Swerving" to summaries.sumOf { it.swervingEvents }
-        ).filterValues { it > 0 }
-        val maxEntry = counts.maxByOrNull { it.value }
+        val counts = mutableMapOf<String, Int>()
+        summaries.forEach { summary ->
+            summary.unsafeBehaviourCounts.forEach { (type, count) ->
+                counts[type] = (counts[type] ?: 0) + count
+            }
+        }
+        val filtered = counts.filterValues { it > 0 }
+        val maxEntry = filtered.maxByOrNull { it.value }
         return maxEntry?.let { it.key to it.value } ?: (null to 0)
     }
 
@@ -763,48 +761,48 @@ private suspend fun fetchSpeedLimitWithRetry(
 
 
 
-private suspend fun getSpeedLimitsForLocations(
-    context: Context,
-    locationMap: Map<UUID, LocationData>,
-    speedLimitApiService: OSMSpeedLimitApiService
-): Map<UUID, Int?> = coroutineScope {
-
-    val speedLimitCache = mutableMapOf<Pair<Double, Double>, Int?>()
-    val semaphore = Semaphore(1)
-    val uniqueCoordinates = locationMap.values
-        .map { Pair(it.latitude, it.longitude) }
-        .distinct()
-
-    uniqueCoordinates.map { coordinate ->
-        async {
-            semaphore.withPermit {
-                // Wait 1 second to comply with Overpass API rate limits
-                delay(1000)
-
-                try {
-                    // Build query for current coordinate
-                    val query =
-                        buildSpeedLimitQuery(coordinate.first, coordinate.second, radius = 200.0)
-                    val response = fetchSpeedLimitWithRetry(speedLimitApiService, query)
-
-                    // Extract the first found speed limit for this coordinate
-                    val rawMaxSpeed = response?.elements?.firstOrNull()?.tags?.get("maxspeed")
-                    val speedLimit = parseSpeedLimitKmh(rawMaxSpeed)
-                    speedLimitCache[coordinate] = speedLimit
-                } catch (e: Exception) {
-                    Log.e("SpeedLimitService", "Error fetching speed limit from Overpass", e)
-                    speedLimitCache[coordinate] = null
-                }
-            }
-        }
-    }.awaitAll()
-
-    // Map UUIDs to fetched speed limits
-    locationMap.mapValues { (_, locationData) ->
-        val coordinate = Pair(locationData.latitude, locationData.longitude)
-        speedLimitCache[coordinate]
-    }
-}
+//private suspend fun getSpeedLimitsForLocations(
+//    context: Context,
+//    locationMap: Map<UUID, LocationData>,
+//    speedLimitApiService: OSMSpeedLimitApiService
+//): Map<UUID, Int?> = coroutineScope {
+//
+//    val speedLimitCache = mutableMapOf<Pair<Double, Double>, Int?>()
+//    val semaphore = Semaphore(1)
+//    val uniqueCoordinates = locationMap.values
+//        .map { Pair(it.latitude, it.longitude) }
+//        .distinct()
+//
+//    uniqueCoordinates.map { coordinate ->
+//        async {
+//            semaphore.withPermit {
+//                // Wait 1 second to comply with Overpass API rate limits
+//                delay(1000)
+//
+//                try {
+//                    // Build query for current coordinate
+//                    val query =
+//                        buildSpeedLimitQuery(coordinate.first, coordinate.second, radius = 200.0)
+//                    val response = fetchSpeedLimitWithRetry(speedLimitApiService, query)
+//
+//                    // Extract the first found speed limit for this coordinate
+//                    val rawMaxSpeed = response?.elements?.firstOrNull()?.tags?.get("maxspeed")
+//                    val speedLimit = parseSpeedLimitKmh(rawMaxSpeed)
+//                    speedLimitCache[coordinate] = speedLimit
+//                } catch (e: Exception) {
+//                    Log.e("SpeedLimitService", "Error fetching speed limit from Overpass", e)
+//                    speedLimitCache[coordinate] = null
+//                }
+//            }
+//        }
+//    }.awaitAll()
+//
+//    // Map UUIDs to fetched speed limits
+//    locationMap.mapValues { (_, locationData) ->
+//        val coordinate = Pair(locationData.latitude, locationData.longitude)
+//        speedLimitCache[coordinate]
+//    }
+//}
 
 
 // Mutex and timestamp to enforce a global rate limit (1 request/second)
@@ -860,5 +858,3 @@ private fun getRoadNameInternally(context: Context, latitude: Double, longitude:
         address.getAddressLine(0) // or address.thoroughfare for the road
     } else null
 }
-
-

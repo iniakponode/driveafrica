@@ -8,6 +8,7 @@ import androidx.work.WorkerParameters
 import androidx.work.testing.TestListenableWorkerBuilder
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
@@ -26,6 +27,9 @@ import com.uoa.core.apiServices.services.rawSensorApiService.RawSensorDataApiRep
 import com.uoa.core.apiServices.services.reportStatisticsApiService.ReportStatisticsApiRepository
 import com.uoa.core.apiServices.services.roadApiService.RoadApiRepository
 import com.uoa.core.apiServices.services.tripApiService.TripApiRepository
+import com.uoa.core.apiServices.services.tripFeatureStateApiService.TripFeatureStateApiRepository
+import com.uoa.core.apiServices.services.tripSummaryApiService.TripSummaryApiRepository
+import com.uoa.core.apiServices.services.tripSummaryBehaviourApiService.TripSummaryBehaviourApiRepository
 import com.uoa.core.apiServices.services.unsafeBehaviourApiService.UnsafeBehaviourApiRepository
 import com.uoa.core.database.repository.AIModelInputRepository
 import com.uoa.core.database.repository.DriverProfileRepository
@@ -37,8 +41,12 @@ import com.uoa.core.database.repository.RawSensorDataRepository
 import com.uoa.core.database.repository.ReportStatisticsRepository
 import com.uoa.core.database.repository.RoadRepository
 import com.uoa.core.database.repository.TripDataRepository
+import com.uoa.core.database.repository.TripFeatureStateRepository
+import com.uoa.core.database.repository.TripSummaryRepository
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
+import com.uoa.core.database.entities.TripFeatureStateEntity
 import com.uoa.core.model.DriverProfile
+import com.uoa.core.model.TripSummary
 import com.uoa.core.network.NetworkMonitor
 import com.uoa.core.notifications.VehicleNotificationManager
 import com.uoa.core.utils.Constants.Companion.DRIVER_PROFILE_ID
@@ -53,6 +61,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.util.Date
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
@@ -105,6 +114,8 @@ class UploadAllDataWorkerTest {
         val aiModelInputRepository = mock<AIModelInputRepository>()
         val reportStatisticsRepository = mock<ReportStatisticsRepository>()
         val roadRepository = mock<RoadRepository>()
+        val tripSummaryRepository = mock<TripSummaryRepository>()
+        val tripFeatureStateRepository = mock<TripFeatureStateRepository>()
         val driverSyncApiRepository = mock<DriverSyncApiRepository>()
         val secureCredentialStorage = mock<SecureCredentialStorage>()
         val authRepository = mock<AuthRepository>()
@@ -120,6 +131,8 @@ class UploadAllDataWorkerTest {
         whenever(aiModelInputRepository.getAiModelInputsBySyncStatus(false)).thenReturn(emptyList())
         whenever(reportStatisticsRepository.getReportStatisticsBySyncStatus(false)).thenReturn(emptyList())
         whenever(roadRepository.getRoadsBySyncStatus(false)).thenReturn(emptyList())
+        whenever(tripSummaryRepository.getUnsyncedTripSummaries()).thenReturn(emptyList())
+        whenever(tripFeatureStateRepository.getUnsyncedTripFeatureStates()).thenReturn(emptyList())
 
         val profileId = UUID.randomUUID()
         val profile = DriverProfile(driverProfileId = profileId, email = "user@example.com")
@@ -172,6 +185,8 @@ class UploadAllDataWorkerTest {
             aiModelInputRepository = aiModelInputRepository,
             reportStatisticsRepository = reportStatisticsRepository,
             roadRepository = roadRepository,
+            tripSummaryRepository = tripSummaryRepository,
+            tripFeatureStateRepository = tripFeatureStateRepository,
             driverProfileRepository = driverProfileRepository,
             driverSyncApiRepository = driverSyncApiRepository,
             secureCredentialStorage = secureCredentialStorage,
@@ -190,6 +205,125 @@ class UploadAllDataWorkerTest {
             .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .getString(DRIVER_PROFILE_ID, null)
         assertTrue(storedId == profileId.toString())
+    }
+
+    @Test
+    fun uploadsTripSummaryBehavioursAndFeatureStates() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val networkMonitor = mock<NetworkMonitor>()
+        whenever(networkMonitor.isOnline).thenReturn(flowOf(true))
+
+        val vehicleNotificationManager = mock<VehicleNotificationManager>()
+        val secureTokenStorage = mock<SecureTokenStorage>()
+        whenever(secureTokenStorage.getToken()).thenReturn("token-value")
+
+        val tripRepository = mock<TripDataRepository>()
+        whenever(tripRepository.getNewTrips()).thenReturn(emptyList())
+        whenever(tripRepository.getUpdatedTrips()).thenReturn(emptyList())
+
+        val rawSensorDataRepository = mock<RawSensorDataRepository>()
+        whenever(rawSensorDataRepository.getSensorDataBySyncStatus(false)).thenReturn(emptyList())
+
+        val unsafeBehaviourRepository = mock<UnsafeBehaviourRepository>()
+        whenever(unsafeBehaviourRepository.getUnsafeBehavioursBySyncStatus(false)).thenReturn(emptyList())
+
+        val questionnaireRepository = mock<QuestionnaireRepository>()
+        whenever(questionnaireRepository.getAllUnsyncedQuestionnaires()).thenReturn(emptyList())
+
+        val drivingTipRepository = mock<DrivingTipRepository>()
+        whenever(drivingTipRepository.getDrivingTipsBySyncStatus(false)).thenReturn(emptyList())
+
+        val nlgReportRepository = mock<NLGReportRepository>()
+        whenever(nlgReportRepository.getNlgReportBySyncStatus(false)).thenReturn(emptyList())
+
+        val locationRepository = mock<LocationRepository>()
+        whenever(locationRepository.getLocationBySynced(false)).thenReturn(flowOf(emptyList()))
+
+        val aiModelInputRepository = mock<AIModelInputRepository>()
+        whenever(aiModelInputRepository.getAiModelInputsBySyncStatus(false)).thenReturn(emptyList())
+
+        val reportStatisticsRepository = mock<ReportStatisticsRepository>()
+        whenever(reportStatisticsRepository.getReportStatisticsBySyncStatus(false)).thenReturn(emptyList())
+
+        val roadRepository = mock<RoadRepository>()
+        whenever(roadRepository.getRoadsBySyncStatus(false)).thenReturn(emptyList())
+
+        val tripId = UUID.randomUUID()
+        val driverId = UUID.randomUUID()
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(DRIVER_PROFILE_ID, driverId.toString())
+            .commit()
+        val tripSummary = TripSummary(
+            tripId = tripId,
+            driverId = driverId,
+            startTime = 1_700_000_000_000L,
+            endTime = 1_700_000_100_000L,
+            startDate = Date(1_700_000_000_000L),
+            endDate = Date(1_700_000_100_000L),
+            distanceMeters = 1234.5,
+            durationSeconds = 1000L,
+            unsafeBehaviourCounts = mapOf("hard_brake" to 2),
+            classificationLabel = "safe",
+            alcoholProbability = 0.1f,
+            sync = false
+        )
+
+        val tripSummaryRepository = mock<TripSummaryRepository>()
+        whenever(tripSummaryRepository.getUnsyncedTripSummaries()).thenReturn(listOf(tripSummary))
+
+        val tripSummaryApiRepository = mock<TripSummaryApiRepository>()
+        whenever(tripSummaryApiRepository.batchCreateTripSummaries(any()))
+            .thenReturn(Resource.Success(Unit))
+
+        val tripSummaryBehaviourApiRepository = mock<TripSummaryBehaviourApiRepository>()
+        whenever(tripSummaryBehaviourApiRepository.batchCreateTripSummaryBehaviours(any()))
+            .thenReturn(Resource.Success(Unit))
+
+        val tripFeatureStateRepository = mock<TripFeatureStateRepository>()
+        whenever(tripFeatureStateRepository.getUnsyncedTripFeatureStates()).thenReturn(
+            listOf(
+                TripFeatureStateEntity(
+                    tripId = tripId,
+                    driverProfileId = driverId
+                )
+            )
+        )
+
+        val tripFeatureStateApiRepository = mock<TripFeatureStateApiRepository>()
+        whenever(tripFeatureStateApiRepository.batchCreateTripFeatureStates(any()))
+            .thenReturn(Resource.Success(Unit))
+
+        val worker = buildUploadWorker(
+            context = context,
+            networkMonitor = networkMonitor,
+            vehicleNotificationManager = vehicleNotificationManager,
+            secureTokenStorage = secureTokenStorage,
+            rawSensorDataRepository = rawSensorDataRepository,
+            unsafeBehaviourRepository = unsafeBehaviourRepository,
+            questionnaireRepository = questionnaireRepository,
+            drivingTipRepository = drivingTipRepository,
+            nlgReportRepository = nlgReportRepository,
+            locationRepository = locationRepository,
+            aiModelInputRepository = aiModelInputRepository,
+            reportStatisticsRepository = reportStatisticsRepository,
+            roadRepository = roadRepository,
+            tripRepository = tripRepository,
+            tripSummaryRepository = tripSummaryRepository,
+            tripSummaryApiRepository = tripSummaryApiRepository,
+            tripSummaryBehaviourApiRepository = tripSummaryBehaviourApiRepository,
+            tripFeatureStateRepository = tripFeatureStateRepository,
+            tripFeatureStateApiRepository = tripFeatureStateApiRepository
+        )
+
+        val result = worker.doWork()
+
+        assertTrue(result is ListenableWorker.Result.Success)
+        verify(tripSummaryBehaviourApiRepository).batchCreateTripSummaryBehaviours(any())
+        verify(tripSummaryApiRepository).batchCreateTripSummaries(any())
+        verify(tripSummaryRepository).markTripSummariesSynced(any(), eq(true))
+        verify(tripFeatureStateApiRepository).batchCreateTripFeatureStates(any())
+        verify(tripFeatureStateRepository).markTripFeatureStatesSynced(any(), eq(true))
     }
 
     @Test
@@ -239,6 +373,11 @@ class UploadAllDataWorkerTest {
         driverFleetApiRepository: DriverFleetApiRepository = mock(),
         tripRepository: TripDataRepository = mock(),
         tripApiRepository: TripApiRepository = mock(),
+        tripSummaryRepository: TripSummaryRepository = mock(),
+        tripSummaryApiRepository: TripSummaryApiRepository = mock(),
+        tripSummaryBehaviourApiRepository: TripSummaryBehaviourApiRepository = mock(),
+        tripFeatureStateRepository: TripFeatureStateRepository = mock(),
+        tripFeatureStateApiRepository: TripFeatureStateApiRepository = mock(),
         roadRepository: RoadRepository = mock(),
         roadApiRepository: RoadApiRepository = mock(),
         questionnaireRepository: QuestionnaireRepository = mock(),
@@ -274,6 +413,11 @@ class UploadAllDataWorkerTest {
                     driverFleetApiRepository,
                     tripRepository,
                     tripApiRepository,
+                    tripSummaryRepository,
+                    tripSummaryApiRepository,
+                    tripSummaryBehaviourApiRepository,
+                    tripFeatureStateRepository,
+                    tripFeatureStateApiRepository,
                     roadRepository,
                     roadApiRepository,
                     questionnaireRepository,

@@ -1,0 +1,1 @@
+logcat: -r requires -f as well.

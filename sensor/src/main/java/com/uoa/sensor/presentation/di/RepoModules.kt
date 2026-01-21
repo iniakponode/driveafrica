@@ -7,6 +7,7 @@ import com.uoa.core.behaviouranalysis.NewUnsafeDrivingBehaviourAnalyser
 import com.uoa.core.database.daos.LocationDao
 import com.uoa.core.database.daos.RawSensorDataDao
 import com.uoa.core.database.daos.RoadDao
+import com.uoa.core.database.daos.TripFeatureStateDao
 import com.uoa.core.database.daos.TripSummaryDao
 import com.uoa.core.database.daos.TripDao
 import com.uoa.core.database.daos.UnsafeBehaviourDao
@@ -16,6 +17,7 @@ import com.uoa.core.database.repository.ProcessAndStoreSensorData
 import com.uoa.core.database.repository.RawSensorDataRepository
 import com.uoa.core.database.repository.RoadRepository
 import com.uoa.core.database.repository.TripDataRepository
+import com.uoa.core.database.repository.TripFeatureStateRepository
 import com.uoa.core.database.repository.TripSummaryRepository
 import com.uoa.core.database.repository.UnsafeBehaviourRepository
 import com.uoa.sensor.repository.LocationRepositoryImpl
@@ -24,6 +26,7 @@ import com.uoa.sensor.repository.RoadRepositoryImpl
 import com.uoa.sensor.repository.DrivingStateStore
 import com.uoa.sensor.repository.SensorDataColStateRepository
 import com.uoa.sensor.repository.TripDataRepositoryImpl
+import com.uoa.sensor.repository.TripFeatureStateRepositoryImpl
 import com.uoa.sensor.repository.TripSummaryRepositoryImpl
 import dagger.Module
 import dagger.Provides
@@ -90,6 +93,12 @@ object RepoModules {
     @Singleton
     fun provideTripSummaryRepository(tripSummaryDao: TripSummaryDao): TripSummaryRepository =
         TripSummaryRepositoryImpl(tripSummaryDao)
+
+    @Provides
+    @Singleton
+    fun provideTripFeatureStateRepository(
+        tripFeatureStateDao: TripFeatureStateDao
+    ): TripFeatureStateRepository = TripFeatureStateRepositoryImpl(tripFeatureStateDao)
 }
 
 //

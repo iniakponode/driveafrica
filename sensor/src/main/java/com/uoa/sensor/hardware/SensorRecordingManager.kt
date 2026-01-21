@@ -1,6 +1,7 @@
 package com.uoa.sensor.hardware
 
 import android.content.Context
+import android.hardware.Sensor
 import android.hardware.SensorManager
 import android.util.Log
 import com.uoa.core.model.RawSensorData
@@ -8,6 +9,7 @@ import com.uoa.core.utils.PreferenceUtils
 import com.uoa.sensor.location.LocationDataBufferManager
 import com.uoa.sensor.utils.GetSensorTypeNameUtil
 import com.uoa.sensor.utils.ProcessSensorData
+import com.uoa.sensor.utils.ButterworthLowPassFilter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -34,12 +36,17 @@ class SensorRecordingManager @Inject constructor(
 ) {
 
     private val isRecording = AtomicBoolean(false)
+    private val isPaused = AtomicBoolean(false)
     private var currentTripId: UUID? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // Sensor Event Throttling
-    private val MIN_DELAY_BETWEEN_EVENTS_MS = 100L
+    private val MIN_DELAY_BETWEEN_EVENTS_MS = 20L
     private var lastProcessedEventTime = 0L
+    private val SENSOR_SAMPLING_PERIOD_US = 20_000
+    private val BUTTERWORTH_SAMPLING_HZ = 50.0
+    private val BUTTERWORTH_CUTOFF_HZ = 20.0
+    private val butterworthFilters = mutableMapOf<Int, ButterworthLowPassFilter>()
 
     // Rotation Matrix & Intermediate Reading
     private val rotationMatrix = FloatArray(9) { 0f }
@@ -65,6 +72,7 @@ class SensorRecordingManager @Inject constructor(
         
         currentTripId = tripId
         isRecording.set(true)
+        isPaused.set(false)
         resetState()
         startSensorListeners()
         Log.d("SensorRecordingManager", "Started sensor recording for trip: $tripId")
@@ -75,6 +83,7 @@ class SensorRecordingManager @Inject constructor(
      */
     fun stopRecording() {
         if (isRecording.compareAndSet(true, false)) {
+            isPaused.set(false)
             stopSensorListeners()
             // Flush any remaining data in buffer
             scope.launch {
@@ -90,14 +99,31 @@ class SensorRecordingManager @Inject constructor(
         scope.cancel()
     }
 
+    fun pauseRecording() {
+        if (!isRecording.get()) return
+        if (!isPaused.compareAndSet(false, true)) return
+        stopSensorListeners()
+        scope.launch {
+            sensorDataBufferManager.flushBufferToDatabase()
+        }
+        Log.d("SensorRecordingManager", "Paused sensor recording for trip: $currentTripId")
+    }
+
+    fun resumeRecording() {
+        if (!isRecording.get()) return
+        if (!isPaused.compareAndSet(true, false)) return
+        startSensorListeners()
+        Log.d("SensorRecordingManager", "Resumed sensor recording for trip: $currentTripId")
+    }
+
     private fun startSensorListeners() {
         try {
-            accelerometerSensor.startListeningToSensor(SensorManager.SENSOR_DELAY_NORMAL)
-            gyroscopeSensor.startListeningToSensor(SensorManager.SENSOR_DELAY_NORMAL)
-            rotationVectorSensor.startListeningToSensor(SensorManager.SENSOR_DELAY_NORMAL)
-            magnetometerSensor.startListeningToSensor(SensorManager.SENSOR_DELAY_NORMAL)
-            gravitySensor.startListeningToSensor(SensorManager.SENSOR_DELAY_NORMAL)
-            linearAccelerationSensor.startListeningToSensor(SensorManager.SENSOR_DELAY_NORMAL)
+            accelerometerSensor.startListeningToSensor(SENSOR_SAMPLING_PERIOD_US)
+            gyroscopeSensor.startListeningToSensor(SENSOR_SAMPLING_PERIOD_US)
+            rotationVectorSensor.startListeningToSensor(SENSOR_SAMPLING_PERIOD_US)
+            magnetometerSensor.startListeningToSensor(SENSOR_SAMPLING_PERIOD_US)
+            gravitySensor.startListeningToSensor(SENSOR_SAMPLING_PERIOD_US)
+            linearAccelerationSensor.startListeningToSensor(SENSOR_SAMPLING_PERIOD_US)
 
             accelerometerSensor.whenSensorValueChangesListener(sensorEventListener)
             gyroscopeSensor.whenSensorValueChangesListener(sensorEventListener)
@@ -165,14 +191,15 @@ class SensorRecordingManager @Inject constructor(
 
                 // Apply any specific processing/transformation
                 val processedValues = ProcessSensorData.processSensorData(sensorType, validValues, rotationMatrix)
+                val filteredValues = applyButterworthFilter(sensorType, processedValues)
 
                 // Filter out empty data
-                if (!processedValues.all { it == 0f }) {
+                if (!filteredValues.all { it == 0f }) {
                     val rawSensorData = RawSensorData(
                         id = UUID.randomUUID(),
                         sensorType = sensorType,
                         sensorTypeName = sensorTypeName,
-                        values = processedValues.toList(),
+                        values = filteredValues.toList(),
                         timestamp = timestamp,
                         date = Date(timestamp),
                         accuracy = accuracy,
@@ -191,5 +218,21 @@ class SensorRecordingManager @Inject constructor(
         hasAccelerometerReading = false
         hasMagnetometerReading = false
         lastProcessedEventTime = 0L
+        butterworthFilters.values.forEach { it.reset() }
+    }
+
+    private fun applyButterworthFilter(sensorType: Int, values: FloatArray): FloatArray {
+        return when (sensorType) {
+            Sensor.TYPE_ACCELEROMETER,
+            Sensor.TYPE_LINEAR_ACCELERATION,
+            Sensor.TYPE_GYROSCOPE,
+            Sensor.TYPE_MAGNETIC_FIELD -> {
+                val filter = butterworthFilters.getOrPut(sensorType) {
+                    ButterworthLowPassFilter(BUTTERWORTH_SAMPLING_HZ, BUTTERWORTH_CUTOFF_HZ)
+                }
+                filter.filter(values)
+            }
+            else -> values
+        }
     }
 }

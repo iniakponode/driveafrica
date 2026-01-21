@@ -47,12 +47,14 @@ class LocationManager @Inject constructor(
 
     // Keep track of the last valid location we've recorded
     private var lastRecordedLocation: Location? = null
+    private var lastAcceptedLocation: Location? = null
 
     // This is an immediate in-memory pointer to the *latest created* location ID
     // not necessarily the one that's persisted or flushed yet.
     @Volatile
     private var latestLocationId: UUID? = null
     private var updatesEnabled = false
+    private var recordingEnabled = true
 
     // Callback for forwarding location updates to DrivingStateManager
     private var externalLocationCallback: ((Location) -> Unit)? = null
@@ -118,6 +120,17 @@ class LocationManager @Inject constructor(
     // Example thresholds
     private val MAX_HORIZONTAL_ACCURACY = 10f     // meters
     private val MAX_LOCATION_AGE_MS = 2 * 60_000L // 2 minutes
+    private val MAX_GPS_ACCURACY_REJECT_M = 200f
+    private val MIN_SATELLITES_REQUIRED = 4
+    private val MAX_PLAUSIBLE_SPEED_MPS = 55.56 // ~200 km/h
+    private val MAX_GPS_ACCEL_MPS2 = 8.0
+    private val MIN_SPEED_SAMPLE_DT_MS = 250L
+    private val SPEED_KALMAN_PROCESS_NOISE = 1.0
+    private val SPEED_KALMAN_MEASUREMENT_NOISE = 2.0
+    private val speedKalmanFilter = SpeedKalmanFilter(
+        processNoise = SPEED_KALMAN_PROCESS_NOISE,
+        measurementNoise = SPEED_KALMAN_MEASUREMENT_NOISE
+    )
 
     // Callback that receives raw location updates from FusedLocationProvider
     private val locationCallback = object : LocationCallback() {
@@ -145,6 +158,8 @@ class LocationManager @Inject constructor(
      */
     fun startLocationUpdates() {
         updatesEnabled = true
+        lastAcceptedLocation = null
+        speedKalmanFilter.reset()
         updateLocationRequest(isVehicleMoving = true)
     }
 
@@ -156,13 +171,17 @@ class LocationManager @Inject constructor(
         fusedLocationProviderClient.removeLocationUpdates(locationCallback)
     }
 
+    fun setRecordingEnabled(enabled: Boolean) {
+        recordingEnabled = enabled
+    }
+
     fun setDrivingState(state: DrivingStateManager.DrivingState) {
         if (!updatesEnabled) return
         val isMovingInterval = when (state) {
             DrivingStateManager.DrivingState.IDLE -> false
             DrivingStateManager.DrivingState.VERIFYING,
-            DrivingStateManager.DrivingState.RECORDING,
-            DrivingStateManager.DrivingState.POTENTIAL_STOP -> true
+            DrivingStateManager.DrivingState.RECORDING -> true
+            DrivingStateManager.DrivingState.POTENTIAL_STOP -> false
         }
         updateLocationRequest(isVehicleMoving = isMovingInterval)
     }
@@ -242,11 +261,36 @@ class LocationManager @Inject constructor(
      */
     private fun processLocation(location: Location) {
         scope.launch {
-            val speed = location.speed // m/s
-            val distance = lastRecordedLocation?.distanceTo(location)?.toDouble() ?: 0.0
-            val clampedSpeed = speed.toDouble().takeIf { it.isFinite() }?.coerceAtLeast(0.0) ?: 0.0
+            val accuracy = location.takeIf { it.hasAccuracy() }?.accuracy?.toDouble()
+            if (accuracy != null && accuracy > MAX_GPS_ACCURACY_REJECT_M) {
+                Log.d("LocationManager", "Skipping GPS fix: accuracy=${accuracy}m")
+                return@launch
+            }
+            val satelliteCount = getSatelliteCount(location)
+            if (satelliteCount != null && satelliteCount < MIN_SATELLITES_REQUIRED) {
+                Log.d("LocationManager", "Skipping GPS fix: satellites=$satelliteCount")
+                return@launch
+            }
+            val measuredSpeed = resolveSpeedMeasurement(location, lastAcceptedLocation)
+            val dtMs = lastAcceptedLocation?.let { location.time - it.time } ?: 0L
+            if (isSpeedOutlier(measuredSpeed, speedKalmanFilter.currentEstimate(), dtMs)) {
+                speedKalmanFilter.predict(location.time)
+                Log.d(
+                    "LocationManager",
+                    "Skipping GPS fix: outlier speed=$measuredSpeed dtMs=$dtMs"
+                )
+                return@launch
+            }
+            val speedAccuracy = resolveSpeedAccuracy(location)
+            val filteredSpeed = speedKalmanFilter.update(measuredSpeed, speedAccuracy, location.time)
+            val clampedSpeed = filteredSpeed.coerceAtLeast(0.0)
             sensorDataColStateRepository.updateSpeed(clampedSpeed)
+            lastAcceptedLocation = location
+            if (!recordingEnabled) {
+                return@launch
+            }
 
+            val distance = lastRecordedLocation?.distanceTo(location)?.toDouble() ?: 0.0
             var roadName: String? = null
             var speedLimit: Int? = null
             val cachedEntry = getCachedRoadData(location.latitude, location.longitude)
@@ -288,8 +332,9 @@ class LocationManager @Inject constructor(
                     latitude = location.latitude,
                     longitude = location.longitude,
                     altitude = location.altitude,
-                    speed = speed.toDouble(),
+                    speed = clampedSpeed,
                     distance = distance,
+                    accuracy = accuracy,
                     timestamp = location.time,
                     date = Date(location.time),
                     speedLimit = 0.0,
@@ -327,8 +372,9 @@ class LocationManager @Inject constructor(
                     latitude = location.latitude,
                     longitude = location.longitude,
                     altitude = location.altitude,
-                    speed = speed.toDouble(),
+                    speed = clampedSpeed,
                     distance = distance,
+                    accuracy = accuracy,
                     timestamp = location.time,
                     date = Date(location.time),
                     speedLimit = speedLimitMps,
@@ -365,6 +411,87 @@ class LocationManager @Inject constructor(
 
         // E.g. if distance >= 10 meters or 5 min has passed, record
         return (distance >= MAX_HORIZONTAL_ACCURACY) || (timeDelta >= intervalStationaryMillis)
+    }
+
+    private fun getSatelliteCount(location: Location): Int? {
+        val extras = location.extras ?: return null
+        return when {
+            extras.containsKey("satellites") -> extras.getInt("satellites")
+            extras.containsKey("satellite_count") -> extras.getInt("satellite_count")
+            else -> null
+        }
+    }
+
+    private fun resolveSpeedMeasurement(location: Location, lastLocation: Location?): Double {
+        if (location.hasSpeed()) {
+            return location.speed.toDouble().coerceAtLeast(0.0)
+        }
+        if (lastLocation == null) return 0.0
+        val dtMs = location.time - lastLocation.time
+        if (dtMs <= MIN_SPEED_SAMPLE_DT_MS) return 0.0
+        val distance = lastLocation.distanceTo(location).toDouble()
+        return (distance / (dtMs / 1000.0)).coerceAtLeast(0.0)
+    }
+
+    private fun resolveSpeedAccuracy(location: Location): Double {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && location.hasSpeedAccuracy()) {
+            location.speedAccuracyMetersPerSecond.toDouble().coerceAtLeast(0.1)
+        } else {
+            SPEED_KALMAN_MEASUREMENT_NOISE
+        }
+    }
+
+    private fun isSpeedOutlier(measuredSpeed: Double, lastSpeed: Double?, dtMs: Long): Boolean {
+        if (!measuredSpeed.isFinite()) return true
+        if (measuredSpeed > MAX_PLAUSIBLE_SPEED_MPS) return true
+        if (lastSpeed == null) return false
+        if (dtMs <= MIN_SPEED_SAMPLE_DT_MS) return false
+        val accel = kotlin.math.abs(measuredSpeed - lastSpeed) / (dtMs / 1000.0)
+        return accel > MAX_GPS_ACCEL_MPS2
+    }
+
+    private class SpeedKalmanFilter(
+        private val processNoise: Double,
+        private val measurementNoise: Double
+    ) {
+        private var estimate: Double? = null
+        private var variance = 1.0
+        private var lastTimestampMs = 0L
+
+        fun currentEstimate(): Double? = estimate
+
+        fun reset() {
+            estimate = null
+            variance = 1.0
+            lastTimestampMs = 0L
+        }
+
+        fun predict(timestampMs: Long) {
+            val dtMs = (timestampMs - lastTimestampMs).coerceAtLeast(0L)
+            if (estimate != null && dtMs > 0L) {
+                variance += processNoise * (dtMs / 1000.0)
+                lastTimestampMs = timestampMs
+            }
+        }
+
+        fun update(measurement: Double, accuracy: Double?, timestampMs: Long): Double {
+            if (estimate == null) {
+                estimate = measurement
+                lastTimestampMs = timestampMs
+                variance = accuracy?.let { it * it } ?: (measurementNoise * measurementNoise)
+                return measurement
+            }
+            val dtMs = (timestampMs - lastTimestampMs).coerceAtLeast(0L)
+            if (dtMs > 0L) {
+                variance += processNoise * (dtMs / 1000.0)
+            }
+            val r = accuracy?.let { it * it } ?: (measurementNoise * measurementNoise)
+            val k = variance / (variance + r)
+            estimate = estimate!! + k * (measurement - estimate!!)
+            variance *= (1 - k)
+            lastTimestampMs = timestampMs
+            return estimate!!
+        }
     }
 
     // -----------------------------------------------------------------------

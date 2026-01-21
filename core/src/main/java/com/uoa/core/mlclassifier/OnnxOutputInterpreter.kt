@@ -39,6 +39,7 @@ class OnnxOutputInterpreter(
             throw IllegalStateException("No usable outputs found for inference")
         }
 
+        val rawProbabilities = probabilities?.copyOf()
         val normalizedProbs = probabilities?.let { normalizeScoresIfNeeded(it) }
         val probability = normalizedProbs?.let { probs ->
             when {
@@ -60,7 +61,13 @@ class OnnxOutputInterpreter(
             else -> false
         }
 
-        return ModelInference(isAlcoholInfluenced, probability)
+        return ModelInference(
+            isAlcoholInfluenced = isAlcoholInfluenced,
+            probability = probability,
+            rawProbabilities = rawProbabilities,
+            normalizedProbabilities = normalizedProbs,
+            rawLabel = label
+        )
     }
 
     private fun findOutputValueByName(

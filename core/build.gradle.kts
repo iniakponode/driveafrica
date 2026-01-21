@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.jetbrains.kotlin.compose.compiler.gradle.ComposeFeatureFlag
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.jetbrains.kotlin.android)
@@ -78,7 +79,7 @@ android {
 }
 
 composeCompiler {
-    enableStrongSkippingMode = true
+    featureFlags.set(setOf(ComposeFeatureFlag.StrongSkipping))
 
     reportsDestination = layout.buildDirectory.dir("compose_compiler")
     stabilityConfigurationFile = rootProject.layout.projectDirectory.file("stability_config.conf")
@@ -86,7 +87,6 @@ composeCompiler {
 
 dependencies {
     implementation(libs.androidx.test.ext)
-    implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.androidx.navigation.runtime.ktx)
     implementation(libs.androidx.metrics)
 

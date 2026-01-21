@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">sensor</string>
+    <string name="distance_travelled">Distance parcourue : %1$.2f %2$s</string>
+    <string name="speed_limit">Limite de vitesse : %1$s %2$s</string>
+    <string name="unit_kilometers">km</string>
+    <string name="unit_kilometers_per_hour">km/h</string>
+    <string name="sensor_permission_explanation">Safe Drive Africa enregistre les trajets à l’aide du GPS, de la reconnaissance d’activité et d’un service au premier plan afin d’analyser le comportement de conduite ; l’autorisation de notifications vous informe pendant que l’enregistrement ne s’exécute que lorsque vous l’accordez.</string>
+</resources>

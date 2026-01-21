@@ -15,6 +15,10 @@ interface TripSummaryRepository {
         endDate: Date
     ): List<TripSummary>
 
+    suspend fun getUnsyncedTripSummaries(): List<TripSummary>
+
+    suspend fun markTripSummariesSynced(tripIds: List<UUID>, synced: Boolean)
+
     suspend fun countTripSummariesByDriverAndDateRange(
         driverId: UUID,
         startDate: Date,

@@ -32,6 +32,7 @@ class NewUnsafeDrivingBehaviourAnalyserTest {
             timestamp = 1_000L,
             date = Date(1_000L),
             altitude = 0.0,
+            accuracy = 12.0,
             speed = 30f,
             distance = 0f,
             speedLimit = 20.0,
@@ -82,6 +83,63 @@ class NewUnsafeDrivingBehaviourAnalyserTest {
     }
 
     @Test
+    fun speedingNotTriggeredBelowTolerance() = runBlocking {
+        val locationId = UUID.randomUUID()
+        val tripId = UUID.randomUUID()
+        val driverId = UUID.randomUUID()
+        val locationEntity = LocationEntity(
+            id = locationId,
+            latitude = 0.0,
+            longitude = 0.0,
+            timestamp = 1_000L,
+            date = Date(1_000L),
+            altitude = 0.0,
+            accuracy = 12.0,
+            speed = 21.5f,
+            distance = 0f,
+            speedLimit = 20.0,
+            processed = false,
+            sync = false
+        )
+        val repository = FakeLocationRepository(mapOf(locationId to locationEntity))
+        val analyser = NewUnsafeDrivingBehaviourAnalyser(repository)
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+
+        val dataStart = RawSensorDataEntity(
+            id = UUID.randomUUID(),
+            sensorType = 0,
+            sensorTypeName = "Speed",
+            values = listOf(0f, 0f, 0f),
+            timestamp = 1_000L,
+            date = Date(1_000L),
+            accuracy = 3,
+            locationId = locationId,
+            tripId = tripId,
+            driverProfileId = driverId,
+            processed = false,
+            sync = false
+        )
+        val dataEnd = RawSensorDataEntity(
+            id = UUID.randomUUID(),
+            sensorType = 0,
+            sensorTypeName = "Speed",
+            values = listOf(0f, 0f, 0f),
+            timestamp = 21_500L,
+            date = Date(21_500L),
+            accuracy = 3,
+            locationId = locationId,
+            tripId = tripId,
+            driverProfileId = driverId,
+            processed = false,
+            sync = false
+        )
+
+        val results = analyser.analyze(flowOf(dataStart, dataEnd), context).toList()
+
+        assertTrue("Expected no speeding below tolerance threshold", results.isEmpty())
+    }
+
+    @Test
     fun noBehaviorWhenTripIdMissing() = runBlocking {
         val locationId = UUID.randomUUID()
         val driverId = UUID.randomUUID()
@@ -92,6 +150,7 @@ class NewUnsafeDrivingBehaviourAnalyserTest {
             timestamp = 2_000L,
             date = Date(2_000L),
             altitude = 0.0,
+            accuracy = 12.0,
             speed = 30f,
             distance = 0f,
             speedLimit = 20.0,
@@ -123,36 +182,88 @@ class NewUnsafeDrivingBehaviourAnalyserTest {
     }
 
     @Test
-    fun harshAccelerationDetectedWithLinearAcceleration() = runBlocking {
+    fun aggressiveStopAndGoDetectedWithLinearAccelerationIncrease() = runBlocking {
         val locationId = UUID.randomUUID()
         val tripId = UUID.randomUUID()
         val driverId = UUID.randomUUID()
+        val locationId2 = UUID.randomUUID()
+        val locationId3 = UUID.randomUUID()
         val locationEntity = LocationEntity(
             id = locationId,
-            latitude = 0.0,
-            longitude = 0.0,
-            timestamp = 3_000L,
-            date = Date(3_000L),
+            latitude = 0.0000,
+            longitude = 0.0000,
+            timestamp = 4_500L,
+            date = Date(4_500L),
             altitude = 0.0,
-            speed = 10f,
+            accuracy = 10.0,
+            speed = 15f, // 15 m/s (54 km/h) - above MIN_ACCELERATION_SPEED_MPS
             distance = 0f,
-            speedLimit = 20.0,
+            speedLimit = 50.0,
             processed = false,
             sync = false
         )
-        val repository = FakeLocationRepository(mapOf(locationId to locationEntity))
+        val locationEntity2 = LocationEntity(
+            id = locationId2,
+            latitude = 0.0001, // ~11m north
+            longitude = 0.0000,
+            timestamp = 4_700L,
+            date = Date(4_700L),
+            altitude = 0.0,
+            accuracy = 10.0,
+            speed = 15f,
+            distance = 5f, // Clear movement for heading calc
+            speedLimit = 50.0,
+            processed = false,
+            sync = false
+        )
+        val locationEntity3 = LocationEntity(
+            id = locationId3,
+            latitude = 0.0002, // ~22m north
+            longitude = 0.0000,
+            timestamp = 5_100L,
+            date = Date(5_100L),
+            altitude = 0.0,
+            accuracy = 10.0,
+            speed = 15f,
+            distance = 5f,
+            speedLimit = 50.0,
+            processed = false,
+            sync = false
+        )
+        val repository = FakeLocationRepository(
+            mapOf(
+                locationId to locationEntity,
+                locationId2 to locationEntity2,
+                locationId3 to locationEntity3
+            )
+        )
         val analyser = NewUnsafeDrivingBehaviourAnalyser(repository)
         val context = InstrumentationRegistry.getInstrumentation().targetContext
 
-        val seed = RawSensorDataEntity(
+        // Seed samples to establish heading before acceleration events
+        val locSeed1 = RawSensorDataEntity(
             id = UUID.randomUUID(),
-            sensorType = 0,
-            sensorTypeName = "Seed",
-            values = listOf(0f, 0f, 0f),
-            timestamp = 3_000L,
-            date = Date(3_000L),
+            sensorType = NewUnsafeDrivingBehaviourAnalyser.LINEAR_ACCELERATION_TYPE,
+            sensorTypeName = "Linear Acceleration",
+            values = listOf(0f, 0.1f, 0f), // Minimal acceleration
+            timestamp = 4_500L,
+            date = Date(4_500L),
             accuracy = 3,
             locationId = locationId,
+            tripId = tripId,
+            driverProfileId = driverId,
+            processed = false,
+            sync = false
+        )
+        val locSeed2 = RawSensorDataEntity(
+            id = UUID.randomUUID(),
+            sensorType = NewUnsafeDrivingBehaviourAnalyser.LINEAR_ACCELERATION_TYPE,
+            sensorTypeName = "Linear Acceleration",
+            values = listOf(0f, 0.1f, 0f), // Minimal acceleration
+            timestamp = 4_650L,
+            date = Date(4_650L),
+            accuracy = 3,
+            locationId = locationId2,
             tripId = tripId,
             driverProfileId = driverId,
             processed = false,
@@ -162,11 +273,25 @@ class NewUnsafeDrivingBehaviourAnalyserTest {
             id = UUID.randomUUID(),
             sensorType = NewUnsafeDrivingBehaviourAnalyser.LINEAR_ACCELERATION_TYPE,
             sensorTypeName = "Linear Acceleration",
-            values = listOf(4.2f, 0f, 0f),
-            timestamp = 3_100L,
-            date = Date(3_100L),
+            values = listOf(0f, 2.0f, 0f),
+            timestamp = 4_800L,
+            date = Date(4_800L),
             accuracy = 3,
-            locationId = locationId,
+            locationId = locationId2,
+            tripId = tripId,
+            driverProfileId = driverId,
+            processed = false,
+            sync = false
+        )
+        val dataMid = RawSensorDataEntity(
+            id = UUID.randomUUID(),
+            sensorType = NewUnsafeDrivingBehaviourAnalyser.LINEAR_ACCELERATION_TYPE,
+            sensorTypeName = "Linear Acceleration",
+            values = listOf(0f, -2.0f, 0f),
+            timestamp = 4_900L,
+            date = Date(4_900L),
+            accuracy = 3,
+            locationId = locationId2,
             tripId = tripId,
             driverProfileId = driverId,
             processed = false,
@@ -176,57 +301,109 @@ class NewUnsafeDrivingBehaviourAnalyserTest {
             id = UUID.randomUUID(),
             sensorType = NewUnsafeDrivingBehaviourAnalyser.LINEAR_ACCELERATION_TYPE,
             sensorTypeName = "Linear Acceleration",
-            values = listOf(4.2f, 0f, 0f),
-            timestamp = 3_450L,
-            date = Date(3_450L),
+            values = listOf(0f, 2.0f, 0f),
+            timestamp = 5_100L,
+            date = Date(5_100L),
             accuracy = 3,
-            locationId = locationId,
+            locationId = locationId3,
             tripId = tripId,
             driverProfileId = driverId,
             processed = false,
             sync = false
         )
 
-        val results = analyser.analyze(flowOf(seed, dataStart, dataFollowUp), context).toList()
+        val results = analyser.analyze(flowOf(locSeed1, locSeed2, dataStart, dataMid, dataFollowUp), context).toList()
 
         assertEquals(1, results.size)
         val behavior = results.first()
-        assertEquals("Harsh Acceleration", behavior.behaviorType)
+        assertEquals("Aggressive Stop-and-Go", behavior.behaviorType)
         assertEquals(tripId, behavior.tripId)
-        assertEquals(locationId, behavior.locationId)
+        assertEquals(locationId3, behavior.locationId)
     }
 
     @Test
-    fun harshBrakingDetectedWithLinearAcceleration() = runBlocking {
+    fun aggressiveStopAndGoDetectedWithLinearAccelerationDecrease() = runBlocking {
         val locationId = UUID.randomUUID()
         val tripId = UUID.randomUUID()
         val driverId = UUID.randomUUID()
+        val locationId2 = UUID.randomUUID()
+        val locationId3 = UUID.randomUUID()
         val locationEntity = LocationEntity(
             id = locationId,
-            latitude = 0.0,
-            longitude = 0.0,
-            timestamp = 4_000L,
-            date = Date(4_000L),
+            latitude = 0.0000,
+            longitude = 0.0000,
+            timestamp = 4_500L,
+            date = Date(4_500L),
             altitude = 0.0,
-            speed = 10f,
+            accuracy = 10.0,
+            speed = 15f, // 15 m/s (54 km/h) - above MIN_ACCELERATION_SPEED_MPS
             distance = 0f,
-            speedLimit = 20.0,
+            speedLimit = 50.0,
             processed = false,
             sync = false
         )
-        val repository = FakeLocationRepository(mapOf(locationId to locationEntity))
+        val locationEntity2 = LocationEntity(
+            id = locationId2,
+            latitude = 0.0001, // ~11m north
+            longitude = 0.0000,
+            timestamp = 4_700L,
+            date = Date(4_700L),
+            altitude = 0.0,
+            accuracy = 10.0,
+            speed = 15f,
+            distance = 5f,
+            speedLimit = 50.0,
+            processed = false,
+            sync = false
+        )
+        val locationEntity3 = LocationEntity(
+            id = locationId3,
+            latitude = 0.0002, // ~22m north
+            longitude = 0.0000,
+            timestamp = 5_100L,
+            date = Date(5_100L),
+            altitude = 0.0,
+            accuracy = 10.0,
+            speed = 15f,
+            distance = 5f,
+            speedLimit = 50.0,
+            processed = false,
+            sync = false
+        )
+        val repository = FakeLocationRepository(
+            mapOf(
+                locationId to locationEntity,
+                locationId2 to locationEntity2,
+                locationId3 to locationEntity3
+            )
+        )
         val analyser = NewUnsafeDrivingBehaviourAnalyser(repository)
         val context = InstrumentationRegistry.getInstrumentation().targetContext
 
-        val seed = RawSensorDataEntity(
+        // Seed samples to establish heading before braking events
+        val locSeed1 = RawSensorDataEntity(
             id = UUID.randomUUID(),
-            sensorType = 0,
-            sensorTypeName = "Seed",
-            values = listOf(0f, 0f, 0f),
-            timestamp = 4_000L,
-            date = Date(4_000L),
+            sensorType = NewUnsafeDrivingBehaviourAnalyser.LINEAR_ACCELERATION_TYPE,
+            sensorTypeName = "Linear Acceleration",
+            values = listOf(0f, 0.1f, 0f), // Minimal acceleration
+            timestamp = 4_500L,
+            date = Date(4_500L),
             accuracy = 3,
             locationId = locationId,
+            tripId = tripId,
+            driverProfileId = driverId,
+            processed = false,
+            sync = false
+        )
+        val locSeed2 = RawSensorDataEntity(
+            id = UUID.randomUUID(),
+            sensorType = NewUnsafeDrivingBehaviourAnalyser.LINEAR_ACCELERATION_TYPE,
+            sensorTypeName = "Linear Acceleration",
+            values = listOf(0f, 0.1f, 0f), // Minimal acceleration
+            timestamp = 4_650L,
+            date = Date(4_650L),
+            accuracy = 3,
+            locationId = locationId2,
             tripId = tripId,
             driverProfileId = driverId,
             processed = false,
@@ -236,11 +413,25 @@ class NewUnsafeDrivingBehaviourAnalyserTest {
             id = UUID.randomUUID(),
             sensorType = NewUnsafeDrivingBehaviourAnalyser.LINEAR_ACCELERATION_TYPE,
             sensorTypeName = "Linear Acceleration",
-            values = listOf(-4.8f, 0f, 0f),
-            timestamp = 4_100L,
-            date = Date(4_100L),
+            values = listOf(0f, -2.0f, 0f),
+            timestamp = 4_800L,
+            date = Date(4_800L),
             accuracy = 3,
-            locationId = locationId,
+            locationId = locationId2,
+            tripId = tripId,
+            driverProfileId = driverId,
+            processed = false,
+            sync = false
+        )
+        val dataMid = RawSensorDataEntity(
+            id = UUID.randomUUID(),
+            sensorType = NewUnsafeDrivingBehaviourAnalyser.LINEAR_ACCELERATION_TYPE,
+            sensorTypeName = "Linear Acceleration",
+            values = listOf(0f, 2.0f, 0f),
+            timestamp = 4_900L,
+            date = Date(4_900L),
+            accuracy = 3,
+            locationId = locationId2,
             tripId = tripId,
             driverProfileId = driverId,
             processed = false,
@@ -250,24 +441,24 @@ class NewUnsafeDrivingBehaviourAnalyserTest {
             id = UUID.randomUUID(),
             sensorType = NewUnsafeDrivingBehaviourAnalyser.LINEAR_ACCELERATION_TYPE,
             sensorTypeName = "Linear Acceleration",
-            values = listOf(-4.8f, 0f, 0f),
-            timestamp = 4_450L,
-            date = Date(4_450L),
+            values = listOf(0f, -2.0f, 0f),
+            timestamp = 5_100L,
+            date = Date(5_100L),
             accuracy = 3,
-            locationId = locationId,
+            locationId = locationId3,
             tripId = tripId,
             driverProfileId = driverId,
             processed = false,
             sync = false
         )
 
-        val results = analyser.analyze(flowOf(seed, dataStart, dataFollowUp), context).toList()
+        val results = analyser.analyze(flowOf(locSeed1, locSeed2, dataStart, dataMid, dataFollowUp), context).toList()
 
         assertEquals(1, results.size)
         val behavior = results.first()
-        assertEquals("Harsh Braking", behavior.behaviorType)
+        assertEquals("Aggressive Stop-and-Go", behavior.behaviorType)
         assertEquals(tripId, behavior.tripId)
-        assertEquals(locationId, behavior.locationId)
+        assertEquals(locationId3, behavior.locationId)
     }
 
     @Test
@@ -282,8 +473,9 @@ class NewUnsafeDrivingBehaviourAnalyserTest {
             timestamp = 5_000L,
             date = Date(5_000L),
             altitude = 0.0,
-            speed = 10f,
-            distance = 0f,
+            accuracy = 12.0,
+            speed = 12f,
+            distance = 6f,
             speedLimit = 20.0,
             processed = false,
             sync = false
@@ -308,9 +500,9 @@ class NewUnsafeDrivingBehaviourAnalyserTest {
         )
         val data = RawSensorDataEntity(
             id = UUID.randomUUID(),
-            sensorType = NewUnsafeDrivingBehaviourAnalyser.ROTATION_VECTOR_TYPE,
-            sensorTypeName = "Rotation Vector",
-            values = listOf(0.3f, 0f, 0f),
+            sensorType = NewUnsafeDrivingBehaviourAnalyser.GYROSCOPE_TYPE,
+            sensorTypeName = "Gyroscope",
+            values = listOf(0f, 0f, 0.2f),
             timestamp = 5_000L,
             date = Date(5_000L),
             accuracy = 3,
@@ -321,7 +513,36 @@ class NewUnsafeDrivingBehaviourAnalyserTest {
             sync = false
         )
 
-        val results = analyser.analyze(flowOf(seed, data), context).toList()
+        val dataFollowUp = RawSensorDataEntity(
+            id = UUID.randomUUID(),
+            sensorType = NewUnsafeDrivingBehaviourAnalyser.GYROSCOPE_TYPE,
+            sensorTypeName = "Gyroscope",
+            values = listOf(0f, 0f, -0.2f),
+            timestamp = 5_200L,
+            date = Date(5_200L),
+            accuracy = 3,
+            locationId = locationId,
+            tripId = tripId,
+            driverProfileId = driverId,
+            processed = false,
+            sync = false
+        )
+        val dataFinal = RawSensorDataEntity(
+            id = UUID.randomUUID(),
+            sensorType = NewUnsafeDrivingBehaviourAnalyser.GYROSCOPE_TYPE,
+            sensorTypeName = "Gyroscope",
+            values = listOf(0f, 0f, 0.2f),
+            timestamp = 5_400L,
+            date = Date(5_400L),
+            accuracy = 3,
+            locationId = locationId,
+            tripId = tripId,
+            driverProfileId = driverId,
+            processed = false,
+            sync = false
+        )
+
+        val results = analyser.analyze(flowOf(seed, data, dataFollowUp, dataFinal), context).toList()
 
         assertEquals(1, results.size)
         val behavior = results.first()

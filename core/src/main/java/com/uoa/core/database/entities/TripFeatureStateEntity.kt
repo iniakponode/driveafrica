@@ -27,5 +27,6 @@ data class TripFeatureStateEntity(
     val lastLatitude: Double? = null,
     val lastLongitude: Double? = null,
     val lastLocationTimestamp: Long? = null,
-    val lastSensorTimestamp: Long? = null
+    val lastSensorTimestamp: Long? = null,
+    val sync: Boolean = false
 )

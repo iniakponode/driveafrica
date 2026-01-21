@@ -41,7 +41,7 @@ Core Components of the New Architecture:
 ◦
 Detail the new SyncState enum that will replace the sync: Boolean flag in the TripEntity. Provide the enum's Kotlin code.
 ◦
-Detail the new TripSummaryEntity for Room. Explain its purpose and provide its Kotlin data class definition, including fields for aggregated metrics like unsafe event counts, distance, and duration.
+Detail the new TripSummaryEntity and TripSummaryBehaviourEntity for Room. Explain their purpose and provide Kotlin data class definitions, with trip-level metrics in TripSummaryEntity and unsafe behaviour counts normalized in TripSummaryBehaviourEntity.
 4.
 The New End-to-End Workflow: Describe the step-by-step process in stages:
 ◦
@@ -52,7 +52,7 @@ Describe the new, event-driven RawDataUploadWorker. Explain its single responsib
 ◦
 Stage 3: Background LLM Processing: Describe the LlmGenerationWorker, which runs after the upload worker, using the still-local data to generate reports and update the trip to its final state.
 5.
-Generating Long-Term Reports: Explain how the new TripSummaryEntity makes weekly and monthly reporting efficient and simple with a single database query.
+Generating Long-Term Reports: Explain how TripSummaryEntity joined to TripSummaryBehaviourEntity makes weekly and monthly reporting efficient and simple with a single database query.
 6.
 The Revised Role of UploadAllDataWorker.kt: Clearly define its new purpose as a Safety Net and Bulk Synchronizer. Explain its new responsibilities: syncing independent data (like DriverProfile), performing selective cleanup of raw data (while keeping summaries), and reconciling "stuck" trips.
 7.

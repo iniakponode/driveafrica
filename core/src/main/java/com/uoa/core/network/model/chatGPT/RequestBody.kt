@@ -1,38 +1,41 @@
 package com.uoa.core.network.model.chatGPT
 
+import androidx.annotation.Keep
 import com.google.gson.annotations.SerializedName
 
+@Keep
 data class RequestBody(
-    @SerializedName("model")
+    @field:SerializedName("model")
     val model: String,
 
-    @SerializedName("messages")
+    @field:SerializedName("messages")
     val messages: List<Message>,
 
-    @SerializedName("max_tokens")
+    @field:SerializedName("max_tokens")
     val maxTokens: Int? = null,
 
-    @SerializedName("temperature")
+    @field:SerializedName("temperature")
     val temperature: Float? = null,
 
-    @SerializedName("top_p")
+    @field:SerializedName("top_p")
     val topP: Float? = null,
 
-    @SerializedName("frequency_penalty")
+    @field:SerializedName("frequency_penalty")
     val frequencyPenalty: Float? = null,
 
-    @SerializedName("presence_penalty")
+    @field:SerializedName("presence_penalty")
     val presencePenalty: Float? = null,
 
-    @SerializedName("stop")
+    @field:SerializedName("stop")
     val stop: String? = null
 )
 
+@Keep
 data class Message(
-    @SerializedName("role")
+    @field:SerializedName("role")
     val role: String,
 
-    @SerializedName("content")
+    @field:SerializedName("content")
     val content: String
 )
 

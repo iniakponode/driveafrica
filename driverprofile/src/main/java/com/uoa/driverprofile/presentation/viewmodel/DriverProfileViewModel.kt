@@ -37,8 +37,8 @@ import androidx.core.content.edit
 @HiltViewModel
 class DriverProfileViewModel @Inject constructor(
     private val insertDriverProfileUseCase: InsertDriverProfileUseCase,
-    private val getDriverProfileByEmailUseCase: GetDriverProfileByEmailUseCase,
-    private val deleteDriverProfileByEmailUseCase: DeleteDriverProfileByEmailUseCase,
+//    private val getDriverProfileByEmailUseCase: GetDriverProfileByEmailUseCase,
+//    private val deleteDriverProfileByEmailUseCase: DeleteDriverProfileByEmailUseCase,
     private val secureCredentialStorage: SecureCredentialStorage,
     private val application: Application,
 ) : ViewModel() {
@@ -46,7 +46,7 @@ class DriverProfileViewModel @Inject constructor(
     private val _email = MutableLiveData<String>()
     val email: MutableLiveData<String> get() = _email
 
-    private val _profile_id = MutableLiveData<String>()
+//    private val _profile_id = MutableLiveData<String>()
 //    val profile_id: MutableLiveData<String> get() = _profile_id
 
     private val _driverProfileUploadSuccess = MutableStateFlow(false)
@@ -120,12 +120,12 @@ class DriverProfileViewModel @Inject constructor(
                 }
 
                 val prefs = application.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                prefs.edit()
-                    .putString(DRIVER_PROFILE_ID, profileId.toString())
-                    .putString(DRIVER_EMAIL_ID, trimmedEmail)
-                    .putString(REGISTRATION_FLEET_CHOICE, fleetChoice.name)
-                    .putBoolean(REGISTRATION_HAS_INVITE_CODE, hasInviteCode)
-                    .apply()
+                prefs.edit {
+                    putString(DRIVER_PROFILE_ID, profileId.toString())
+                        .putString(DRIVER_EMAIL_ID, trimmedEmail)
+                        .putString(REGISTRATION_FLEET_CHOICE, fleetChoice.name)
+                        .putBoolean(REGISTRATION_HAS_INVITE_CODE, hasInviteCode)
+                }
                 prefs.edit {
                     remove(REGISTRATION_INVITE_CODE)
                 }

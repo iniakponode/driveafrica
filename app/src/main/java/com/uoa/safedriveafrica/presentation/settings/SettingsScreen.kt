@@ -58,12 +58,13 @@ import com.uoa.core.utils.Constants.Companion.MONITORING_PERMISSIONS_REQUESTED
 import com.uoa.core.utils.Constants.Companion.PREFS_NAME
 import com.uoa.core.utils.Constants.Companion.REGISTRATION_FLEET_CHOICE
 import com.uoa.core.utils.Constants.Companion.TRIP_DETECTION_SENSITIVITY
+import com.uoa.core.utils.HELP_ROUTE
 import com.uoa.core.utils.JOIN_FLEET_ROUTE
 import com.uoa.core.utils.PreferenceUtils
 import com.uoa.core.utils.SecureTokenStorage
+import com.uoa.core.utils.TRIP_ML_DEBUG_ROUTE
 import com.uoa.driverprofile.presentation.model.FleetEnrollmentChoice
 import com.uoa.driverprofile.presentation.viewmodel.FleetStatusViewModel
-import com.uoa.ml.presentation.viewmodel.TripClassificationDebugViewModel
 import java.util.Locale
 import androidx.core.content.edit
 
@@ -86,7 +87,6 @@ fun SettingsRoute(navController: NavController) {
     var notificationsEnabled by rememberSaveable {
         mutableStateOf(areNotificationsAllowed(context))
     }
-    val debugViewModel: TripClassificationDebugViewModel = hiltViewModel()
     val fleetStatusViewModel: FleetStatusViewModel = hiltViewModel()
     val fleetState by fleetStatusViewModel.state.collectAsStateWithLifecycle()
     val tokenStorage = remember { SecureTokenStorage(context) }
@@ -111,6 +111,9 @@ fun SettingsRoute(navController: NavController) {
             if (event == Lifecycle.Event.ON_RESUME) {
                 notificationsEnabled = areNotificationsAllowed(context)
                 driverProfileId = prefs.getString(com.uoa.core.utils.Constants.DRIVER_PROFILE_ID, null)
+                autoTripEnabled = prefs.getBoolean(AUTO_TRIP_DETECTION_ENABLED, false)
+                allowMeteredUploads = PreferenceUtils.isMeteredUploadsAllowed(context)
+                sensitivity = prefs.getString(TRIP_DETECTION_SENSITIVITY, "balanced") ?: "balanced"
                 if (!tokenStorage.getToken().isNullOrBlank()) {
                     fleetStatusViewModel.refreshFleetStatus()
                 }
@@ -139,6 +142,7 @@ fun SettingsRoute(navController: NavController) {
         onOpenNotificationSettings = { openNotificationSettings(context) },
         autoTripEnabled = autoTripEnabled,
         onAutoTripToggle = { enabled ->
+            autoTripEnabled = enabled
             prefs.edit {
                 putBoolean(AUTO_TRIP_DETECTION_ENABLED, enabled)
             }
@@ -150,14 +154,14 @@ fun SettingsRoute(navController: NavController) {
         },
         tripSensitivity = sensitivity,
         onTripSensitivityChange = { newValue ->
-//            sensitivity = newValue
+            sensitivity = newValue
             prefs.edit {
                 putString(TRIP_DETECTION_SENSITIVITY, newValue)
             }
         },
         allowMeteredUploads = allowMeteredUploads,
         onAllowMeteredUploadsChange = { allowed ->
-//            allowMeteredUploads = allowed
+            allowMeteredUploads = allowed
             PreferenceUtils.setMeteredUploadsAllowed(context, allowed)
         },
         fleetStatus = fleetState.fleetStatus,
@@ -168,8 +172,9 @@ fun SettingsRoute(navController: NavController) {
         onCancelJoinRequest = { fleetStatusViewModel.cancelJoinRequest() },
         onRefreshFleetStatus = { fleetStatusViewModel.refreshFleetStatus() },
         onSyncNow = { enqueueImmediateUploadWork(context) },
+        onOpenHelp = { navController.navigate(HELP_ROUTE) },
         showDebugActions = isDebuggable,
-        onDebugTripClassification = { debugViewModel.runLatestTripClassification() },
+        onOpenTripMlDebug = { navController.navigate(TRIP_ML_DEBUG_ROUTE) },
         driverProfileId = driverProfileId
     )
 }
@@ -194,8 +199,9 @@ fun SettingsScreen(
     onCancelJoinRequest: () -> Unit,
     onRefreshFleetStatus: () -> Unit,
     onSyncNow: () -> Unit,
+    onOpenHelp: () -> Unit,
     showDebugActions: Boolean,
-    onDebugTripClassification: () -> Unit,
+    onOpenTripMlDebug: () -> Unit,
     driverProfileId: String?
 ) {
     val clipboardManager = LocalClipboardManager.current
@@ -418,6 +424,29 @@ fun SettingsScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(12.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = cardColors
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    text = "Help",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Learn how to use Safe Drive Africa.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = onOpenHelp, modifier = Modifier.fillMaxWidth()) {
+                    Text(text = "Open help")
+                }
+            }
+        }
+
         if (showDebugActions) {
             Spacer(modifier = Modifier.height(12.dp))
             Card(
@@ -431,16 +460,16 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Run the trip ML classifier for the latest trip.",
+                        text = "Review trip classification inputs and results.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Button(
-                        onClick = onDebugTripClassification,
+                        onClick = onOpenTripMlDebug,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(text = "Run Trip ML Check")
+                        Text(text = "Open ML Debug")
                     }
                 }
             }
@@ -492,9 +521,14 @@ private fun FleetMembershipCard(
     onCancelJoinRequest: () -> Unit,
     onRefreshFleetStatus: () -> Unit
 ) {
-    val status = fleetStatus?.status?.lowercase(Locale.ROOT)
-    val canJoin = status == null || status == "none"
-    val showJoin = status == "none" || (status == null && showJoinWithoutStatus)
+    val status = fleetStatus?.status?.trim()?.lowercase(Locale.ROOT)
+    val isAssigned = status?.contains("assigned") == true ||
+        fleetStatus?.fleet != null ||
+        fleetStatus?.vehicleGroup != null ||
+        fleetStatus?.vehicle != null
+    val isPending = status?.contains("pending") == true || fleetStatus?.pendingRequest != null
+    val canJoin = !isAssigned && !isPending && (status == null || status == "none")
+    val showJoin = (status == "none" || status == null) && showJoinWithoutStatus
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -514,8 +548,8 @@ private fun FleetMembershipCard(
             if (isLoading) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
-            when (status) {
-                "assigned" -> {
+            when {
+                isAssigned -> {
                     Text(
                         text = stringResource(
                             R.string.settings_fleet_membership_assigned,
@@ -532,7 +566,7 @@ private fun FleetMembershipCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                "pending" -> {
+                isPending -> {
                     Text(
                         text = stringResource(R.string.settings_fleet_membership_pending),
                         style = MaterialTheme.typography.bodyMedium

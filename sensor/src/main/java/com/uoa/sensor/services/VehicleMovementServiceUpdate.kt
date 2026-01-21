@@ -1,7 +1,6 @@
 package com.uoa.sensor.services
 
 import android.app.ActivityManager
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -246,6 +245,16 @@ open class VehicleMovementServiceUpdate : LifecycleService() {
                     locationManager.setDrivingState(newState)
                     sensorRepo.updateDrivingState(newState)
                     updateMovementNotification(newState)
+                    val hasTrip = sensorRepo.tripStartStatus.value || currentTripId != null
+                    if (hasTrip) {
+                        when (newState) {
+                            DrivingStateManager.DrivingState.POTENTIAL_STOP -> hardwareModule.pauseDataCollection()
+                            DrivingStateManager.DrivingState.RECORDING -> hardwareModule.resumeDataCollection()
+                            else -> Unit
+                        }
+                    } else {
+                        locationManager.setRecordingEnabled(false)
+                    }
                 }
             }
         })

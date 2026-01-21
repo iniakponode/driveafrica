@@ -1,112 +1,153 @@
 package com.uoa.core.apiServices.models.auth
 
+import androidx.annotation.Keep
 import com.google.gson.annotations.SerializedName
 import java.util.UUID
 
+@Keep
 data class RegisterRequest(
+    @field:SerializedName("driverProfileId")
     val driverProfileId: String,
+    @field:SerializedName("email")
     val email: String,
+    @field:SerializedName("password")
     val password: String,
+    @field:SerializedName("sync")
     val sync: Boolean = true
 )
 
+@Keep
 data class LoginRequest(
+    @field:SerializedName("email")
     val email: String,
+    @field:SerializedName("password")
     val password: String
 )
 
+@Keep
 data class AuthResponse(
-    @SerializedName(value = "token", alternate = ["access_token"])
+    @field:SerializedName(value = "token", alternate = ["access_token"])
     val token: String,
-    @SerializedName("token_type")
+    @field:SerializedName("token_type")
     val tokenType: String? = null,
+    @field:SerializedName("user")
     val user: AuthUser? = null,
-    @SerializedName("driver_profile")
+    @field:SerializedName("driver_profile")
     val driverProfile: AuthDriverProfile? = null,
-    @SerializedName("driver_profile_id")
+    @field:SerializedName("driver_profile_id")
     val driverProfileId: String? = null,
-    @SerializedName("fleet_assignment")
+    @field:SerializedName("fleet_assignment")
     val fleetAssignment: FleetAssignmentResponse? = null,
-    @SerializedName("fleet_status")
+    @field:SerializedName("fleet_status")
     val fleetStatus: FleetStatusResponse? = null
 )
 
+@Keep
 data class AuthUser(
+    @field:SerializedName("id")
     val id: String,
+    @field:SerializedName("email")
     val email: String,
+    @field:SerializedName("role")
     val role: String?
 )
 
+@Keep
 data class AuthDriverProfile(
+    @field:SerializedName("id")
     val id: UUID,
+    @field:SerializedName("email")
     val email: String,
+    @field:SerializedName("name")
     val name: String?
 )
 
+@Keep
 data class FleetAssignmentResponse(
-    @SerializedName("fleet_id")
+    @field:SerializedName("fleet_id")
     val fleetId: String?,
-    @SerializedName("fleet_name")
+    @field:SerializedName("fleet_name")
     val fleetName: String?,
-    @SerializedName("vehicle_group_id")
+    @field:SerializedName("vehicle_group_id")
     val vehicleGroupId: String?,
-    @SerializedName("vehicle_group_name")
+    @field:SerializedName("vehicle_group_name")
     val vehicleGroupName: String?,
-    @SerializedName("assigned_at")
+    @field:SerializedName("assigned_at")
     val assignedAt: String?
 )
 
+@Keep
 data class FleetStatusResponse(
+    @field:SerializedName("status")
     val status: String,
+    @field:SerializedName("fleet")
     val fleet: FleetInfo?,
-    @SerializedName("vehicle_group")
+    @field:SerializedName("vehicle_group")
     val vehicleGroup: VehicleGroupInfo?,
+    @field:SerializedName("vehicle")
     val vehicle: VehicleInfo?,
-    @SerializedName("pending_request")
+    @field:SerializedName("pending_request")
     val pendingRequest: PendingFleetRequest?
 )
 
+@Keep
 data class FleetInfo(
+    @field:SerializedName("id")
     val id: String,
+    @field:SerializedName("name")
     val name: String
 )
 
+@Keep
 data class VehicleGroupInfo(
+    @field:SerializedName("id")
     val id: String,
+    @field:SerializedName("name")
     val name: String
 )
 
+@Keep
 data class VehicleInfo(
+    @field:SerializedName("id")
     val id: String,
-    @SerializedName("license_plate")
+    @field:SerializedName("license_plate")
     val licensePlate: String,
+    @field:SerializedName("make")
     val make: String?,
+    @field:SerializedName("model")
     val model: String?
 )
 
+@Keep
 data class PendingFleetRequest(
+    @field:SerializedName("id")
     val id: String,
-    @SerializedName("fleet_name")
+    @field:SerializedName("fleet_name")
     val fleetName: String?,
-    @SerializedName("requested_at")
+    @field:SerializedName("requested_at")
     val requestedAt: String?
 )
 
+@Keep
 data class JoinFleetRequest(
-    @SerializedName("invite_code")
+    @field:SerializedName("invite_code")
     val inviteCode: String
 )
 
+@Keep
 data class InviteCodeValidationRequest(
-    @SerializedName("code")
+    @field:SerializedName("code")
     val code: String
 )
 
+@Keep
 data class JoinFleetResponse(
+    @field:SerializedName("message")
     val message: String,
-    @SerializedName("request_id")
+    @field:SerializedName("request_id")
     val requestId: String?,
-    @SerializedName("fleet_name")
+    @field:SerializedName("fleet_name")
     val fleetName: String?,
+    @field:SerializedName("status")
     val status: String
 )

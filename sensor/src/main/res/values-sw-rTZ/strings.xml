@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">sensor</string>
+    <string name="distance_travelled">Umbali uliosafiri: %1$.2f %2$s</string>
+    <string name="speed_limit">Kikomo cha mwendo: %1$s %2$s</string>
+    <string name="unit_kilometers">km</string>
+    <string name="unit_kilometers_per_hour">km/h</string>
+    <string name="sensor_permission_explanation">Safe Drive Africa hurekodi safari kwa kutumia GPS, utambuzi wa shughuli, na huduma ya mbele ili tabia ya uendeshaji ichanganuliwe; ruhusa ya arifa hukufahamisha huku uandishi ukiendelea tu unapoiruhusu.</string>
+</resources>

@@ -142,8 +142,7 @@ class ProcessAndStoreSensorData @Inject constructor(
             val accelSamples = sensors
                 .asSequence()
                 .filter {
-                    it.sensorType == Sensor.TYPE_ACCELEROMETER ||
-                        it.sensorTypeName.contains("accel", ignoreCase = true)
+                    it.sensorType == Sensor.TYPE_ACCELEROMETER
                 }
                 .mapNotNull { sensor ->
                     sensor.values.getOrNull(1)?.takeIf { it.isFinite() }?.toDouble()
@@ -222,7 +221,7 @@ class ProcessAndStoreSensorData @Inject constructor(
                 )
             }
 
-            tripFeatureStateDao.upsert(state)
+            tripFeatureStateDao.upsert(state.copy(sync = false))
         }
     }
 

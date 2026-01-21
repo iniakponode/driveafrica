@@ -65,8 +65,8 @@ fun JoinFleetScreenRoute(
     }
 
     LaunchedEffect(fleetState.fleetStatus) {
-        val status = fleetState.fleetStatus?.status?.lowercase(Locale.ROOT)
-        if ((status == "assigned" || status == "pending") && storedProfileId != null) {
+        val status = fleetState.fleetStatus?.status
+        if ((status?.lowercase(Locale.ROOT) == "assigned" || isPendingStatus(status)) && storedProfileId != null) {
             navController.navigateToHomeScreen(storedProfileId) {
                 popUpTo(navController.graph.startDestinationId) { inclusive = false }
                 launchSingleTop = true
@@ -75,8 +75,8 @@ fun JoinFleetScreenRoute(
     }
 
     LaunchedEffect(fleetState.fleetStatus, uiState.queuedOffline) {
-        val status = fleetState.fleetStatus?.status?.lowercase(Locale.ROOT)
-        if (status == "pending" || uiState.queuedOffline) {
+        val status = fleetState.fleetStatus?.status
+        if (isPendingStatus(status) || uiState.queuedOffline) {
             fleetStatusViewModel.startPolling()
         } else {
             fleetStatusViewModel.stopPolling()
@@ -88,8 +88,8 @@ fun JoinFleetScreenRoute(
     }
 
     LaunchedEffect(uiState.requestStatus, uiState.queuedOffline) {
-        val status = uiState.requestStatus?.lowercase(Locale.ROOT)
-        if ((status == "pending" || uiState.queuedOffline) && storedProfileId != null) {
+        val status = uiState.requestStatus
+        if ((isPendingStatus(status) || uiState.queuedOffline) && storedProfileId != null) {
             navController.navigateToHomeScreen(storedProfileId) {
                 popUpTo(navController.graph.startDestinationId) { inclusive = false }
                 launchSingleTop = true
@@ -129,7 +129,7 @@ fun JoinFleetScreenRoute(
                 label = { Text(stringResource(R.string.join_fleet_code_label)) },
                 isError = uiState.errorMessage != null,
                 singleLine = true,
-                enabled = !uiState.isLoading && uiState.requestStatus?.lowercase(Locale.ROOT) != "pending",
+                enabled = !uiState.isLoading && !isPendingStatus(uiState.requestStatus),
                 keyboardOptions = KeyboardOptions(
                     imeAction = ImeAction.Done,
                     keyboardType = KeyboardType.Ascii
@@ -159,7 +159,7 @@ fun JoinFleetScreenRoute(
 
             Button(
                 onClick = { joinFleetViewModel.submitJoinRequest(inviteCodeState.value) },
-                enabled = !uiState.isLoading && uiState.requestStatus?.lowercase(Locale.ROOT) != "pending",
+                enabled = !uiState.isLoading && !isPendingStatus(uiState.requestStatus),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
@@ -173,7 +173,7 @@ fun JoinFleetScreenRoute(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
-                Text(text = if (uiState.requestStatus?.lowercase(Locale.ROOT) == "pending") {
+                Text(text = if (isPendingStatus(uiState.requestStatus)) {
                     stringResource(R.string.join_fleet_pending_button)
                 } else {
                     stringResource(R.string.join_fleet_submit)
@@ -218,4 +218,8 @@ fun JoinFleetScreenRoute(
             )
         }
     }
+}
+
+private fun isPendingStatus(status: String?): Boolean {
+    return status?.lowercase(Locale.ROOT)?.contains("pending") == true
 }

@@ -17,7 +17,7 @@ class OnnxModelRunnerSchemaInstrumentedTest {
     @Test
     fun logsOutputSchema() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val modelFileName = "bagging_classifier_with_probabilities.onnx"
+        val modelFileName = "svm_classifier_best.onnx"
         val modelFile = File(context.filesDir, modelFileName)
         if (!modelFile.exists()) {
             context.assets.open(modelFileName).use { input ->

@@ -10,6 +10,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import java.io.IOException
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -33,10 +36,9 @@ class AuthRepository @Inject constructor(
             secureTokenStorage.saveToken(response.token)
             Resource.Success(response)
         } catch (e: HttpException) {
-            val errorBody = e.response()?.errorBody()?.string()
-            Resource.Error(buildErrorMessage("Server error (${e.code()}): ${e.message()}", errorBody))
+            Resource.Error(buildErrorMessage("Server error (${e.code()}): ${e.message()}"))
         } catch (e: IOException) {
-            Resource.Error("Network error: ${e.localizedMessage}")
+            Resource.Error(buildNetworkErrorMessage(e))
         } catch (e: Exception) {
             Resource.Error("Unexpected error: ${e.localizedMessage}")
         }
@@ -47,8 +49,7 @@ class AuthRepository @Inject constructor(
             val response = authApiService.getCurrentDriver()
             Resource.Success(response)
         } catch (e: HttpException) {
-            val errorBody = e.response()?.errorBody()?.string()
-            Resource.Error(buildErrorMessage("Server error (${e.code()}): ${e.message()}", errorBody))
+            Resource.Error(buildErrorMessage("Server error (${e.code()}): ${e.message()}"))
         } catch (e: IOException) {
             Resource.Error("Network error: ${e.localizedMessage}")
         } catch (e: Exception) {
@@ -56,6 +57,14 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    private fun buildErrorMessage(base: String, body: String?): String =
-        if (body.isNullOrBlank()) base else "$base | Body: $body"
+    private fun buildErrorMessage(base: String): String = base
+
+    private fun buildNetworkErrorMessage(error: IOException): String {
+        return when (error) {
+            is UnknownHostException -> "No internet connection. Check your connection and try again."
+            is ConnectException -> "Unable to reach the server. Check your connection and try again."
+            is SocketTimeoutException -> "Connection timed out. Try again shortly."
+            else -> "Network error: ${error.localizedMessage}"
+        }
+    }
 }
